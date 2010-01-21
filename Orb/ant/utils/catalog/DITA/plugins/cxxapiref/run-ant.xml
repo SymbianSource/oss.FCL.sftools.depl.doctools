@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+  All rights reserved.
+-->
+<project name="cxxapiref" default="all" basedir="..\..">
+
+  <import file="${basedir}${file.separator}conductor.xml"/>
+
+	<target name="all"
+        description="build all C++ API Reference output"
+        depends="cxxrefSample2xhtml"/>
+
+    <!-- sample content targets -->
+	<target name="cxxrefSample2xhtml"
+        description="build HTML for the C++ API Reference samples"
+        depends="use-init">
+      <mkdir dir="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}out" />
+      <mkdir dir="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}out${file.separator}sample" />
+
+      <antcall target="cxxref2xhtml">
+		<param name="dita.extname" value=".dita"/>
+		<param name="transtype"    value="xhtml"/>
+		<param name="args.input"
+            value="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}sample${file.separator}cxxApiExamples.ditamap"/>
+		<param name="output.dir"
+            value="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}out${file.separator}sample"/>
+      </antcall>
+
+      <copy file="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}sample${file.separator}frameset.html"
+          todir="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}out${file.separator}sample"/>
+	</target>
+
+	<target name="cxxapirefSampleClean"
+        description="Delete the sample output files from the build">
+      <delete dir="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}out${file.separator}sample" />
+	</target>
+
+    <!-- documentation targets -->
+	<target name="cxxapirefDoc2xhtml"
+        description="build the HTML documentation for the specialization"
+        depends="use-init">
+      <mkdir dir="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}out" />
+      <antcall target="dita2xhtml">
+		<param name="args.input"
+            value="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}doc${file.separator}root.ditamap"/>
+		<param name="output.dir"
+            value="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}out${file.separator}doc"/>
+		<param name="dita.extname"
+            value=".dita"/>
+      </antcall>
+	</target>
+
+	<target name="cxxapirefDocClean"
+        description="Delete the documentation output files from the build">
+      <delete dir="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}out${file.separator}doc" />
+	</target>
+</project>

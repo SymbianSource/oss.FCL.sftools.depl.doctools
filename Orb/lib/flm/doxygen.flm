@@ -1,0 +1,122 @@
+# Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved.
+# This component and the accompanying materials are made available under the terms of the License 
+# "Eclipse Public License v1.0" which accompanies this distribution, 
+# and is available at the URL "http://www.eclipse.org/legal/epl-v10.html".
+#
+# Initial Contributors:
+# Nokia Corporation - initial contribution.
+#
+# Contributors:
+#
+# Description:
+# An FLM, for creating a Doxygen configuration file and running Doxygen on that file
+# to generate documentation.
+
+
+#Print version and generated dox file in log file
+$(info Using Doxygen Extension Version: 0.1)
+$(info DOXYFILE: $(OUTPUTPATH)/$(DOXY_FILE))
+
+#definition that generates a doxygen configuration file and runs doxygen on it
+define generatedoxconfig
+ALL:: $(OUTPUTPATH)/$(DOXY_FILE).done
+
+# Run doxygen on the dox file. Indicate doxygen was run by creating an empty .done file
+# Also runs the Orb python plug-ins which post-process the XML.
+$(OUTPUTPATH)/$(DOXY_FILE).done: $(OUTPUTPATH)/$(DOXY_FILE) $(OUTPUTPATH)/meta.xml
+	$(call startrule,rundoxygen) \
+	$(SBS_DOXYGEN) $(OUTPUTPATH)/$(DOXY_FILE) &&  \
+	$(GNUTOUCH) $(OUTPUTPATH)/$(DOXY_FILE).done && \
+	$(SBS_PYTHON) "$(SBS_HOME)/python/doxygen/mapfilter.py" $(OUTPUTPATH)/dox/dita/$(TARGET).ditamap $(OUTPUTPATH)/meta.xml && \
+	$(SBS_PYTHON) "$(SBS_HOME)/python/doxygen/linkinserter.py" $(OUTPUTPATH)/dox/dita && \
+	$(GNUCP) -r $(OUTPUTPATH)/dox/dita $(EPOCROOT)/epoc32/release/doxygen \
+	$(call endrule,rundoxygen)
+
+# Create a meta.xml file which lists all of the project exports (header files exported by this target to epoc32)
+$(OUTPUTPATH)/meta.xml: $(PROJECT_META)
+	echo "<exports>" > $(OUTPUTPATH)/meta.xml && \
+	echo -e "$(foreach header,$(EXPORTHEADERS),<header>$(header)</header>\n)" >> $(OUTPUTPATH)/meta.xml && \
+	echo "</exports>" >> $(OUTPUTPATH)/meta.xml
+	
+#Generate the doxygen configuration file from a template
+#cpp is run on the PROUDCT_INLCLUDE hrh file to output all defines. 
+#The cpp output piped to several SED regular expressions to create doxygen compatible defines to the TMP_HRH_DEFINES_FILE file
+#The list is newline delimited so the tr command is used to remove all new lines and replace them with a space and this is output to HRH_DEFINES_FILE
+#sed is used to  replace placeholders in the doxygen configuration template doxtemplate.txt with Raptor variables to produce TMP_DOXY_FILE
+#TMP_DOXY_FILE is concatonated to HRH_DEFINES_FILE (last line in TMP_DOXY_FILE is "PREDEFINED =")
+$(OUTPUTPATH)/$(DOXY_FILE): $(PROJECT_META)
+	$(call startrule,generatedoxconfig) \
+	$(GNUCPP) -E -dD $(PRODUCT_INCLUDE) | $(GNUSED) -r "s|#define  *([^ ]+\(.*\))  *([^ ]+)|\1=\"\2\"|;s|#define  *([^ ]+) *$$$$|\1|;s|#define  *([^ ]+)  *([^ ]+)|\1=\"\2\"|;s|^# .*||" > $(OUTPUTPATH)/$(TMP_HRH_DEFINES_FILE) && \
+	$(GNUTR) -s "\r\n" " " < $(OUTPUTPATH)/$(TMP_HRH_DEFINES_FILE) > $(OUTPUTPATH)/$(HRH_DEFINES_FILE) && \
+	$(GNUSED) "s|##OUTPUTPATH##|$(OUTPUTPATH)|g;s|##SOURCE##|$(SOURCE)|g;s|##INCLUDES##|$(INCLUDES)|g;s|##DEFINES##|$(DEFINES)|g;s|##PROJECT_NAME##|$(TARGET)|g" < $(FLMHOME)/doxtemplate.txt >$(OUTPUTPATH)/$(TMP_DOXY_FILE) && \
+	$(GNUCAT) $(OUTPUTPATH)/$(TMP_DOXY_FILE) $(OUTPUTPATH)/$(HRH_DEFINES_FILE) >$(OUTPUTPATH)/$(DOXY_FILE) \
+	$(call endrule,generatedoxconfig)
+
+endef
+
+# Deduce whether we should be performing a build with standard CPP characteristics
+# This operates differently per-OS release, although OE TARGETTYPEs always build with standard CPP traits
+ifeq ($(OPEN_ENVIRONMENT),1)
+  STDCPP_BUILD:=1
+endif
+
+ifeq ($(SUPPORTS_STDCPP_NEWLIB),1)
+  ifeq ($(NOSTDCPP),1)
+    STDCPP_BUILD:=
+  else
+    ifeq ($(STDCPP),1)
+      STDCPP_BUILD:=1
+    endif
+  endif
+endif
+  
+ifeq ($(STDCPP_BUILD),1)
+  CDEFS:=$(CDEFS) $(STDCPP_DEF)
+  SYSTEMINCLUDE:=$(SYSTEMINCLUDE) $(STDCPP_INCLUDE)
+endif
+
+CDEFS:=$(CDEFS) $(TARGET_DEFS)
+SYSTEMINCLUDE:=$(SYSTEMINCLUDE) $(TARGET_INCLUDES)
+
+# include paths
+UINCLUDE:=$(patsubst %,$(OPT.USERINCLUDE)%,$(USERINCLUDE))
+SINCLUDE:=$(patsubst %,$(OPT.SYSINCLUDE)%,$(SYSTEMINCLUDE))
+PINCLUDE:=$(OPT.PREINCLUDE)$(PRODUCT_INCLUDE)
+INCLUDES:=$(UINCLUDE) $(OPT.SPLITINCLUDE) $(SINCLUDE) $(PINCLUDE)
+#combination of all macros made available by Raptor
+DEFINES:=$(call makemacrodef,$(OPT.DEFINE),$(CDEFS) $(TARGET_MACRO)) 
+
+#Debug info
+$(info SBS_DOXYGEN: $(SBS_DOXYGEN))
+$(info GNUTOUCH: $(GNUTOUCH))
+$(info OUTPUTPATH: $(OUTPUTPATH))
+$(info CDEFS: $(CDEFS))
+$(info OPT.PREINCLUDE :$(OPT.PREINCLUDE))
+$(info OPT.SPLITINCLUDE :$(OPT.SPLITINCLUDE))
+$(info OPT.SYSINCLUDE :$(OPT.SYSINCLUDE))
+$(info OPT.USERINCLUDE :$(OPT.USERINCLUDE))
+$(info SYSTEMINCLUDE :$(SYSTEMINCLUDE))
+$(info DEFINES : $(DEFINES))
+$(info INCLUDES : $(INCLUDES))
+$(info EXPORTHEADERS : $(EXPORTHEADERS))
+$(info PRODUCT_INCLUDE: $(PRODUCT_INCLUDE))
+$(info TARGETTYPE: $(TARGETTYPE))
+$(info COMPONENT_NAME: $(COMPONENT_NAME))
+$(info CAPABILITY: $(CAPABILITY))
+
+#Variables specific to generatedoxconfig
+TMP_DOXY_FILE:=config.dox.tmp
+DOXY_FILE:=config.dox
+TMP_HRH_DEFINES_FILE:=hrhdefines.txt.tmp
+HRH_DEFINES_FILE:=hrhdefines.txt
+$(eval $(generatedoxconfig))
+
+# make the output directories while reading makefile - some build engines prefer this
+$(call makepath,$(OUTPUTPATH))
+$(call makepath,$(EPOCROOT)/epoc32/release/doxygen)
+
+## Clean up - problem here - how do we know what docs to remove?  Anyhow removing the marker (.done) file will at least
+## ensure that we regenerate documentation when needed even if we don't actually get rid of old docs.
+$(eval $(call GenerateStandardCleanTarget,$(OUTPUTPATH)/$(DOXY_FILE) $(OUTPUTPATH)/$(DOXY_FILE).done,$(OUTPUTPATH),))
+
+

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<project  name="all-catalog">
+<!-- Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved. -->
+<!-- This component and the accompanying materials are made available under the terms of the License 
+"Eclipse Public License v1.0" which accompanies this distribution, 
+and is available at the URL "http://www.eclipse.org/legal/epl-v10.html". -->
+<!-- Initial Contributors:
+	Nokia Corporation - initial contribution.
+Contributors: 
+-->    	
+    <dirname property="all-catalog.basedir" file="${ant.file.all-catalog}"/>
+	<import file="${all-catalog.basedir}/DITA-catalog.xml" />
+	<import file="${all-catalog.basedir}/cxxapiref-catalog.xml" />
+	<xmlcatalog id="all-catalog">
+		
+		<!--	TODO: Should be able to automatically pick up on any catalogs 
+				in the catalog directory rather than listing them here,
+				but catalog path needs "the resolver library from xml-commons".
+				
+				Could also use OASIS catalog files defined in Doxygen i.e.
+				c:\EPOC\DV3\team\2005\sysdoc\tools\Doxygen\branches\DITA\DITA\plugins\cxxapiref\catalog-dita.xml
+				if or when they are ready
+		-->
+		<!-- 
+		<catalogpath>
+			<pathelement location="${all-catalog.basedir}"/>
+			<fileset 
+				dir="${all-catalog.basedir}"
+				includes="*catalog.xml"/>
+		</catalogpath>
+		-->
+		
+		<xmlcatalog refid="DITA-catalog" />
+		<xmlcatalog refid="cxxapiref-catalog" />
+	</xmlcatalog>
+</project>

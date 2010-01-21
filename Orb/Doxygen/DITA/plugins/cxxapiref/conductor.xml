@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+  All rights reserved.
+-->
+<project>
+    <!-- content targets -->
+    <target name="cxxref2xhtml">
+      <!-- apiref2xhtml.xsl extends dita2xhtml via the plugin interface -->
+      <antcall target="dita2xhtml"/>
+      <copy todir="${output.dir}">
+        <fileset dir="${basedir}${file.separator}demo${file.separator}cxxapiref${file.separator}xsl">
+          <include name="*.css"/>
+        </fileset>
+      </copy>
+    </target>
+</project>

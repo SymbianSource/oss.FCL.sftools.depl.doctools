@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project basedir="." default="transform" name="DoxyDita2StdDita">
+<!-- Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved. -->
+<!-- This component and the accompanying materials are made available under the terms of the License 
+"Eclipse Public License v1.0" which accompanies this distribution, 
+and is available at the URL "http://www.eclipse.org/legal/epl-v10.html". -->
+<!-- Initial Contributors:
+	Nokia Corporation - initial contribution.
+Contributors: 
+-->
+	<!-- Set basedir for this project so resources can be imported relatively -->
+	<dirname property="DoxyDita2StdDita.basedir" file="${ant.file.DoxyDita2StdDita}"/>
+	<!-- Import properties for this build - all property paths are relative to this build file -->
+	<property file="${DoxyDita2StdDita.basedir}/build.properties"/>
+	
+	<!-- Import libraries for XML validation and transforms -->
+    <import file="${DoxyDita2StdDita.basedir}/${validator.path}" />
+    <import file="${DoxyDita2StdDita.basedir}/${transformer.path}" />
+	
+	<!-- Set the Default XSL stylesheet for this transform to cxxapiref2DITA -->
+	<property name="style" value="${DoxyDita2StdDita.basedir}/car2d.xsl"/>
+    
+	<!-- Target used to run tests on xslt transform -->
+	<target name="testTransform" depends="transform"/>
+    
+    <target name="transform">
+        <delete dir="${output}/log"/>
+        <delete dir="${output}/transformed"/>       
+		<delete dir="${output}/filtered-invalid"/> 
+        <mkdir dir="${output}/log"/>
+		<mkdir dir="${output}/filtered-invalid"/>
+		<!-- Run validator to check integrity of the input -->
+		<validate input="${input}" logdir="${output}/log" logfilename="validation-input-log.txt" 
+        report="yes" reportdir="${output}/log" reportfilename="validation-input-report.txt"/>
+		
+		<!-- Filter invalid XML files from the input (they cause the xslt transform to fall over) -->
+		
+		<filter-invalid-xml validationlog="${output}/log/validation-input-log.txt"
+							filterdir="${output}/filtered-invalid"
+							logdir="${output}/log" logfilename="filtered-invalid-xml-input-log.txt" />
+		
+		
+        <transform input="${input}" output="${output}/transformed" logdir="${output}/log" style="${style}"/>
+		
+		<validate input="${output}/transformed" logdir="${output}/log" logfilename="validation-output-log.txt" 
+        report="yes" reportdir="${output}/log" reportfilename="validation-output-report.txt" />
+    </target>
+	
+    <!-- = = = = = = = = = = = = = = = = =
+    macrodef: filter-invalid-xml
+	
+	Filters a directory of XML that have been flagged as invalid against ant's xmlvalidate task
+    = = = = = = = = = = = = = = = = = -->	
+	<macrodef name="filter-invalid-xml">
+        <!-- "validation_log" is a log file from ant's xmlvalidate task -->
+		<attribute name="validationlog"/>
+		<attribute name="filterdir"/>
+        <attribute name="logdir" default="."/>
+		<attribute name="logfilename" default="filter-invalid-xml-log.txt"/>
+		<sequential>
+			<exec executable="python" append="true">
+				<arg value="${DoxyDita2StdDita.basedir}/filter-invalid-xml.py"/>
+				<arg value="-f"/>
+				<arg value="@{logdir}/@{logfilename}"/>
+				<arg value="@{validationlog}"/>
+				<arg value="@{filterdir}"/>
+			</exec>
+		</sequential>
+	</macrodef>
+		
+</project>
+

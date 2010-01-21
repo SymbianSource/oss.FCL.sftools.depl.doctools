@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<project name="catalog-example" default="do_catalog_example">
+<!-- Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved. -->
+<!-- This component and the accompanying materials are made available under the terms of the License 
+"Eclipse Public License v1.0" which accompanies this distribution, 
+and is available at the URL "http://www.eclipse.org/legal/epl-v10.html". -->
+<!-- Initial Contributors:
+	Nokia Corporation - initial contribution.
+Contributors: 
+-->    	
+    <description>
+		An example of how to use a catalog - Validating an input dir of XML against the DITA catalog.
+		Note you must fill in the property value for "inputdir"
+	</description>
+
+	<!-- Properties file contains a reference "catalog" to the DITA catalog project file -->
+	<property file="catalog-example.properties"/>
+	<import file="${catalog}"/>
+	
+	<!-- *** Define inputdir of XML to validate against DITA catalog here *** -->
+	<property name="inputdir" value=""/>
+	
+	<target name="do_catalog_example">
+
+		<xmlvalidate failonerror="no">
+			<fileset dir="${inputdir}">
+			  <include name="**/*.xml"/>
+			  <include name="**/*.ditamap"/>
+			</fileset>
+			<!-- Refer to the catalog ${catalog} by it's ID attribute -->
+			<xmlcatalog refid="${catalog-id}"/>
+		</xmlvalidate>
+	</target>
+	
+</project>

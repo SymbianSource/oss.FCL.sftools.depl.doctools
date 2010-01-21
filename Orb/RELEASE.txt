@@ -1,0 +1,35 @@
+License
+=======
+Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved.
+This component and the accompanying materials are made available under the terms of the License 
+"Eclipse Public License v1.0" which accompanies this distribution, 
+and is available at the URL "http://www.eclipse.org/legal/epl-v10.html".
+
+Release notes for Orb
+================================================
+version 0.1.5
+
+System Requirements
+===================
+
+For information on installing all listed below see "install_orb.txt"
+
+* Symbian Build System v2 version 2.10.0
+* RVCT 2.2 onwards
+* epoc32 tree (Symbian Platform SDK/PDK)
+
+Known issues
+============
+
+Doxygen produces a dialog box that appears under certain error conditions. 
+The dialog indicates that an error has occured with doxygen and this suspends the
+execution of doxygen until the ok button is pressed on the dialog.
+If doxygen is being run by a continuous integration system this dialog may be hidden.
+Invalid C++ is one known cause of this problem.
+
+Doxygen has been known to take many days to run the full Symbian OS source.
+It is suspected that this is due to a large amount of page faults when ram runs low.
+Each doxygen process can use 500mb of ram and Raptor runs one doxygen process for each cpu.
+The space required for the working directory used by doxygen is greater than 80Gb.
+Please take this into consideration when choosing a build environment for Orb.
+

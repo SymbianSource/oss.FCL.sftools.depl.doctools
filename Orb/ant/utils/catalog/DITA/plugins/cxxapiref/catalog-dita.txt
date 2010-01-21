@@ -1,0 +1,27 @@
+# Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+# All rights reserved.
+
+PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.1.0//EN" "demo/cxxapiref/dtd/cxxAPIMap.dtd"
+PUBLIC "-//NOKIA//DTD DITA cxx API Package Reference Type v0.1.0//EN" "demo/cxxapiref/dtd/cxxPackage.dtd"
+
+PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.1.0//EN" "demo/cxxapiref/dtd/cxxClass.dtd"
+PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.1.0//EN" "demo/cxxapiref/dtd/cxxStruct.dtd"
+PUBLIC "-//NOKIA//DTD DITA C++ API Union Reference Type v0.1.0//EN" "demo/cxxapiref/dtd/cxxUnion.dtd"
+
+PUBLIC "-//NOKIA//DTD DITA C++ API File Reference Type v0.1.0//EN" "demo/cxxapiref/dtd/cxxFile.dtd"
+PUBLIC "-//NOKIA//DTD DITA C++ API Globals Reference Type v0.1.0//EN" "demo/cxxapiref/dtd/cxxGlobals.dtd"
+
+PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Reference Map v0.1.0//EN" "demo/cxxapiref/dtd/cxxAPIMap.mod"
+PUBLIC "-//NOKIA//DTD DITA C++ API Package Reference Type v0.1.0//EN" "demo/cxxapiref/dtd/cxxPackage.mod"
+PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Domain v0.1.0//EN" "demo/cxxapiref/dtd/cxxAPIDomain.mod"
+
+PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Class v0.1.0//EN" "demo/cxxapiref/dtd/cxxClass.mod"
+PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Struct v0.1.0//EN" "demo/cxxapiref/dtd/cxxStruct.mod"
+PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Union v0.1.0//EN" "demo/cxxapiref/dtd/cxxUnion.mod"
+PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Function v0.1.0//EN" "demo/cxxapiref/dtd/cxxFunction.mod"
+PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Define v0.1.0//EN" "demo/cxxapiref/dtd/cxxDefine.mod"
+PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Variable v0.1.0//EN" "demo/cxxapiref/dtd/cxxVariable.mod"
+PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Enumeration v0.1.0//EN" "demo/cxxapiref/dtd/cxxEnumeration.mod"
+PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Typedef v0.1.0//EN" "demo/cxxapiref/dtd/cxxTypedef.mod"
+
+PUBLIC "-//NOKIA//ENTITIES DITA C++ API Domain v0.1.0//EN" "demo/cxxapiref/dtd/cxxAPIDomain.ent"

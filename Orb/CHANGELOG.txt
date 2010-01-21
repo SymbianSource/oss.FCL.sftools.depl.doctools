@@ -1,0 +1,42 @@
+License
+=======
+Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved.
+This component and the accompanying materials are made available under the terms of the License 
+"Eclipse Public License v1.0" which accompanies this distribution, 
+and is available at the URL "http://www.eclipse.org/legal/epl-v10.html".
+
+Orb V0.1.5
+==========
+
+* Added toc creation and component level map creation (MapCreator and python/doxygen/component_map_creator.py)
+* Removed index creation python/doxygen/indexcreator.py
+* Moved guidisation and filerenaming into postprocess batch script (bin/orb_process_cxx.bat)
+
+Orb V0.1.4
+==========
+
+* Updated DoxygenDITA version to 0.1.5 
+* Added translation of cxxapiref DITA XML to DITA Reference XML
+* Added System level map generation
+* Added index map generation
+* Quiet option for Doxygen output turned off
+* Refactored documentation
+
+
+Orb V0.1.3
+==========
+
+* Output files now named in MODE import format
+* Output files now GUIDised in MODE format
+* Doxygen unit level maps filtered by project exports
+* IDs of cxxFunction->apiName elements inserted for improved linking
+
+Orb V0.1.2
+==========
+
+* Minor Changes to documentation
+
+Orb V0.1.1
+==========
+
+Orb Original Version.

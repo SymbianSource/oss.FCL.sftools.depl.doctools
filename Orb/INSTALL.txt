@@ -1,0 +1,24 @@
+License
+=======
+Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved.
+This component and the accompanying materials are made available under the terms of the License 
+"Eclipse Public License v1.0" which accompanies this distribution, 
+and is available at the URL "http://www.eclipse.org/legal/epl-v10.html".
+
+Welcome to Orb
+==============
+Orb is a package containing a version of Doxygen that produces Dita XML and extentions to the Symbian Build System that invoke Doxygen on its build targets.
+
+Installation
+============
+
+    * Install a PDK or SDK for development on the Symbian Platform. (i.e Symbian Foundation SDK)
+    * Install RVCT 2.2 onwards or another Symbian Build System compatible compiler.
+    * Use the Symbian Build System (SBSv2) installer to install Symbian Build System or extract it to a directory and add it to your system path and set the environment variable SBS_HOME to this directory.
+    * Orb requires Apache Ant to convert the Doxygen cxx output to dita reference and DITA dtds to verify the xml. 
+      Install ant to SBS_HOME\ant.
+    * Extract Orb to your Symbian Build System application directory (SBS_HOME)
+
+Running Orb
+===========
+Please refer to README.txt for information on running Orb

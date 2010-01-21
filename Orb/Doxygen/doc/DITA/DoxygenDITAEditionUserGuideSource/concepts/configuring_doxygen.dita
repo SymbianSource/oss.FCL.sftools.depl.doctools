@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="concept_48735FDB9ED542FAAC24B2A50B54A5FF">
+  <title>Doxygen DITA Edition Quick start</title>
+
+  <shortdesc>Doxygen can be configured to generate HTML, DITA, Latex, RTF, MAN and XML. The doxygen DITA Edition has been created to produce  DITA XML. The DITA produced by the DITA Edition is a specialised form of DITA defined by the DITA C++ APIREF specialisation. </shortdesc>
+
+  <conbody>
+	<section id="section_19E5663C04D44E88851FE6C4B9860AE3"><title> Set Up</title><p>Put the doxygen.exe on the system path. </p><p>Doxygen will use any config.dox that is in the current directory by default. To use another, specify the location on the command line. </p><userinput>doxygen myconfig.dox</userinput><p>To make doxygen DITA edition output DITA set GENERATE_XML_DITA to YES in the configuration file. </p><p>A sample configuration file is supplied.</p></section><section id="section_0F9B3DFED9084F2D813B6164C0E81AD4">
+		<title>Changing the output format</title>
+		<p> Using the DITA specialisation DITA is the default output format. To output other formats see the <xref scope="external" format="html" href="http://www.doxygen.nl/config.html">Doxygen configuration guide</xref> and change the configuration settings to output different types of document. </p>
+		
+		<table id="table_A79D8FE62B0D4C07871A7056365086E0">
+			<title>Configuration options and generated output</title><desc>These configuration options can have the value YES or NO only. To generate options change their corresponding values to YES and all the others in this list to NO.</desc><tgroup cols="3">
+				<colspec colnum="1" colwidth="*"/>
+				<colspec colnum="2" colwidth="*"/>
+				<thead>
+					<row>
+						<entry>Doxygen Output</entry>
+						<entry>Configuration Option</entry>
+						<entry>Default value</entry>
+					</row>
+				</thead>
+				<tbody>
+					<row>
+						<entry>HTML</entry>
+						<entry>GENERATE_HTML</entry>
+						<entry>NO</entry>
+					</row><row>
+						<entry>Latex</entry>
+						<entry>GENERATE_LATEX</entry>		
+						<entry>NO</entry>			
+					</row><row>
+						<entry>RTF</entry>
+						<entry>GENERATE_RTF</entry>
+						<entry>NO</entry>
+					</row><row>
+						<entry>MAN</entry>
+						<entry>GENERATE_MAN</entry>	
+						<entry>NO</entry>				
+					</row><row>
+						<entry>XML</entry>
+						<entry>GENERATE_XML</entry>	
+						<entry>NO</entry>				
+					</row><row>
+						<entry>DITA</entry>
+						<entry>GENERATE_XML_DITA</entry>
+						<entry>YES</entry>
+					</row>
+				</tbody>
+			</tgroup>
+		</table>
+	<note type="attention">Some output formats take longer to generate than others. It is recommended that no more than two different formats are generated at the same time and, if possible, build only what you require or build overnight. </note></section>
+</conbody>
+</concept>
