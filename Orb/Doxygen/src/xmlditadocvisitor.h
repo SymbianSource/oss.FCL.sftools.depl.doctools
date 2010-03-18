@@ -4,7 +4,6 @@
 
 #include "docvisitor.h"
 #include "xmlwriter.h"
-#include "xmlditatrace.h"
 #include <qstack.h>
 #include <qcstring.h>
 #include <qmap.h>
@@ -151,6 +150,8 @@ class XmlDitaDocVisitor : public DocVisitor
 
 	void startXref(const QString &href,const QString &text);
 	void endXref();
+	bool canPushPara() const;
+	bool canPopPara() const;
     //--------------------------------------
     // state variables
     //--------------------------------------

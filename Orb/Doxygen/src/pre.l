@@ -35,6 +35,7 @@
 #include <qregexp.h>
 #include <qfileinfo.h>
 #include <qdir.h>
+#include <qmap.h>
   
 #include "pre.h"
 #include "constexp.h"
@@ -49,7 +50,6 @@
 #include "bufstr.h"
 
 #define YY_NEVER_INTERACTIVE 1
-  
 
 struct FileState
 {
@@ -126,6 +126,40 @@ static void setFileName(const char *name)
   QFileInfo fi(name);
   g_yyFileName=convertToQCString(fi.absFilePath());
   g_yyFileDef=findFileDef(Doxygen::inputNameDict,g_yyFileName,ambig);
+  if (g_yyFileDef == 0 && Config_getBool("PREPROCESS_INCLUDES")) {
+		// Search again using Doxygen::includeNameDict
+	    // First insert the include file in the Doxygen::includeNameDict if
+	    // it is not there already. This can happen if the Doxygen::includeNameDict
+	    // has scanned .../inc but the #include "usr/usr.h"
+	    // The Doxygen::includeNameDict will not have usr.h in it so we poke it in.
+		if (!Doxygen::includeNameDict->find(g_yyFileName.data())) {
+			//Debug::print(Debug::IncludeGraph, 0, "pre.l setFileName() inserting in Doxygen::includeNameDict: %s\n", name);
+			FileDef  *fd=new FileDef(fi.dirPath()+"/", fi.fileName());
+            FileName *fn=0;
+            if (!fi.absFilePath().isEmpty() && (fn=(*Doxygen::includeNameDict)[name])) {
+				fn->append(fd);
+            } else {
+				fn = new FileName(fi.absFilePath(), name);
+				fn->append(fd);
+				Doxygen::includeNameDict->insert(name, fn);
+            }
+			g_yyFileDef = fd;
+		} else {
+			// Search the dictionary
+			FileName *fn = Doxygen::includeNameDict->find(g_yyFileName.data());
+			FileNameIterator fni(*fn);
+			FileDef *fd = 0;
+			for (fni.toFirst(); (fd=fni.current()); ++fni) {
+				if (fd && fd->absFilePath() == g_yyFileName) {
+					break;
+				}
+				fd = 0;
+			}
+			g_yyFileDef = fd;
+		}
+		//printf("pre.l setFileName() searching Doxygen::includeNameDict for %s, result=%p\n", name, g_yyFileDef);
+		//Debug::print(Debug::IncludeGraph, 0, "pre.l setFileName() searching Doxygen::includeNameDict for %s, result=%p\n", name, g_yyFileDef);
+  }
   if (g_yyFileDef && g_yyFileDef->isReference()) g_yyFileDef=0;
   g_insideCS = g_yyFileName.right(3)==".cs";
 }
@@ -190,12 +224,12 @@ static FileState *checkAndOpenFile(const QCString &fileName,bool &alreadyInclude
 {
   alreadyIncluded = FALSE;
   FileState *fs = 0;
-  //printf("checkAndOpenFile(%s)\n",fileName.data());
+  //msg("checkAndOpenFile(%s)\n", fileName.data());
   QFileInfo fi(fileName);
   if (fi.exists() && fi.isFile())
   {
     QCString absName = convertToQCString(fi.absFilePath());
-
+	//msg("checkAndOpenFile() found: %s\n", absName.data());
     // global guard
     if (g_curlyCount==0) // not #include inside { ... }
     {
@@ -203,9 +237,12 @@ static FileState *checkAndOpenFile(const QCString &fileName,bool &alreadyInclude
       {
         alreadyIncluded = TRUE;
         //printf("  already included 1\n");
-        return 0; // already done
-      }
-      g_allIncludes.insert(absName,(void *)0x8);
+        if (!Config_getBool("PREPROCCESS_FULL_TU")) {
+			return 0; // already done
+		}
+      } else {
+		g_allIncludes.insert(absName,(void *)0x8);
+	  }
     }
     // check include stack for absName
 	// This is equivelent to walking the stack and setting alreadyIncluded to
@@ -284,7 +321,7 @@ static FileState *checkAndOpenFile(const QCString &fileName,bool &alreadyInclude
 
 static FileState *findFile(const char *fileName,bool localInclude,bool &alreadyIncluded)
 {
-  //printf("** findFile(%s,%d) g_yyFileName=%s\n",fileName,localInclude,g_yyFileName.data());
+  //msg("** findFile(%s,%d) g_yyFileName=%s\n",fileName,localInclude,g_yyFileName.data());
   if (localInclude && !g_yyFileName.isEmpty())
   {
     QFileInfo fi(g_yyFileName);
@@ -1228,6 +1265,7 @@ static void readIncludeFile(const QCString &inc)
       if (oldFileDef)
       {
         // add include dependency to the file in which the #include was found
+	    //Debug::print(Debug::IncludeGraph, 0, "pre.l readIncludeFile() adding dependency \"%s\" to \"%s\"\n", incFileName, oldFileDef->absFilePath().data());
         oldFileDef->addIncludeDependency(g_yyFileDef,incFileName,localInclude,g_isImported);
         // add included by dependency
         if (g_yyFileDef)
@@ -1504,17 +1542,18 @@ CHARLIT   (("'"\\[0-7]{1,3}"'")|("'"\\."'")|("'"[^'\\\n]{1,4}"'"))
 					}
 <CopyLine>{ID}/{BN}{0,80}"("			{
   					  Define *def=0;
-					  //def=g_fileDefineDict->find(yytext);
-					  //printf("Search for define %s found=%d g_includeStack.isEmpty()=%d "
+					  def=g_fileDefineDict->find(yytext);
+					  //printf("Search for define %s found=%d g_includeStack.count()=%d "
 					  //       "g_curlyCount=%d g_macroExpansion=%d g_expandOnlyPredef=%d "
-					  //	 "isPreDefined=%d\n",yytext,def ? 1 : 0,
-					  //	 g_includeStack.isEmpty(),g_curlyCount,g_macroExpansion,g_expandOnlyPredef,
-					  //	 def ? def->isPredefined : -1
+					  //	 "isPreDefined=%d tu=%d\n",yytext,def ? 1 : 0,
+					  //	 g_includeStack.count(),g_curlyCount,g_macroExpansion,g_expandOnlyPredef,
+					  //	 def ? def->isPredefined : -1,
+					  //	 Config_getBool("PREPROCCESS_FULL_TU")
 					  //	);
-					  if ((g_includeStack.isEmpty() || g_curlyCount>0) &&
+					  if ((g_includeStack.isEmpty() || g_curlyCount>0 || Config_getBool("PREPROCCESS_FULL_TU")) &&
 					      g_macroExpansion &&
 					      (def=g_fileDefineDict->find(yytext)) &&
-					      (!g_expandOnlyPredef || def->isPredefined)
+					      (!g_expandOnlyPredef || def->isPredefined || Config_getBool("PREPROCCESS_FULL_TU"))
 					     )
 					  {
 					    //printf("Found it!\n");
@@ -1921,7 +1960,7 @@ CHARLIT   (("'"\\[0-7]{1,3}"'")|("'"\\."'")|("'"[^'\\\n]{1,4}"'"))
 					  g_defText.resize(0);
 					  g_defLitText.resize(0);
 					  g_defVarArgs = FALSE;
-					  if ( g_defName!=g_lastGuardName )
+					  if ( g_defName!=g_lastGuardName || Config_getBool("PREPROCCESS_FULL_TU"))
 					  { // define may appear in the output
 					    QCString tmp=(QCString)"#define "+g_defName;
 					    outputArray(tmp.data(),tmp.length());
@@ -2437,42 +2476,48 @@ void cleanUpPreprocessor()
   delete g_pathList; g_pathList=0;
 }
 
-void loadGolbalInput(BufStr &input)
+void dumpDefineDict(const DefineDict *theDefDict)
 {
-	QStrList& preIncList = Config_getList("PRE_INCLUDES");
-	int countPreInc = 0;
-	if (!preIncList.isEmpty()) {
-		QStrListIterator sli(preIncList);
-		char *filterStr;
-		for (sli.toFirst(); (filterStr = sli.current()); ++sli) {
-			printf("Adding %s\n", filterStr);
-			QString incStmt = "#include \"";
-			incStmt += filterStr;
-			incStmt += "\"\n";
-			printf("Adding string %s, length %d\n", incStmt.data(), incStmt.length());
-			g_inputBuf->addArray(incStmt.data(), incStmt.length());
-			printf("Added  string %s, length %d\n", incStmt.data(), incStmt.length());
-			countPreInc++;
+	if (Debug::isFlagSet(Debug::Preprocessor)) {
+		// Make a map to sort the macros in alphbetical order
+		typedef QMap<QString, Define*> DefineMapType;
+		DefineMapType DefineMap;
+		Define *def = 0;
+		QDictIterator<Define> it(*theDefDict);
+		while (it.current()) {
+			def = it.current();
+			DefineMap.insert(def->name, def);
+			++it;
+		}
+		// Now write them out
+		DefineMapType::Iterator mapIt;
+		for (mapIt = DefineMap.begin(); mapIt != DefineMap.end(); ++mapIt) {
+			def = mapIt.data();
+			QString myDecl = def->name;
+			if (def->nargs > 0) {
+				myDecl.append("(");
+				myDecl.append(def->args);
+				myDecl.append(")");
+			}
+			printf("#define %s %s /* %s %d */\n",
+				myDecl.data(),
+				def->definition.data(),
+				def->fileName.data(),
+				def->lineNr
+				);
 		}
 	}
-	msg("Added pre-includes[%d]\n", countPreInc);
-	g_inputBuf->addArray(input.data(), input.size());
-	// Is this really needed?
-	g_inputBuf->addChar('\0');
-	msg("Added input\n");
 }
 
-class GlobalInBufProtect
+void dumpDefineDicts()
 {
-public:
-	GlobalInBufProtect(int size) {
-		g_inputBuf = new BufStr(size);
+	if (Debug::isFlagSet(Debug::Preprocessor)) {
+		printf("g_expandedDict:\n");
+		dumpDefineDict(g_expandedDict);
+		printf("g_fileDefineDict:\n");
+		dumpDefineDict(g_fileDefineDict);
 	}
-	~GlobalInBufProtect() {
-		delete g_inputBuf;
-		g_inputBuf = 0;
-	}
-};
+}
 
 void preprocessFile(const char *fileName,BufStr &input,BufStr &output)
 {
@@ -2484,11 +2529,7 @@ void preprocessFile(const char *fileName,BufStr &input,BufStr &output)
   g_expandOnlyPredef = Config_getBool("EXPAND_ONLY_PREDEF");
   g_curlyCount=0;
   g_nospaces=FALSE;
-  // Initialise the global buffer and when I go out of scope free it
-  GlobalInBufProtect g_input_protect(input.size());
-  //g_inputBuf=&input;
-  loadGolbalInput(input);
-  
+  g_inputBuf=&input;
   g_inputBufPos=0;
   g_outputBuf=&output;
   g_includeStack.setAutoDelete(TRUE);
@@ -2499,7 +2540,6 @@ void preprocessFile(const char *fileName,BufStr &input,BufStr &output)
   g_expandedDict->clear();
   g_condStack.clear();
   g_condStack.setAutoDelete(TRUE);
-  
   static bool firstTime=TRUE;
   if (firstTime)
   {
@@ -2627,7 +2667,6 @@ void preprocessFile(const char *fileName,BufStr &input,BufStr &output)
     if (!preYYin)
     {
       err("Error: could not execute filter %s\n",cmd.data());
-	  delete g_inputBuf;
       return;
     }
   }
@@ -2654,18 +2693,20 @@ void preprocessFile(const char *fileName,BufStr &input,BufStr &output)
   
   if (Debug::isFlagSet(Debug::Preprocessor))
   {
+	printf("preprocessFile() dump from %d to %d\n", orgOffset, output.curPos());
     char *orgPos=output.data()+orgOffset;
     char *newPos=output.data()+output.curPos();
-    msg("Preprocessor output (size: %d bytes):\n",newPos-orgPos);
+    printf("Preprocessor output (size: %d bytes):\n",newPos-orgPos);
     int line=1;
-    msg("---------\n00001 ");
+    printf("---------\n00001 ");
     while (orgPos<newPos) 
     {
       putchar(*orgPos);
       if (*orgPos=='\n') printf("%05d ",++line);
       orgPos++;
     }
-    msg("\n---------\n");
+    printf("\n---------\n");
+	dumpDefineDicts();
   }
 }
 

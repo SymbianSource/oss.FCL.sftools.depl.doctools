@@ -13,7 +13,7 @@
 
 // Version to use in the DOCTYPE declaration
 // Should match regex: v(\d+)\.(\d+)\.(\d+)(\S*)
-const char *DOCTYPE_VERSION = "v0.1.0";
+const char *DOCTYPE_VERSION = "v0.5.0";
 
 DITAElementPrefix::DITAElementPrefix()
 {
@@ -30,9 +30,13 @@ DITAElementPrefix::DITAElementPrefix()
 	m_extToLang.insert(".h",     "C++");
 	m_extToLang.insert(".c",     "C++");
 	m_extToLang.insert(".cpp",   "C++");
+	m_extToLang.insert(".cc",    "C++");
 	m_extToLang.insert(".cp",    "C++");
 	m_extToLang.insert(".cxx",   "C++");
 	m_extToLang.insert(".inl",   "C++");
+	m_extToLang.insert(".cia",   "C++");
+	m_extToLang.insert(".hrh",   "C++");
+	m_extToLang.insert(".s",     "C++");
 	// Other languages
 	m_extToLang.insert(".idl",   "IDL"); 
 	m_extToLang.insert(".ddl",   "IDL"); 
@@ -55,6 +59,8 @@ DITAElementPrefix::DITAElementPrefix()
 	m_extToLang.insert(".f90",   "Fortran");
 	m_extToLang.insert(".vhd",   "VHDL");
 	m_extToLang.insert(".vhdl",  "VHDL");
+	// Default Language
+	m_defaultLanguage = "C++";
 	//
 	// Now load the language to element prefix, case sensitve all round.
 	// However the class behavior is that if there is no entry then the prefix is the
@@ -70,16 +76,17 @@ QString DITAElementPrefix::srcLang(const QString &fileName)
 {
 	QString retStr;
 	int i = fileName.findRev('.');
-	QString ext = fileName.right(fileName.length() - i).lower();
-	if (i != -1 && (fileName.length() - i)) {
-		char *p = m_extToLang[ext];
-		if (p) {
-			retStr = QString(p);
-		} else {
-			// WTF?
-			retStr = "_" + ext + "_";
-		}
+	QFileInfo fInfo(fileName);
+	//QString ext = fileName.right(fileName.length() - i).lower();
+	QString ext = fInfo.extension();
+	if (ext.length() > 0 && m_extToLang.find(ext)) {
+		retStr = QString(m_extToLang[ext]);
+	} else {
+		// WTF?
+		//retStr = "_" + ext + "_";
+		retStr = m_defaultLanguage;
 	}
+	//printf("DITAElementPrefix::srcLang file \"%s\" extension \"%s\" gets \"%s\"\n", fileName.data(), ext.data(), retStr.data());
 	return retStr;
 }
 

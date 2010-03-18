@@ -1,3 +1,15 @@
+/******************************************************************************
+ *
+ * Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+ *
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation under the terms of the GNU General Public License is hereby 
+ * granted. No representations are made about the suitability of this software 
+ * for any purpose. It is provided "as is" without express or implied warranty.
+ * See the GNU General Public License for more details.
+ *
+ */
+
 
 #ifndef _XMLWRITER_H
 #define _XMLWRITER_H
@@ -71,12 +83,15 @@ private:
 	QString encodeText(const QString &aStr) const;
 	QString encodeChar(char c) const;
 	bool mustEncodeChar(char c) const;
+	bool canIndent();
+	void setLastIndent(bool theB);
 private:
 	QFile mFile;
 	QTextStream *mStreamP;
 	QStack<QString> mElemStack;
+	QList<bool> mCanIndentList;
 	bool mInElement;
-	bool mCanIndent;
+	//bool mCanIndent;
 	bool mIsOpen;
 	bool mCanWrite;
 private:

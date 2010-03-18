@@ -15,34 +15,16 @@ import sys
 import unittest
 import xml
 import stat
+import logging
 from cStringIO import StringIO
 from xml.etree import ElementTree as etree
-from lib import scan, main
-
+from lib import scan, main, XmlParser, StubXmlParser
+from optparse import OptionParser
 
 __version__ = '0.1'
 
 
 UNSAFE_CHARS = ("\n", "\t", ":", "?", ",", "=", ".", "\\", "/", "[", "]", "|", "<", ">", "+", ";", '"', "-")
-
-
-class XmlParser(object):
-    """
-    Simple class that reads an XML and returns its id
-
-    >>> xp = XmlParser()
-    >>> xp.parse(StringIO("<root id='rootid'>some content</root>"))
-    'rootid'
-    """
-    def parse(self, xmlfile):
-        try:
-            root = etree.parse(xmlfile).getroot()
-        except xml.parsers.expat.ExpatError, e:
-            sys.stderr.write("ERROR: %s could not be parse: %s\n" % (xmlfile, str(e)))
-            return ""
-        if 'id' not in root.attrib:
-            return ""
-        return root.attrib['id']
 
 
 class FileRenamer(object):
@@ -53,8 +35,9 @@ class FileRenamer(object):
     >>> fr.rename(r"c:\\temp\\xml\\class_c_active_scheduler.xml")
     'class_c_active_scheduler=GUID-BED8A733-2ED7-31AD-A911-C1F4707C67F=1=en=.reference'
     """
-    def __init__(self, xmlparser=XmlParser()):
+    def __init__(self, xmlparser=XmlParser(), publishing_target="mode"):
         self.parser = xmlparser
+        self.publishing_target = publishing_target
     
     def _escape(self, filename):
         for char in UNSAFE_CHARS:
@@ -74,61 +57,62 @@ class FileRenamer(object):
         id = self.parser.parse(xmlfile)
         filename = os.path.basename(xmlfile)
         filename, ext = os.path.splitext(filename)
-        filename = self._escape(filename) 
-        newfilename = "=".join((filename, id, '1', 'en', ''))
-        ext = ext if ext == ".ditamap" else ".reference"
+        if self.publishing_target == "mode":
+            filename = self._escape(filename) 
+            newfilename = "=".join((filename, id, '1', 'en', ''))
+            ext = ext if ext == ".ditamap" else ".reference"
+        elif self.publishing_target == "ditaot":
+            newfilename = id
+            ext = ext = ext if ext == ".ditamap" else ".xml"
         return newfilename + ext
 
 
-def rename(indir):
-    fr = FileRenamer()
+def rename(indir, publishing_target):
+    fr = FileRenamer(publishing_target=publishing_target)
     for filepath in scan(indir):
         newfilename = os.path.join(os.path.dirname(filepath), fr.rename(filepath))
-        os.chmod(filepath, stat.S_IWRITE)
-        #print "Renaming %s to %s" % (filepath, newfilename)
-        os.rename(filepath, newfilename)
+        try:
+            os.chmod(filepath, stat.S_IWRITE)
+        except Exception, e:
+            logging.error('Unable to make file \"%s\" writable, error was: %s' % (filepath, e))
+            continue
+        else:
+            logging.debug("Renaming %s to %s" % (filepath, newfilename))
+            try:
+                os.rename(filepath, newfilename)
+            except Exception, e:
+                logging.error('Unable to rename file \"%s\" to \"%s\", error was: %s' % (filepath, newfilename, e))
 
+def main():        
+    usage = "usage: %prog <Path to the XML content> <publishing_target>\n"
+    parser = OptionParser(usage, version='%prog ' + __version__)
+    parser.add_option("-p", dest="publishing_target", type="choice", choices=["mode", "ditaot"], default="mode", 
+                          help="Publishing Target: mode|ditaot, [default: %default]")
+    parser.add_option("-l", "--loglevel", type="int", default=30, help="Log Level (debug=10, info=20, warning=30, [error=40], critical=50)")
+    (options, args) = parser.parse_args()
+    if len(args) < 1:
+        parser.print_help()
+        parser.error("Please supply the path to the XML content")
+        
+    if options.loglevel:
+        logging.basicConfig(level=options.loglevel)
+    
+    rename(args[0],options.publishing_target)
 
 if __name__ == '__main__':
-    sys.exit(main(rename, __version__))
+    sys.exit(main())
 
 ######################################
 # Test code
 ######################################
-class StubXmlParser(object):
-    def parse(self, path):
-        return "GUID-BED8A733-2ED7-31AD-A911-C1F4707C67F"
-
-
-class TestXmlParser(unittest.TestCase):
-    def test_i_issue_a_warning_and_continue_if_a_file_is_invalid(self):
-        xml = XmlParser()
-        try:
-            xml.parse(StringIO("<foo><bar</foo>"))
-        except Exception:
-            self.fail("I shouldn't have raised an exception") 
-
-    def test_i_issue_a_warning_and_continue_if_a_file_does_not_have_an_id(self):
-        xml = XmlParser()
-        try:
-            id = xml.parse(StringIO(brokencxxclass))
-        except Exception:
-            self.fail("I shouldn't have raised an exception")
-        self.assertTrue(id == "") 
-
-    def test_i_return_a_files_id(self):
-        xml = XmlParser()
-        id = xml.parse(StringIO(cxxclass))
-        self.assertTrue(id == "class_c_active_scheduler")
- 
 
 class TestFileRenamer(unittest.TestCase):
-    def test_i_can_return_a_files_new_name(self):
-        fr = FileRenamer(xmlparser=StubXmlParser())
+    def test_i_can_return_a_files_new_mode_name(self):
+        fr = FileRenamer(xmlparser=StubXmlParser(),publishing_target="mode")
         newfile = fr.rename("hello.xml")
         self.assertTrue(newfile == "hello=GUID-BED8A733-2ED7-31AD-A911-C1F4707C67F=1=en=.reference")
 
-    def test_i_can_return_a_ditamaps_new_name(self):
+    def test_i_can_return_a_ditamaps_new_mode_name(self,publishing_target="mode"):
         fr = FileRenamer(xmlparser=StubXmlParser())
         newfile = fr.rename("hello.ditamap")
         self.assertTrue(newfile == "hello=GUID-BED8A733-2ED7-31AD-A911-C1F4707C67F=1=en=.ditamap")
@@ -142,21 +126,14 @@ class TestFileRenamer(unittest.TestCase):
     def test_i_can_remove_incompatable_characters_from_a_filename(self):
         fr = FileRenamer(xmlparser=StubXmlParser())
         newfile = fr.rename("hello:?,=..xml")
-        self.assertTrue(newfile == "hello=GUID-BED8A733-2ED7-31AD-A911-C1F4707C67F=1=en=.reference")        
+        self.assertTrue(newfile , "hello=GUID-BED8A733-2ED7-31AD-A911-C1F4707C67F=1=en=.reference")        
 
-    
-brokencxxclass = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.1.0//EN" "dtd/cxxClass.dtd" >
-<cxxClass>
-    <apiName>CActiveScheduler</apiName>
-    <shortdesc/>
-</cxxClass>
-"""
+    def test_i_can_return_a_files_new_ditaot_name(self):
+        fr = FileRenamer(xmlparser=StubXmlParser(),publishing_target="ditaot")
+        newfile = fr.rename("hello.xml")
+        self.assertEquals(newfile, "GUID-BED8A733-2ED7-31AD-A911-C1F4707C67F.xml")
 
-cxxclass = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.1.0//EN" "dtd/cxxClass.dtd" >
-<cxxClass id="class_c_active_scheduler">
-    <apiName>CActiveScheduler</apiName>
-    <shortdesc/>
-</cxxClass>
-"""
+    def test_i_can_return_a_ditamaps_new_ditaot_name(self):
+        fr = FileRenamer(xmlparser=StubXmlParser(),publishing_target="ditaot")
+        newfile = fr.rename("hello.ditamap")
+        self.assertEquals(newfile, "GUID-BED8A733-2ED7-31AD-A911-C1F4707C67F.ditamap")        

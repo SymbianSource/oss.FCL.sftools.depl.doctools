@@ -3570,22 +3570,26 @@ static void findMembersWithSpecificName(MemberName *mn,
                                         bool checkCV,
                                         QList<MemberDef> &members)
 {
-  //printf("  Function with global scope name `%s' args=`%s'\n",memberName.data(),args);
+  //printf("\n  findMembersWithSpecificName() - start\n");
+  //printf("  findMembersWithSpecificName() Function with global scope name `%s' args=`%s'\n",mn->memberName(),args);
   MemberListIterator mli(*mn);
   MemberDef *md;
   for (mli.toFirst();(md=mli.current());++mli)
   {
     FileDef  *fd=md->getFileDef();
     GroupDef *gd=md->getGroupDef();
-    //printf("  md->name()=`%s' md->args=`%s' fd=%p gd=%p\n",
-    //    md->name().data(),args,fd,gd);
+    //printf("  findMembersWithSpecificName() md->name()=`%s' md->args=`%s' fd=%p gd=%p file=%s\n",
+	//	md->name().data(),args,fd,gd,fd?fd->absFilePath().data():"");
+	//if (gd) printf("  findMembersWithSpecificName() group isLinkable()=%d\n", gd->isLinkable());
+	//if (fd) printf("  findMembersWithSpecificName() file  isLinkable()=%d\n", fd->isLinkable());
+	//if (md) printf("  findMembersWithSpecificName() memb  isLinkable()=%d\n", md->isLinkable());
     if (
         ((gd && gd->isLinkable()) || (fd && fd->isLinkable())) && 
         md->getNamespaceDef()==0 && md->isLinkable() &&
         (!checkStatics || !md->isStatic() || currentFile==0 || fd==currentFile) // statics must appear in the same file
        )
     {
-      //printf("    fd=%p gd=%p args=`%s'\n",fd,gd,args);
+      //printf("  findMembersWithSpecificName() fd=%p gd=%p args=`%s'\n",fd,gd,args);
       bool match=TRUE;
       ArgumentList *argList=0;
       if (args && !md->isDefine() && strcmp(args,"()")!=0)
@@ -3601,11 +3605,12 @@ static void findMembersWithSpecificName(MemberName *mn,
       }
       if (match) 
       {
-        //printf("Found match!\n");
+        //printf("  findMembersWithSpecificName() Found match!\n");
         members.append(md);
       }
     }
   }
+  //printf("  findMembersWithSpecificName() - done\n");
 }
 
 /*!
@@ -3639,11 +3644,12 @@ bool getDefs(const QCString &scName,const QCString &memberName,
     bool checkCV
     )
 {
+  //printf("\ngetDefs(): - start\n");
   fd=0, md=0, cd=0, nd=0, gd=0;
   if (memberName.isEmpty()) return FALSE; /* empty name => nothing to link */
 
   QCString scopeName=scName;
-  //printf("Search for name=%s args=%s in scope=%s\n",
+  //printf("getDefs(): Search for name=\"%s\" args=%s in scope=%s\n",
   //          memberName.data(),args,scopeName.data());
 
   int is,im=0,pm=0;
@@ -3656,7 +3662,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
     scopeName=scopeName.left(is); 
     pm=im+2;
   }
-  //printf("result after scope corrections scope=%s name=%s\n",
+  //printf("getDefs(): result after scope corrections scope=%s name=%s\n",
   //          scopeName.data(),memberName.data());
 
   QCString mName=memberName;
@@ -3674,13 +3680,13 @@ bool getDefs(const QCString &scName,const QCString &memberName,
   // handle special the case where both scope name and member scope are equal
   if (mScope==scopeName) scopeName.resize(0);
 
-  //printf("mScope=`%s' mName=`%s'\n",mScope.data(),mName.data());
+  //printf("getDefs(): mScope=`%s' mName=`%s'\n",mScope.data(),mName.data());
 
   MemberName *mn = Doxygen::memberNameSDict->find(mName);
-  //printf("mName=%s mn=%p\n",mName.data(),mn);
+  //printf("getDefs(): mName=%s mn=%p\n",mName.data(),mn);
   if (!forceEmptyScope && mn && !(scopeName.isEmpty() && mScope.isEmpty()))
   {
-    //printf("  >member name found\n");
+    //printf("getDefs(): >member name found\n");
     int scopeOffset=scopeName.length();
     do
     {
@@ -3693,7 +3699,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
       {
         className=mScope.copy();
       }
-      //printf("Trying class scope %s\n",className.data());
+      //printf("getDefs(): Trying class scope %s\n",className.data());
 
       ClassDef *fcd=0;
       // todo: fill in correct fileScope!
@@ -3701,7 +3707,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
           fcd->isLinkable() 
          )
       {
-        //printf("  Found fcd=%p\n",fcd);
+        //printf("getDefs(): getDefs(): Found fcd=%p\n",fcd);
         MemberListIterator mmli(*mn);
         MemberDef *mmd;
         int mdist=maxInheritanceDepth; 
@@ -3721,7 +3727,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
                 fcd,fcd->getFileDef(),argList,
                 checkCV
                 );  
-          //printf("match=%d\n",match);
+          //printf("getDefs(): match=%d\n",match);
           if (match)
           {
             ClassDef *mcd=mmd->getClassDef();
@@ -3745,19 +3751,19 @@ bool getDefs(const QCString &scName,const QCString &memberName,
         if (mdist==maxInheritanceDepth && args && strcmp(args,"()")==0)
           // no exact match found, but if args="()" an arbitrary member will do
         {
-          //printf("  >Searching for arbitrary member\n");
+          //printf("getDefs(): >Searching for arbitrary member\n");
           for (mmli.toFirst();(mmd=mmli.current());++mmli)
           {
             //if (mmd->isLinkable())
             //{
             ClassDef *mcd=mmd->getClassDef();
-            //printf("  >Class %s found\n",mcd->name().data());
+            //printf("getDefs(): >Class %s found\n",mcd->name().data());
             if (mcd)
             {
               int m=minClassDistance(fcd,mcd);
               if (m<mdist /* && mcd->isLinkable()*/ )
               {
-                //printf("Class distance %d\n",m);
+                //printf("getDefs(): Class distance %d\n",m);
                 mdist=m;
                 cd=mcd;
                 md=mmd;
@@ -3766,11 +3772,12 @@ bool getDefs(const QCString &scName,const QCString &memberName,
             //}
           }
         }
-        //printf("  >Succes=%d\n",mdist<maxInheritanceDepth);
+        //printf("getDefs(): >Success=%d\n",mdist<maxInheritanceDepth);
         if (mdist<maxInheritanceDepth) 
         {
           if (!md->isLinkable()) 
           {
+			//printf("getDefs(): >Success but not isLinkable=%d\n", md->isLinkable());
             md=0; // avoid returning things we cannot link to
             cd=0;
             return FALSE; // match found, but was not linkable
@@ -3779,6 +3786,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
           {
             gd=md->getGroupDef();
             if (gd) cd=0;
+			//printf("getDefs(): >Success, isLinkable=%d\n", md->isLinkable());
             return TRUE; /* found match */
           }
         }
@@ -3836,17 +3844,18 @@ bool getDefs(const QCString &scName,const QCString &memberName,
     {
       md = mmd;
       cd = mmd->getClassDef();
+	  //printf("getDefs(): >Success, mmd=%s\n", mmd->name().data());
       return TRUE;
     }
   }
 
 
   // maybe an namespace, file or group member ?
-  //printf("Testing for global function scopeName=`%s' mScope=`%s' :: mName=`%s'\n",
+  //printf("getDefs(): Testing for global function scopeName=`%s' mScope=`%s' :: mName=`%s'\n",
   //              scopeName.data(),mScope.data(),mName.data());
   if ((mn=Doxygen::functionNameSDict->find(mName))) // name is known
   {
-    //printf("  >function name found\n");
+    //printf("getDefs(): >function name found\n");
     NamespaceDef *fnd=0;
     int scopeOffset=scopeName.length();
     do
@@ -3860,19 +3869,19 @@ bool getDefs(const QCString &scName,const QCString &memberName,
       {
         namespaceName=mScope.copy();
       }
-      //printf("Trying namespace %s\n",namespaceName.data());
+      //printf("getDefs(): Trying namespace %s\n",namespaceName.data());
       if (!namespaceName.isEmpty() && 
           (fnd=Doxygen::namespaceSDict->find(namespaceName)) &&
           fnd->isLinkable()
          )
       {
-        //printf("Function inside existing namespace `%s'\n",namespaceName.data());
+        //printf("getDefs(): Function inside existing namespace `%s'\n",namespaceName.data());
         bool found=FALSE;
         MemberListIterator mmli(*mn);
         MemberDef *mmd;
         for (mmli.toFirst();((mmd=mmli.current()) && !found);++mmli)
         {
-          //printf("mmd->getNamespaceDef()=%p fnd=%p\n",
+          //printf("getDefs(): mmd->getNamespaceDef()=%p fnd=%p\n",
           //    mmd->getNamespaceDef(),fnd);
           if (mmd->getNamespaceDef()==fnd /* && mmd->isLinkable() */ )
           { // namespace is found
@@ -3918,6 +3927,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
         {
           if (!md->isLinkable()) 
           {
+			//printf("getDefs(): >Success, but isLinkable=%d\n", md->isLinkable());
             md=0; // avoid returning things we cannot link to
             nd=0;
             return FALSE; // match found but not linkable
@@ -3926,6 +3936,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
           {
             gd=md->getGroupDef();
             if (gd && gd->isLinkable()) nd=0; else gd=0;
+			//printf("getDefs(): >Success, isLinkable=%d\n", md->isLinkable());
             return TRUE;
           }
         }
@@ -3995,8 +4006,8 @@ bool getDefs(const QCString &scName,const QCString &memberName,
         md=mn->last();
         while (md /* && md->isLinkable()*/)
         {
-          //printf("Found member `%s'\n",md->name().data());
-          //printf("member is linkable md->name()=`%s'\n",md->name().data());
+          //printf("getDefs(): Found member `%s'\n",md->name().data());
+          //printf("getDefs(): member is linkable md->name()=`%s'\n",md->name().data());
           fd=md->getFileDef();
           gd=md->getGroupDef();
           if (
@@ -4008,7 +4019,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
           md=mn->prev();
         }
       }
-      //printf("found %d candidate members\n",members.count());
+      //printf("getDefs(): found %d candidate members\n",members.count());
       if (members.count()>0) // at least one match
       {
         md=members.last();
@@ -4017,7 +4028,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
       {
         fd=md->getFileDef();
         gd=md->getGroupDef();
-        //printf("fd=%p gd=%p gd->isLinkable()=%d\n",fd,gd,gd->isLinkable());
+		//printf("getDefs(): fd=%p gd=%p gd->isLinkable()=%d\n",fd,gd,gd?gd->isLinkable():-1);
         if (gd && gd->isLinkable()) fd=0; else gd=0;
         return TRUE;
       }
@@ -4025,6 +4036,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
   }
 
   // no nothing found
+  //printf("getDefs(): End of routine\n");
   return FALSE;
 }
 
@@ -4552,13 +4564,15 @@ struct FindFileCacheElem
   bool isAmbig;
 };
 
-static QCache<FindFileCacheElem> g_findFileDefCache(5000);
+//static QCache<FindFileCacheElem> g_findFileDefCache(5000);
 
 FileDef *findFileDef(const FileNameDict *fnDict,const char *n,bool &ambig)
 {
+  //Debug::print(Debug::IncludeGraph, 0, "findFileDef() Dict=%p Looking for: %s\n", fnDict, n);
   ambig=FALSE;
   if (n==0) return 0;
 
+  /*
   QCString key;
   key.sprintf("%p:",fnDict);
   key+=n;
@@ -4568,13 +4582,14 @@ FileDef *findFileDef(const FileNameDict *fnDict,const char *n,bool &ambig)
   if (cachedResult)
   {
     ambig = cachedResult->isAmbig;
+	Debug::print(Debug::IncludeGraph, 0, "findFileDef() In cache: %p\n", cachedResult->fileDef);
     return cachedResult->fileDef;
   }
   else
   {
     cachedResult = new FindFileCacheElem(0,FALSE);
   }
-
+  */
   QCString name=convertToQCString(QDir::cleanDirPath(n));
   QCString path;
   int slashPos;
@@ -4586,6 +4601,7 @@ FileDef *findFileDef(const FileNameDict *fnDict,const char *n,bool &ambig)
     path=name.left(slashPos+1);
     name=name.right(name.length()-slashPos-1); 
   }
+  //Debug::print(Debug::IncludeGraph, 0, "findFileDef() path=`%s' name=`%s'\n",path.data(),name.data());
   //printf("findFileDef path=`%s' name=`%s'\n",path.data(),name.data());
   if (name.isEmpty()) goto exit;
   if ((fn=(*fnDict)[name]))
@@ -4595,8 +4611,11 @@ FileDef *findFileDef(const FileNameDict *fnDict,const char *n,bool &ambig)
       FileDef *fd = fn->getFirst();
       if (path.isEmpty() || fd->getPath().right(path.length())==path)
       {
-        cachedResult->fileDef = fd;
+        /*
+		cachedResult->fileDef = fd;
         g_findFileDefCache.insert(key,cachedResult);
+		*/
+		//Debug::print(Debug::IncludeGraph, 0, "findFileDef() In dictionary: %p\n", fd);
         return fd;
       }
     }
@@ -4618,14 +4637,20 @@ FileDef *findFileDef(const FileNameDict *fnDict,const char *n,bool &ambig)
       }
 
       ambig=(count>1);
-      cachedResult->isAmbig = ambig;
+      /*
+	  cachedResult->isAmbig = ambig;
       cachedResult->fileDef = lastMatch;
       g_findFileDefCache.insert(key,cachedResult);
+	  */
+	  //Debug::print(Debug::IncludeGraph, 0, "findFileDef() ambiguos: %p\n", lastMatch);
       return lastMatch;
     }
   }
 exit:
+  /*
   g_findFileDefCache.insert(key,cachedResult);
+  */
+  //Debug::print(Debug::IncludeGraph, 0, "findFileDef() failed\n");
   return 0;
 }
 

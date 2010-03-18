@@ -1,0 +1,67 @@
+License
+=======
+Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved.
+This component and the accompanying materials are made available under the terms of the License 
+"Eclipse Public License v1.0" which accompanies this distribution, 
+and is available at the URL "http://www.eclipse.org/legal/epl-v10.html".
+
+Introduction
+============
+This document explains how to use mpdot.exe on converted cxx specialisation xml to create html. 
+
+MPDOT.exe runs the DITA Open Toolkit for each cxx specialisation reference component in parallel. This decreases the time it 
+takes to build a large amount of reference xml documentation and also reduces the likelihood of java out of memory issues.
+
+Prerequisites
+=============
+This supplied version of the DITA Open Toolkit is based onDITA-OT version 1.5.1. It contains the specialised cxxapiref plugin 
+DITA-OT1.5.1/plugins/cxxapiref and some specific python scripts.
+
+To use this modified version of DITA Open Toolkit unzip it to a location on your build machine and follow the instructions below.
+
+You should have already installed and run ORB and orb_process_cxx.bat on your content and as a result have a directory 
+with all the cxx reference and maps within it. This directory can be found here:
+%EPOCROOT%epoc32\release\doxygen\dita
+
+This directory should contain a set of files including maps and reference documents. Maps are named .ditamap 
+and reference documents .xml. All the files should have been renamed with a global unique id (GUID) and there should  
+be a file named GUID-445218BA-A6BF-334B-9337-5DCBD993AEB3.ditamap. This file is the main ditamap and this is passed to 
+the mpdot.exe for processing.
+
+If you do not have these files see the README.txt document in ORB for instructions.
+
+Building html with mpdot
+========================
+Open a command prompt with startcmd.bat in the DITA-OT1.5.1 installation. This sets the required environment variables and opens 
+a command prompt.  
+
+envoke mpdot.exe with the path to the ditamap you wish to build and the path of the output directory.
+If the output directory does not already exist then create it first.
+
+mpdot.exe <DITA map> <output directory> 
+
+For example:
+python\dist\mpdot.exe "C:\epoc32\release\doxygen\dita\GUID-445218BA-A6BF-334B-9337-5DCBD993AEB3.ditamap" "C:\epoc32\release\mpdot_out"
+
+Other options
+=============
+These options can also be passed to mpdot.exe.
+* -j 0 										This option detects and uses maximum processors on the build machine.
+* dita.preprocess.reloadstylesheet=true		This option reduces the amount of memory the java virtual machine uses and so will reduce 
+											the likelihood of memory errors.
+* transtype=xhtml							This is the output type that DITA Open Toolkit will produce. Check DITA Open Toolkit help 
+											for other options.
+For example:
+python\dist\mpdot.exe -j 0 "C:\epoc32\release\doxygen\dita\GUID-445218BA-A6BF-334B-9337-5DCBD993AEB3.ditamap" "C:\epoc32\release\mpdot_out" transtype=xhtml dita.preprocess.reloadstylesheet=true
+
+Output
+======
+In the output directory you will find these directories:
+
+Directory tree		Description     
+--------------		-----------
++---dot_comp		Contains all components individually built in their own directories. The name of the ditamap built by DOT is in the name of the folder. 
++---dot_src			All component files and their maps and the main ditamap
++---dot_toc			Contains the main toc only.
++---dot_toc_tmp		Temporary directory
+

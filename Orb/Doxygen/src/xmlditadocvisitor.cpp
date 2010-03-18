@@ -1,5 +1,7 @@
 
+#include "xmldita.h"
 #include "xmlditadocvisitor.h"
+#include "xmlditatrace.h"
 #include "docparser.h"
 #include "language.h"
 #include "doxygen.h"
@@ -11,11 +13,19 @@
 #include <qfileinfo.h> 
 #include "parserintf.h"
 
+//#define DITA_DOT_HACK_REMOVE_XREFS
+#undef DITA_DOT_HACK_REMOVE_XREFS
+// If 0 there is no <simpletable> support
+// Need to lazily evaluate this so that <simpletable> is only written if
+// there is content in the table
+#define DITA_SIMPLETABLE_SUPPORT 0
 
 XmlDitaDocVisitor::XmlDitaDocVisitor(XmlStream &s,CodeOutputInterface &ci) 
   : DocVisitor(DocVisitor_XML), xmlStream(s), xmlElemStack(s), m_ci(ci), m_insidePre(FALSE), m_hide(FALSE), 
     m_insideParamlist(FALSE), paramMap(), paramDict(), currParam()
-{}
+{
+	paramDict.setAutoDelete(true);
+}
 
  
   //--------------------------------------
@@ -24,6 +34,7 @@ XmlDitaDocVisitor::XmlDitaDocVisitor(XmlStream &s,CodeOutputInterface &ci)
 
 void XmlDitaDocVisitor::visit(DocWord *w)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocWord*)", w)
 	if (m_hide) {
 		return;
 	}
@@ -37,20 +48,40 @@ void XmlDitaDocVisitor::visit(DocWord *w)
 
 void XmlDitaDocVisitor::visit(DocLinkedWord *w)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocLinkedWord*)", w)
 	if (m_hide) {
 		return;
 	}
-	if (w->getDefinition() != 0) {
-		startLink("", w->getDefinition()->qualifiedName(), "");
+	//printf("XmlDitaDocVisitor calling startLink() DocLinkedWord=`%s'\n", w->word().data());
+	Definition *d = w->getDefinition();
+	if (0) {
+		QString myName;
+		myName = d->qualifiedName();
+		//printf("XmlDitaDocVisitor calling startLink() DocLinkedWord [name]=`%s'\n", myName.data());
+		startLink("", myName, "");
 	} else {
+		//printf("XmlDitaDocVisitor calling startLink() DocLinkedWord [file]=`%s'\n", w->file().data());
+#if DITA_SUPRESS_NAMESPACE_LINKS
+		if (w->file().find("namespace") != 0) {
+			startLink(w->ref(), w->file(), w->anchor());
+		}
+#else
 		startLink(w->ref(), w->file(), w->anchor());
+#endif
 	}
 	write(w->word());
+#if DITA_SUPRESS_NAMESPACE_LINKS
+	if (w->file().find("namespace") != 0) {
+		endLink();
+	}
+#else
 	endLink();
+#endif
 }
 
 void XmlDitaDocVisitor::visit(DocWhiteSpace *w)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocWhiteSpace*)", w)
 	if (m_hide) {
 		return;
 	}
@@ -63,6 +94,7 @@ void XmlDitaDocVisitor::visit(DocWhiteSpace *w)
 
 void XmlDitaDocVisitor::visit(DocSymbol *s)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocSymbol*)", s)
   if (m_hide) {
 	return;
   }
@@ -108,19 +140,27 @@ void XmlDitaDocVisitor::visit(DocSymbol *s)
 
 void XmlDitaDocVisitor::visit(DocURL *u)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocURL*)", u)
 	if (m_hide) {
 	  return;
 	}
 	if (u->isEmail()) {
 		startXref(QString("mailto:")+QString(u->url()), u->url());
 	} else {
-		startXref(u->url(), u->url());
+		// Need format attribute
+		AttributeMap myMap;
+		myMap["href"] = u->url();
+		myMap["format"] = "html";
+		push("xref", myMap);
+		write(u->url());	
+		//startXref(u->url(), u->url());
 	}
 	endXref();
 }
 
 void XmlDitaDocVisitor::visit(DocLineBreak *lb)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocLineBreak*)", lb)
 	if (m_hide){
 	  return;
 	}
@@ -133,6 +173,7 @@ void XmlDitaDocVisitor::visit(DocLineBreak *lb)
 
 void XmlDitaDocVisitor::visit(DocHorRuler *)
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocHorRuler*)")
 	if (m_hide) {
 	  return;
 	}
@@ -142,6 +183,7 @@ void XmlDitaDocVisitor::visit(DocHorRuler *)
 
 void XmlDitaDocVisitor::visit(DocStyleChange *s)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocStyleChange*)", s)
 	if (m_hide) {
 	  return;
 	}
@@ -215,6 +257,7 @@ void XmlDitaDocVisitor::visit(DocStyleChange *s)
 
 void XmlDitaDocVisitor::visit(DocVerbatim *s)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocVerbatim*)", s)
 	if (m_hide) {
 	  return;
 	}
@@ -251,6 +294,7 @@ void XmlDitaDocVisitor::visit(DocVerbatim *s)
 
 void XmlDitaDocVisitor::visit(DocAnchor *anc)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocAnchor*)", anc)
 	if (m_hide) {
 	  return;
 	}
@@ -261,6 +305,7 @@ void XmlDitaDocVisitor::visit(DocAnchor *anc)
 
 void XmlDitaDocVisitor::visit(DocInclude *inc)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocInclude*)", inc)
 	if (m_hide) {
 	  return;
 	}
@@ -301,7 +346,7 @@ void XmlDitaDocVisitor::visit(DocInclude *inc)
 
 void XmlDitaDocVisitor::visit(DocIncOperator *op)
 {
-  DITA_DOC_VISITOR_TRACE("visit(DocIncOperator*)",op);
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocIncOperator*)", op)
   if (op->isFirst()) 
   {
     if (!m_hide) {
@@ -333,6 +378,7 @@ void XmlDitaDocVisitor::visit(DocIncOperator *op)
 
 void XmlDitaDocVisitor::visit(DocFormula *f)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocFormula*)", f)
 	write(f->text());
 #if 0
 	if (m_hide) {
@@ -348,6 +394,7 @@ void XmlDitaDocVisitor::visit(DocFormula *f)
 
 void XmlDitaDocVisitor::visit(DocIndexEntry *ie)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocIndexEntry*)", ie)
 	if (m_hide) {
 	  return;
 	}
@@ -376,6 +423,7 @@ void XmlDitaDocVisitor::visit(DocSimpleSectSep *)
 
 void XmlDitaDocVisitor::visitPre(DocAutoList *l)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocAutoList*)", l)
 	if (m_hide) {
 	  return;
 	}
@@ -388,6 +436,7 @@ void XmlDitaDocVisitor::visitPre(DocAutoList *l)
 
 void XmlDitaDocVisitor::visitPost(DocAutoList *l)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPost(DocAutoList*)", l)
 	if (l->isEnumList()) {
 		visitPostDefault("ol");
 	} else {
@@ -397,36 +446,45 @@ void XmlDitaDocVisitor::visitPost(DocAutoList *l)
 
 void XmlDitaDocVisitor::visitPre(DocAutoListItem *)
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocAutoListItem*)")
 	visitPreDefault("li");
 }
 
 void XmlDitaDocVisitor::visitPost(DocAutoListItem *) 
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocAutoListItem*)")
 	visitPostDefault("li");
 }
 
 void XmlDitaDocVisitor::visitPre(DocPara *p) 
 {
-	if (xmlElemStack.isEmpty() || xmlElemStack.peek().getElemName() != "p") {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocPara*)", p)
+	if (canPushPara()) {
 		visitPreDefault("p");
 	}
 }
 
 void XmlDitaDocVisitor::visitPost(DocPara *)
 {
-	if (!xmlElemStack.isEmpty() && xmlElemStack.peek().getElemName() == "p") {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocPara*)")
+	if (canPopPara()) {
 		visitPostDefault("p");
 	}
 }
 
 void XmlDitaDocVisitor::visitPre(DocRoot *)
-{}
+{
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocRoot*)")
+}
 
 void XmlDitaDocVisitor::visitPost(DocRoot *)
-{}
+{
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocRoot*)")
+}
 
 void XmlDitaDocVisitor::visitPre(DocSimpleSect *s)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocSimpleSect*)", s)
 	if (m_hide) {
 	  return;
 	}
@@ -445,7 +503,7 @@ void XmlDitaDocVisitor::visitPre(DocSimpleSect *s)
 		case DocSimpleSect::Invar:		
 		case DocSimpleSect::User:		
 		case DocSimpleSect::Rcs:		
-			if (xmlElemStack.isEmpty() || xmlElemStack.peek().getElemName() != "p") {
+			if (canPushPara()) {
 				push("p"); 
 			}
 			break;
@@ -489,6 +547,7 @@ void XmlDitaDocVisitor::visitPre(DocSimpleSect *s)
 
 void XmlDitaDocVisitor::visitPost(DocSimpleSect *s)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPost(DocSimpleSect*)", s)
 	if (m_hide) {
 	  return;
 	}	
@@ -504,7 +563,7 @@ void XmlDitaDocVisitor::visitPost(DocSimpleSect *s)
 		case DocSimpleSect::Unknown:	
 			break;
 		default:
-			if (!xmlElemStack.isEmpty() && xmlElemStack.peek().getElemName() == "p") {
+			if (canPopPara()) {
 				pop("p"); 
 			}
 			break;
@@ -514,10 +573,11 @@ void XmlDitaDocVisitor::visitPost(DocSimpleSect *s)
 
 void XmlDitaDocVisitor::visitPre(DocTitle *)
 {	
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocTitle*)")
 	if (!xmlElemStack.isEmpty() && xmlElemStack.peek().getElemName() == "concept") {
 		visitPreDefault("title");
 	} else {
-		if (xmlElemStack.isEmpty() || xmlElemStack.peek().getElemName() != "p") {
+		if (canPushPara()) {
 			visitPreDefault("p");
 		}
 		visitPreDefault("b");
@@ -527,11 +587,12 @@ void XmlDitaDocVisitor::visitPre(DocTitle *)
 
 void XmlDitaDocVisitor::visitPost(DocTitle *)
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocTitle*)")
 	if (xmlElemStack.peek().getElemName() == "title") {
 		visitPostDefault("title");
 	} else {
 		visitPostDefault("b");
-		if (!xmlElemStack.isEmpty() && xmlElemStack.peek().getElemName() == "p") {
+		if (canPopPara()) {
 			visitPostDefault("p");
 		}
 	}
@@ -539,26 +600,31 @@ void XmlDitaDocVisitor::visitPost(DocTitle *)
 
 void XmlDitaDocVisitor::visitPre(DocSimpleList *)
 {
-  visitPreDefault("ul");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocSimpleList*)")
+	visitPreDefault("ul");
 }
 
 void XmlDitaDocVisitor::visitPost(DocSimpleList *)
 {
-  visitPostDefault("ul");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocSimpleList*)")
+	visitPostDefault("ul");
 }
 
 void XmlDitaDocVisitor::visitPre(DocSimpleListItem *)
 {
-  visitPreDefault("li");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocSimpleListItem*)")
+	visitPreDefault("li");
 }
 
 void XmlDitaDocVisitor::visitPost(DocSimpleListItem *) 
 {
-  visitPostDefault("li");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocSimpleListItem*)")
+	visitPostDefault("li");
 }
 
 void XmlDitaDocVisitor::visitPre(DocSection *s)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocSection*)", s)
 	// Currently unsupported
 #if 0
 	if (m_hide) {
@@ -578,6 +644,7 @@ void XmlDitaDocVisitor::visitPre(DocSection *s)
 
 void XmlDitaDocVisitor::visitPost(DocSection *s) 
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPost(DocSection*)", s)
 #if 0
 	// The original did not have the if(m_hide) test.
 	// I assume that is an error so visitPostDefault() uses it.
@@ -589,6 +656,7 @@ void XmlDitaDocVisitor::visitPost(DocSection *s)
 
 void XmlDitaDocVisitor::visitPre(DocHtmlList *s)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocHtmlList*)", s)
 	if (m_hide) {
 	  return;
 	}
@@ -601,6 +669,7 @@ void XmlDitaDocVisitor::visitPre(DocHtmlList *s)
 
 void XmlDitaDocVisitor::visitPost(DocHtmlList *s) 
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPost(DocHtmlList*)", s)
 	if (s->type()==DocHtmlList::Ordered) {
 		visitPostDefault("ol"); 
 	} else {
@@ -610,26 +679,31 @@ void XmlDitaDocVisitor::visitPost(DocHtmlList *s)
 
 void XmlDitaDocVisitor::visitPre(DocHtmlListItem *)
 {
-  visitPreDefault("li");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocHtmlListItem*)")
+	visitPreDefault("li");
 }
 
 void XmlDitaDocVisitor::visitPost(DocHtmlListItem *) 
 {
-  visitPostDefault("li");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlListItem*)")
+	visitPostDefault("li");
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlDescList *)
 {
-  visitPreDefault("dl");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocHtmlDescList*)")
+	visitPreDefault("dl");
 }
 
 void XmlDitaDocVisitor::visitPost(DocHtmlDescList *) 
 {
-  visitPostDefault("dl");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlDescList*)")
+	visitPostDefault("dl");
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlDescTitle *)
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocHtmlDescTitle*)")
 	if (m_hide) {
 	  return;
 	}
@@ -641,6 +715,7 @@ void XmlDitaDocVisitor::visitPre(DocHtmlDescTitle *)
 
 void XmlDitaDocVisitor::visitPost(DocHtmlDescTitle *) 
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlDescTitle*)")
 	if (m_hide) {
 	  return;
 	}
@@ -652,23 +727,28 @@ void XmlDitaDocVisitor::visitPost(DocHtmlDescTitle *)
 
 void XmlDitaDocVisitor::visitPre(DocHtmlDescData *)
 {
-  push("dd");
-  //visitPreDefault("li");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocHtmlDescData*)")
+	push("dd");
+	//visitPreDefault("li");
 }
 
 void XmlDitaDocVisitor::visitPost(DocHtmlDescData *) 
 {
-  pop("dd");
-  pop("dlentry");
-  //visitPostDefault("li");  
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlDescData*)")
+	pop("dd");
+	pop("dlentry");
+	//visitPostDefault("li");  
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlTable *t)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocHtmlTable*)", t)
 	if (m_hide) {
 	  return;
 	}
+#if DITA_SIMPLETABLE_SUPPORT
 	push("simpletable");
+#endif
 #if 0
 	AttributeMap attrs;
 	QString vR, vC;
@@ -682,11 +762,15 @@ void XmlDitaDocVisitor::visitPre(DocHtmlTable *t)
 
 void XmlDitaDocVisitor::visitPost(DocHtmlTable *) 
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlTable*)")
+#if DITA_SIMPLETABLE_SUPPORT
 	visitPostDefault("simpletable");
+#endif
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlRow *)
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocHtmlRow*)")
 	// FIXME look ahead to first cell
 	// if isHeading is true do
 	// visitPreDefault("sthead");
@@ -696,11 +780,13 @@ void XmlDitaDocVisitor::visitPre(DocHtmlRow *)
 
 void XmlDitaDocVisitor::visitPost(DocHtmlRow *) 
 {
-  visitPostDefault("strow");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlRow*)")
+	visitPostDefault("strow");
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlCell *c)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocHtmlCell*)", c)
 	visitPreDefault("stentry");
 #if 0
 	if (m_hide) {
@@ -716,41 +802,49 @@ void XmlDitaDocVisitor::visitPre(DocHtmlCell *c)
 
 void XmlDitaDocVisitor::visitPost(DocHtmlCell *c) 
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPost(DocHtmlCell*)", c)
   visitPostDefault("stentry");
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlCaption *)
 {
-  // Caption is unsupported
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocHtmlCaption*)")
+	// Caption is unsupported
 }
 
 void XmlDitaDocVisitor::visitPost(DocHtmlCaption *) 
 {
-  // Caption is unsupported
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlCaption*)")
+	// Caption is unsupported
 }
 
 void XmlDitaDocVisitor::visitPre(DocInternal *)
 {
-  //visitPreDefault("internal");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocInternal*)")
+	//visitPreDefault("internal");
 }
 
 void XmlDitaDocVisitor::visitPost(DocInternal *) 
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocInternal*)")
   //visitPostDefault("internal");
 }
 
 void XmlDitaDocVisitor::visitPre(DocHRef *href)
 {
-  push("xref", "href", href->url());
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocHRef*)", href)
+	push("xref", "href", href->url());
 }
 
 void XmlDitaDocVisitor::visitPost(DocHRef *) 
 {
-  visitPostDefault("xref");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHRef*)")
+	visitPostDefault("xref");
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlHeader *header)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocHtmlHeader*)", header)
 	visitPreDefault("b");
 #if 0
   QString hdgLevel;
@@ -761,11 +855,13 @@ void XmlDitaDocVisitor::visitPre(DocHtmlHeader *header)
 
 void XmlDitaDocVisitor::visitPost(DocHtmlHeader *) 
 {
-  visitPostDefault("b");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlHeader*)")
+	visitPostDefault("b");
 }
 
 void XmlDitaDocVisitor::visitPre(DocImage *img)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocImage*)", img)
 	// Currently unsupported
 #if 0
   AttributeMap imgAttrs;
@@ -825,11 +921,13 @@ void XmlDitaDocVisitor::visitPre(DocImage *img)
 
 void XmlDitaDocVisitor::visitPost(DocImage *) 
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocImage*)")
   //visitPostDefault("image");
 }
 
 void XmlDitaDocVisitor::visitPre(DocDotFile *df)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocDotFile*)", df)
 	// Currently unsupported
 #if 0
 	if (m_hide) {
@@ -841,23 +939,31 @@ void XmlDitaDocVisitor::visitPre(DocDotFile *df)
 
 void XmlDitaDocVisitor::visitPost(DocDotFile *) 
 {
-//  visitPostDefault("dotfile");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocDotFile*)")
+	//visitPostDefault("dotfile");
 }
 
 void XmlDitaDocVisitor::visitPre(DocLink *lnk)
 {
+	// The result of a \link...\endlink command
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocLink*)", lnk)
 	if (m_hide) {
 	  return;
 	}
-	if (lnk->getDefinition() != 0) {
+	if (0) {//lnk->getDefinition() != 0) {
+		//printf("XmlDitaDocVisitor calling startLink() DocLink [name]=`%s'\n", lnk->getDefinition()->qualifiedName().data());
 		startLink("", lnk->getDefinition()->qualifiedName(), "");
 	} else {
-		startLink(lnk->ref(),lnk->file(),lnk->anchor());
+		//printf("XmlDitaDocVisitor calling startLink() DocLink [file]=`%s'\n", lnk->file().data());
+		//startLink(lnk->ref(),lnk->file(),lnk->anchor());
+		startLink(lnk->ref(), lnk->file(), lnk->anchor());
 	}	
 }
 
 void XmlDitaDocVisitor::visitPost(DocLink *) 
 {
+	// The result of a \link...\endlink command
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocLink*)")
 	if (m_hide) {
 	  return;
 	}
@@ -866,13 +972,16 @@ void XmlDitaDocVisitor::visitPost(DocLink *)
 
 void XmlDitaDocVisitor::visitPre(DocRef *ref)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocRef*)", ref)
 	if (m_hide) {
 	  return;
 	}
 	if (!ref->file().isEmpty()) {
 		if (ref->getDefinition() != 0) {
+			//printf("XmlDitaDocVisitor calling startLink() DocRef [name]=`%s'\n", ref->getDefinition()->qualifiedName().data());
 			startLink("", ref->getDefinition()->qualifiedName(), "");
 		} else {
+			//printf("XmlDitaDocVisitor calling startLink() DocRef [file]=`%s'\n", ref->file().data());
 			startLink(ref->ref(), ref->file(), ref->anchor());
 		}	
 	}
@@ -883,6 +992,7 @@ void XmlDitaDocVisitor::visitPre(DocRef *ref)
 
 void XmlDitaDocVisitor::visitPost(DocRef *ref) 
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPost(DocRef*)", ref)
 	if (m_hide) {
 	  return;
 	}
@@ -894,6 +1004,7 @@ void XmlDitaDocVisitor::visitPost(DocRef *ref)
 
 void XmlDitaDocVisitor::visitPre(DocSecRefItem *ref)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocSecRefItem*)", ref)
 	if (m_hide) {
 	  return;
 	}
@@ -902,21 +1013,25 @@ void XmlDitaDocVisitor::visitPre(DocSecRefItem *ref)
 
 void XmlDitaDocVisitor::visitPost(DocSecRefItem *) 
 {
-  visitPostDefault("li");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocSecRefItem*)")
+	visitPostDefault("li");
 }
 
 void XmlDitaDocVisitor::visitPre(DocSecRefList *)
 {
-  visitPreDefault("ul");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocSecRefList*)")
+	visitPreDefault("ul");
 }
 
 void XmlDitaDocVisitor::visitPost(DocSecRefList *) 
 {
-  visitPostDefault("ul");
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocSecRefList*)")
+	visitPostDefault("ul");
 }
 
 void XmlDitaDocVisitor::visitPre(DocParamSect *s)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocParamSect*)", s)
 	m_insideParamlist = TRUE;
 	if (m_hide) {
 	  return;
@@ -941,12 +1056,14 @@ void XmlDitaDocVisitor::visitPre(DocParamSect *s)
 
 void XmlDitaDocVisitor::visitPost(DocParamSect *)
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocParamSect*)")
 	visitPostDefault("paraml");
 	m_insideParamlist = FALSE;
 }
 
 void XmlDitaDocVisitor::visitPre(DocParamList *pl)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocParamList*)", pl)
 	if (m_hide) {
 	  return;
 	}
@@ -1000,6 +1117,7 @@ void XmlDitaDocVisitor::visitPre(DocParamList *pl)
 
 void XmlDitaDocVisitor::visitPost(DocParamList *)
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocParamList*)")
 	if (m_hide) {
 	  return;
 	}
@@ -1009,6 +1127,7 @@ void XmlDitaDocVisitor::visitPost(DocParamList *)
 
 void XmlDitaDocVisitor::visitPre(DocXRefItem *x)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocXRefItem*)", x)
 	if (m_hide) {
 	  return;
 	}
@@ -1016,9 +1135,14 @@ void XmlDitaDocVisitor::visitPre(DocXRefItem *x)
 	// with "deprecated" as the filename
 	if (x->file() == "deprecated"){
 		// Fall through to start new paragraph for deprecated description
-	}else
-		{
-		push("xref", "id", x->file()+"_1"+x->anchor());
+	} else {
+		QString hrefStr = x->file();
+		hrefStr.append(Config_getString("XML_DITA_EXTENSION"));
+		hrefStr.append("#");
+		hrefStr.append(x->file());
+		hrefStr.append("_1");
+		hrefStr.append(x->anchor());
+		push("xref", "href", hrefStr);
 		write(x->title());
 	}
 #if 0
@@ -1030,6 +1154,7 @@ void XmlDitaDocVisitor::visitPre(DocXRefItem *x)
 
 void XmlDitaDocVisitor::visitPost(DocXRefItem *)
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocXRefItem*)")
 	if (m_hide) {
 	  return;
 	}
@@ -1047,14 +1172,17 @@ void XmlDitaDocVisitor::visitPost(DocXRefItem *)
 
 void XmlDitaDocVisitor::visitPre(DocInternalRef *ref)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocInternalRef*)", ref)
 	if (m_hide) {
 	  return;
 	}
+	//printf("XmlDitaDocVisitor calling startLink() DocInternalRef [file]=`%s'\n", ref->file().data());
 	startLink(0, ref->file(), ref->anchor());
 }
 
 void XmlDitaDocVisitor::visitPost(DocInternalRef *) 
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocXRefItem*)")
 	if (m_hide) {
 	  return;
 	}
@@ -1064,6 +1192,7 @@ void XmlDitaDocVisitor::visitPost(DocInternalRef *)
 
 void XmlDitaDocVisitor::visitPre(DocCopy *c)
 {
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocCopy*)", c)
 	// Currently unsupported
 #if 0
 	if (m_hide) {
@@ -1075,35 +1204,52 @@ void XmlDitaDocVisitor::visitPre(DocCopy *c)
 
 void XmlDitaDocVisitor::visitPost(DocCopy *)
 {
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocCopy*)")
 //	visitPostDefault("copydoc");
 }
 
 void XmlDitaDocVisitor::visitPre(DocText *)
-{}
+{
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocText*)")
+}
 
 void XmlDitaDocVisitor::visitPost(DocText *)
-{}
+{
+	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocText*)")
+}
 
 void XmlDitaDocVisitor::startXref(const QString &href,const QString &text)
 {
+#ifndef DITA_DOT_HACK_REMOVE_XREFS
 	push("xref", "href", href);
+#endif
 	write(text);	
 }
 
 void XmlDitaDocVisitor::endXref()
 {
+#ifndef DITA_DOT_HACK_REMOVE_XREFS
 	pop("xref");
+#endif
 }
 
 void XmlDitaDocVisitor::startLink(const QString &ref,const QString &file,const QString &anchor)
 {
   AttributeMap refAttrs;
+  /*
+  printf("XmlDitaDocVisitor::startLink(): ref: \"%s\", file: \"%s\", anchor: \"%s\"\n",
+	  ref.data(),
+	  file.data(),
+	  anchor.data());
+  */
   if (!anchor.isEmpty()) {
-	  refAttrs["href"] = file+"_1"+anchor;
+	  refAttrs["href"] = file+".xml#"+file+"_1"+anchor;
   } else {
-	  refAttrs["href"] = file;
+	  refAttrs["href"] = file+".xml#"+file;
   }
+#ifndef DITA_DOT_HACK_REMOVE_XREFS
   push("xref", refAttrs);
+#endif
 #if 0
   AttributeMap refAttrs;
   if (!anchor.isEmpty()) {
@@ -1122,7 +1268,9 @@ void XmlDitaDocVisitor::startLink(const QString &ref,const QString &file,const Q
 
 void XmlDitaDocVisitor::endLink()
 {
+#ifndef DITA_DOT_HACK_REMOVE_XREFS
   visitPostDefault("xref");
+#endif
 }
 
 void XmlDitaDocVisitor::pushEnabled()
@@ -1217,6 +1365,26 @@ const QString XmlDitaDocVisitor::query(const QString &paramName) const
 		// TODO positional option
 		return "";
 	}
+}
+
+/// Returns true if it is OK to write a para element
+bool XmlDitaDocVisitor::canPushPara() const
+{
+	if (!xmlElemStack.isEmpty()) {
+		QString e = xmlElemStack.peek().getElemName();
+		if (e == "xref" || e == "p") {
+			return false;
+		}
+	}
+	return true;
+}
+
+bool XmlDitaDocVisitor::canPopPara() const
+{
+	if (!xmlElemStack.isEmpty() && xmlElemStack.peek().getElemName() == "p") {
+			return true;
+	}
+	return false;
 }
 
 /** Default treatment of a post traversal visit, this just

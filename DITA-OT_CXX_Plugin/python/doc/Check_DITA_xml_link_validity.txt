@@ -1,0 +1,75 @@
+License
+=======
+Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved.
+This component and the accompanying materials are made available under the terms of the License 
+"Eclipse Public License v1.0" which accompanies this distribution, 
+and is available at the URL "http://www.eclipse.org/legal/epl-v10.html".
+
+Introduction
+============
+Use the Linkcheck utility to check link validity in DITA xml files. 
+
+There are many ways in which a link can be broken in DITA, using the linkchecker will not only tell you how many links are 
+broken but also how they are broken.
+
+For example:
+* the integrity of ids is checked
+* files are checked to see if they are orphaned 
+* checks for cyclic references in maps
+
+Prerequisites
+=============
+Run the linkcheck utility on DITA content that is ready to be built by the DITA Open Toolkit. This is content that has been 
+created by Orb. See the Orb README.txt document for instructions if you haven't already done so. 
+
+Running the linkcheck utility
+=============================
+For basic content analysis pass the path to your content to the linkchecker. For example:
+python linkchecker.py C:\epoc32\release\doxygen\dita
+
+This gives this analysis:
+CMD: linkcheck.py C:\epoc32\release\doxygen\dita
+2010-03-10 14:25:19,194 INFO     DitaFileSet starting to read...
+2010-03-10 14:26:16,569 INFO     DitaFileSet.finalise() start...
+2010-03-10 14:26:18,023 INFO     DitaFileSet.finalise() done.
+================================ Statistics ===============================
+                Maps:         12 [     0.000 M]
+            Non-maps:       1800 [     0.002 M]
+               Files:       1812 [     0.002 M]
+               Bytes:   31891999 [    30.415 M]
+                 IDs:      23208 [     0.022 M]
+                Refs:      13928 [     0.013 M]
+           Read time:     57.385 (s)
+       Analysis time:      1.447 (s)
+===========================================================================
+============================== Error Summary ==============================
+Code      Count Error
+----      ----- -----
+ 401         63 Multiple id="..."
+ 410        349 Can not resolve reference to file "..."
+ 411         32 Can resolve reference to file "..." but not to fragment "..."
+ 414          1 topicref element with format="ditamap" does not match target root element "..."
+ 418       3828 Unknown referencing element "..." does not match target root element "..."
+ 419       2133 Unknown referencing element "..." does not match target element"..." for id="..."
+ 505         75 Duplicate id="..." in files: ...
+ 600       1311 Topic id="..." is not referenced by any map
+ 700         11 More than one top level map exists: ...
+===========================================================================
+
+Options
+=======
+The errors messages above can be expanded by using the command --file=specific. This will give all errors with the "..." filled 
+in for each error found. This may return a lot of information, so use --errors with a space seperated list of the codes to report 
+on. For example: 
+python linkcheck.py --errors=700 --file=specific C:\epoc32\release\doxygen\dita
+
+Returns the generic analysis table above plus this specific list:
+Specific problems:
+More than one top level map exists: C:/epoc32/release/doxygen/dita/GUID-1CDC3FD9-BD7B-3790-9856-607D01F59FE4.ditamap
+More than one top level map exists: C:/epoc32/release/doxygen/dita/GUID-2F2463E0-6C84-3FAB-8B60-57E57315FDEB.ditamap
+More than one top level map exists: C:/epoc32/release/doxygen/dita/GUID-445218BA-A6BF-334B-9337-5DCBD993AEB3.ditamap
+...
+
+More options
+============
+Use --help to see all options and -? to show all the tests that are performed and their codes.

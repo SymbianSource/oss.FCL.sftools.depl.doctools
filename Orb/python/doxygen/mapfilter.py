@@ -16,13 +16,17 @@ import os
 import xml
 import stat
 import unittest
+import shutil
+import logging
 from cStringIO import StringIO
 from copy import deepcopy
 from optparse import OptionParser
 from xml.etree import ElementTree as etree
+from lib import xml_decl, doctype_identifier
+from os.path import basename
 
 
-__version__ = '0.1'
+__version__ = '0.2'
 
     
 class MetaFile(object):
@@ -46,9 +50,23 @@ class MetaFile(object):
             self._exports.add(header.text.upper())
 
     def __contains__(self, header):
-        return header.upper() in self._exports
+        return basename(header.upper()) in [basename(export) for export in self._exports]
+    
+    def is_platform(self, header):
+        return "epoc32/include/platform".upper() in header.upper() 
 
-
+    def is_public(self, header):
+        return not(self.is_platform(header)) and not(self.is_internal(header))    
+    
+    def is_internal(self, header):
+        return not "epoc32/include".upper() in header.upper()
+    
+    def get_meta_header_path(self, header):
+        for export in self._exports:
+            if basename(header.upper()) == basename(export):
+                return export
+    
+        
 class HrefLoader(object):
     """
     Class that parses DITA cxx files and returns the header file an API is declared in.
@@ -102,35 +120,63 @@ class FilterMap(object):
     </cxxAPIMap>
     
     """
-    def __init__(self, ditamap, metafile, hrefloader=HrefLoader, dirname=os.path.dirname):
+    def __init__(self, ditamap, metafile, hrefloader=HrefLoader, dirname=os.path.dirname, sdk_build=False):
         self.map = etree.parse(ditamap)
+        self.mapid = self._getmapid(self.map)
         self.hrefloader = hrefloader(dirname(ditamap))
         self.metafile = metafile
+        self.sdk_build = sdk_build
+        
+    def _getmapid(self, map):
+        return map.getroot().attrib.get('id', 'NO MAP ID')
+    
+    def _getelementinfo(self, element):
+        return '\"%s\" '%element.tag+' '.join(['%s=\"%s\"'%(k, v) for k, v in element.items()])
 
     def getmap(self):
         root = self.map.getroot()
         newroot = deepcopy(root)
         for elem, newelem in zip(root.getchildren(), newroot.getchildren()):
-            if self.hrefloader.get(elem.attrib['href']) not in self.metafile:
+            declfile = self.hrefloader.get(elem.attrib['href'])
+            logging.debug('Processing map \"%s\", element %s, declared in \"%s\"' % (self.mapid, self._getelementinfo(elem), declfile))
+            if declfile not in self.metafile:   # File was not exported so filter it out
+                logging.debug('Filtering out of map \"%s\" element %s,  as its definition file \"%s\" was not exported in metafile'
+                              % (self.mapid, self._getelementinfo(elem), declfile))
                 newroot.remove(newelem)
+                continue
+            
+            if self.sdk_build and not self.metafile.is_public(self.metafile.get_meta_header_path(declfile)):
+                logging.debug('Filtering out of map \"%s\" element %s, as its definition file \"%s\" was not exported as public in metafile. \
+                Meta file entry was \"%s\"' % (self.mapid, self._getelementinfo(elem), declfile, self.metafile.get_meta_header_path(declfile)))                  
+                newroot.remove(newelem)                                                 #
         return newroot
 
 
-def filtermap(ditamap, filterfile):
-    fm = FilterMap(ditamap, MetaFile(filterfile))
+def filtermap(ditamap, filterfile, sdk_build=False):
+    logging.debug('Filtering ditamap \"%s\". \"sdk_build\" is \"%s\"' % (ditamap, sdk_build))
+    fm = FilterMap(ditamap, MetaFile(filterfile), sdk_build=sdk_build)
     os.chmod(ditamap, stat.S_IWRITE)
     with open(ditamap, 'w') as f:
-        f.write(etree.tostring(fm.getmap()))    
+        f.write(xml_decl()+'\n')
+        f.write(doctype_identifier('cxxAPIMap')+'\n')
+        f.write(etree.tostring(fm.getmap()))         
+
 
 
 def main():
     usage = "usage: %prog <Path to ditamap> <Path to meta.xml file>"
     parser = OptionParser(usage, version='%prog ' + __version__)
+    parser.add_option("-s", "--sdk",
+                      action="store_true", dest="sdk", default=False,
+                      help="Filter out any platform APIs.")
+    parser.add_option("-l", "--loglevel", type="int", default=logging.WARNING, help="Log Level (debug=10, info=20, [warning=30], error=40, critical=50)")    
     (options, args) = parser.parse_args()
     if len(args) < 2:
         parser.print_help()
         parser.error("Please supply the path to the ditamap file and the meta.xml file")
-    filtermap(args[0], args[1])
+    if options.loglevel:
+            logging.basicConfig(level=options.loglevel)        
+    filtermap(args[0], args[1], options.sdk)
 
 
 if __name__ == '__main__':
@@ -141,7 +187,15 @@ if __name__ == '__main__':
 ######################################
 class MetaFileStub(object):
     def __contains__(self, what):
-        return what == "D:/epoc32/include/platform/mw/AlwaysOnlineEComInterface.h"
+        return (what == "D:/epoc32/include/platform/mw/AlwaysOnlineEComInterface.h" or
+                what == "D:/epoc32/include/ClassCActive.h" or
+                what == "Y:/sf/mw/hapticsservices/tactilefeedback/inc/tactilearearegistry.h")
+        
+    def is_public(self, what):
+        return (what == "D:/epoc32/include/ClassCActive.h")
+    
+    def get_meta_header_path(self, header):
+        return "D:/epoc32/include/ClassCActive.h" if header == "D:/epoc32/include/ClassCActive.h" else ""
 
 
 class HrefLoaderStub(object):
@@ -149,8 +203,12 @@ class HrefLoaderStub(object):
         pass
     
     def get(self, href):
-        if href.startswith("class_c_always"):
+        if href.startswith("class_c_active.xml"):
+            return "D:/epoc32/include/ClassCActive.h"
+        elif href.startswith("class_c_always"):
             return "D:/epoc32/include/platform/mw/AlwaysOnlineEComInterface.h"
+        elif href.startswith("test_class_defined_in_src_path"):
+            return "Y:/sf/mw/hapticsservices/tactilefeedback/inc/tactilearearegistry.h"        
         else:
             return "D:/no/header.h"
 
@@ -187,8 +245,37 @@ class TestMetaReader(unittest.TestCase):
         self.assertTrue("D:/epoc32/include/platform/mw/AlwaysOnlineEComInterface.h" in metafile)
         self.assertTrue("d:/Epoc32/incLude/platform/mw/AlwaysOnlineStatusQueryInterface.h" in metafile)
         self.assertTrue("D:/epoc32/inclUde/platform/mw/AlwaysOnlineManagerCommon.h" in metafile)
-        self.assertTrue("D:/epoc32/include/Platform/mw/AlwaysOnlineManagerClient.h" in metafile)
+        self.assertTrue("D:/epoc32/include/mw/AlwaysOnlineManagerClient.h" in metafile)
         self.assertFalse("D:/epoc32/include/Platform/AlwaysOfflineManagerClient.h" in metafile)
+        self.assertFalse("D:/epoc32/include/Platform/AlwaysOfflineManagerClient.h" in metafile)
+        self.assertTrue("U:/epoc32/include/cenrepnotifyhandler.h" in metafile) # Test for an export path against a src path
+        self.assertTrue("Y:/sf/mw/hapticsservices/tactilefeedback/inc/tactilearearegistry.h" in metafile) # Test for a src path against an export path
+        
+    def test_i_can_return_whether_a_header_is_exported_as_platform(self):
+        metafile = MetaFile(StringIO(meta_xml))
+        self.assertTrue(metafile.is_platform("Y:/epoc32/include/platform/mw/tacticon.h"))
+        
+    def test_i_can_return_whether_a_header_is_exported_as_public(self):
+        metafile = MetaFile(StringIO(meta_xml))
+        self.assertTrue(metafile.is_public("Y:/epoc32/include/mw/touchfeedback.h"))
+        
+    def test_i_can_return_whether_a_header_is_exported_as_public_case_insensitive(self):
+        metafile = MetaFile(StringIO(meta_xml))
+        self.assertTrue(metafile.is_public("Y:/EPOC32/INCLUDE/MW/TOUCHFEEDBACK.H"))
+        
+    def test_i_can_return_whether_a_header_is_exported_as_internal(self):
+        metafile = MetaFile(StringIO(meta_xml))
+        self.assertTrue(metafile.is_internal("Y:/sf/mw/hapticsservices/tactilefeedback/inc/tactilearearegistry.h"))
+        
+    def test_i_can_return_the_meta_header_path_for_a_header(self):
+         metafile = MetaFile(StringIO(meta_xml))
+         self.assertEquals(metafile.get_meta_header_path("Y:/my_src_tree_path/inc/tactilearearegistry.h"),
+                           "Y:/EPOC32/INCLUDE/INC/TACTILEAREAREGISTRY.H")
+         
+    def test_i_can_return_the_meta_header_path_for_a_header_case_insensitive(self):
+         metafile = MetaFile(StringIO(meta_xml))
+         self.assertEquals(metafile.get_meta_header_path("Y:/MY_SRC_TREE_PATH/INC/TACTILEAREAREGISTRY.H"),
+                           "Y:/EPOC32/INCLUDE/INC/TACTILEAREAREGISTRY.H")  
 
 
 class TestHrefLoader(unittest.TestCase):
@@ -209,7 +296,7 @@ class TestHrefLoader(unittest.TestCase):
         self.assertTrue("" == refloader.get("class_c_always_online_e_com_interface.xml#foo_bar"))
 
 
-class TestFilterMap(unittest.TestCase):
+class TestFilterMap(unittest.TestCase):    
     def test_i_can_parse_a_map(self):
         fm = FilterMap(StringIO(ditamap), 
                        metafile=MetaFileStub(), 
@@ -218,11 +305,40 @@ class TestFilterMap(unittest.TestCase):
         )
         maproot = fm.getmap()
         self.assertTrue(maproot.tag == 'cxxAPIMap')
-        self.assertTrue(len(maproot) == 4)
+        self.assertTrue(len(maproot) == 6)
+
+    def test_i_can_filter_out_platform_apis(self):
+        fm = FilterMap(StringIO(ditamap), 
+                       metafile=MetaFileStub(), 
+                       hrefloader=HrefLoaderStub,
+                       dirname=dirnamestub,
+                       sdk_build=True
+        )
+        maproot = fm.getmap()
+        print etree.tostring(maproot)
+        self.assertTrue(maproot.tag == 'cxxAPIMap')
+        self.assertTrue(len(maproot) == 1)
+        self.assertEquals(maproot[0].attrib['navtitle'], 'class_c_active')
+
+
+class  TestFilterMapOnFileSystem(unittest.TestCase):
+    def test_i_can_filter_a_map_on_the_file_system(self):
+        test_dir = 'test_mapfilter'
+        os.mkdir(test_dir)
+        for fcontents, fname in ((class_c_always_online, 'class_c_always_online.xml'), (ditamap, 'map.ditamap'), (meta_xml, 'meta.xml')):
+            f = open(test_dir + os.sep + fname, 'w')
+            f.write(fcontents)
+            f.close()
+        try:
+            filtermap(test_dir+os.sep+'map.ditamap', test_dir+os.sep+'meta.xml')
+            self.assertEquals(open(test_dir+os.sep+'map.ditamap', 'r').read(), filtered_ditamap)   
+        finally:
+            shutil.rmtree(test_dir)
+            
 
 
 class_c_always_online = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.1.0//EN" "dtd/cxxClass.dtd" >
+<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.5.0//EN" "dtd/cxxClass.dtd" >
 <cxxClass id="class_c_always_online_e_com_interface">
     <apiName>CAlwaysOnlineEComInterface</apiName>
     <shortdesc/>
@@ -591,7 +707,7 @@ class_c_always_online = """<?xml version='1.0' encoding='UTF-8' standalone='no'?
 </cxxClass>"""
 
 ditamap = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.1.0//EN" "dtd/cxxAPIMap.dtd" >
+<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.5.0//EN" "dtd/cxxAPIMap.dtd" >
 <cxxAPIMap id="AlwaysOnlineManagerClient" title="AlwaysOnlineManagerClient">
     <cxxStructRef href="struct___array_util.xml#struct___array_util" navtitle="struct___array_util"/>
     <cxxClassRef href="class_b_trace.xml#class_b_trace" navtitle="class_b_trace">
@@ -608,11 +724,20 @@ ditamap = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
     </cxxClassRef>
     <cxxClassRef href="class_c_always_online_manager.xml#class_c_always_online_manager" navtitle="class_c_always_online_manager"/>
     <cxxClassRef href="class_c_always_online_manager_server.xml#class_c_always_online_manager_server" navtitle="class_c_always_online_manager_server"/>
+    <cxxClassRef href="test_class_defined_in_src_path.xml#test_class_defined_in_src_path" navtitle="test_class_defined_in_src_path"/>
 </cxxAPIMap>"""
+
+filtered_ditamap = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.5.0//EN" "dtd/cxxAPIMap.dtd" >
+<cxxAPIMap id="AlwaysOnlineManagerClient" title="AlwaysOnlineManagerClient">
+    </cxxAPIMap>"""
 
 meta_xml = """<exports>
     <header>D:/epoc32/include/platform/mw/AlwaysOnlineEComInterface.h</header>
     <header>D:/epoc32/include/platform/mw/AlwaysOnlineStatusQueryInterface.h</header>
     <header>D:/epoc32/include/platform/mw/AlwaysOnlineManagerCommon.h</header>
-    <header>D:/epoc32/include/platform/mw/AlwaysOnlineManagerClient.h</header>
+    <header>D:/epoc32/include/mw/AlwaysOnlineManagerClient.h</header>
+    <header>D:/epoc32/include/ClassCActive.h</header>
+    <header>U:/sf/os/persistentdata/persistentstorage/centralrepository/cenrepnotifierhandler/inc/cenrepnotifyhandler.h</header>
+    <header>Y:/epoc32/include/inc/tactilearearegistry.h</header>
 </exports>"""

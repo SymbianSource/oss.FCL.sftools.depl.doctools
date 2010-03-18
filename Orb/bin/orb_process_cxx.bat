@@ -11,12 +11,27 @@ if "%1" == "" GOTO ARGMISSING
 
 set sys_def_path=%1
 
+REM Publishing target options. Possible values are "mode" or "ditaot". Default is "mode".
+REM Set the default publishing target to be mode
+set publishing_target=mode
+
+REM Process arg 2 as publishing target if the user has specified it
+if not "%2" == "" (
+	if not "%2" == "mode" (
+		if not "%2" == "ditaot" (
+			GOTO INVALIDPUBLISHINGTARGETARG
+		)
+		set publishing_target=ditaot
+	)
+)
+
 set python_home=%sbs_home%\win32\python252
 set PATH=%python_home%;%PATH%
+set current_drive=%cd:~0,2%
 
-set input=%EPOCROOT%epoc32\release\doxygen\dita
-set maps_output=%EPOCROOT%epoc32\release\doxygen\maps
-set dita_output=%EPOCROOT%epoc32\release\doxygen\ditareference
+set input=%current_drive%%EPOCROOT%epoc32\release\doxygen\dita
+rem set maps_output=%current_drive%%EPOCROOT%epoc32\release\doxygen\maps
+rem set dita_output=%current_drive%%EPOCROOT%epoc32\release\doxygen\ditareference
 
 set ANT_OPTS=-Xmx512m
 set ant_home=%sbs_home%\ant
@@ -27,32 +42,47 @@ set map_creator_path=%sbs_home%\bin\MapCreator\mapcreator.exe
 set component_map_creator_path=%sbs_home%\python\doxygen\component_map_creator.py
 set guidiser_path=%sbs_home%\python\doxygen\guidiser.py
 set filerenamer_path=%sbs_home%\python\doxygen\filerenamer.py
-set index_creator_path=%sbs_home%\python\doxygen\indexcreator.py
+set linkinserter_path=%sbs_home%\python\doxygen\linkinserter.py
 
+rem md %maps_output%
+rem md %dita_output%
+call :TRY "python %component_map_creator_path% %current_drive%%EPOCROOT%epoc32\build %input%"
+call :TRY "%map_creator_path%  %sys_def_path% -o %input%\toc.ditamap %input%" 
 
-md %maps_output%
-md %dita_output%
-call %map_creator_path%  %sys_def_path% -o %maps_output%\toc.ditamap
-call python %component_map_creator_path% %EPOCROOT%epoc32\build %maps_output%
-rem call python %index_creator_path% %input% %output%\maps\index.ditamap
-
-call %ant_path% -f %build_file% -Dinput="%input%" -Doutput="%dita_output%"
-
-call python %guidiser_path% %maps_output%
-call python %guidiser_path% %input%
-call python %guidiser_path% %dita_output%\transformed
-
-call python %filerenamer_path% %maps_output%
-call python %filerenamer_path% %input%
-call python %filerenamer_path% %dita_output%\transformed
-
-
-goto EOF
+rem call :TRY "python %guidiser_path% -p %publishing_target% -l 10 %maps_output%"
+call :TRY "python %guidiser_path% -p %publishing_target% -l 10 %input%"
+rem call :TRY "python %guidiser_path% -p %publishing_target% -l 10 %dita_output%\transformed"
+rem call :TRY "python %filerenamer_path% -p %publishing_target% -l 10 %maps_output%"
+call :TRY "python %filerenamer_path% -p %publishing_target% -l 10 %input%"
+rem call :TRY "python %filerenamer_path% -p %publishing_target% -l 10 %dita_output%\transformed"
+rem call :TRY "python %linkinserter_path% %input%"
+rem call :TRY "python %linkinserter_path% %dita_output%\transformed"
+rem call :TRY "%ant_path% -f %build_file% -Dinput="%input%" -Doutput="%dita_output%""
+GOTO EOF
 
 :ARGMISSING
 echo Error Arguments missing were 1.system_defintion.xml path:[%1] 
-echo EPOC source tree os the directory containing v3 system definition
-echo and package definitions
+echo.
+goto USAGE
+
+:INVALIDPUBLISHINGTARGETARG
+echo Error invalid publishing target, possible values are "mode" or "ditaot". Invalid arg was "%2".
+echo.
+goto USAGE
+
+:USAGE
+echo Usage: orb_proces_cxx.bat SYSTEM_DEFINITION_PATH [PUBLISHING_TARGET]
+echo Post process for Doxygen extension to sbs.
+echo.
+echo SYSTEM_DEFINITION_PATH		EPOC source tree os the directory containing v3 system definition and package definitions
+echo PUBLISHING_TARGET		[mode], ditaot
+echo.
 goto EOF
 
+:TRY
+echo %TIME:~0,2%:%TIME:~3,2%:%TIME:~6,2% orb_process_cxx.bat is running %1
+call %~1
+IF %ERRORLEVEL%==0 echo %TIME:~0,2%:%TIME:~3,2%:%TIME:~6,2% orb_process_cxx.bat SUCCEEDED running %1
+IF ERRORLEVEL 1 echo %TIME:~0,2%:%TIME:~3,2%:%TIME:~6,2% orb_process_cxx.bat FAILED running %1
+echo ---------------------
 :EOF

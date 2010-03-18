@@ -67,6 +67,63 @@ Contributors:
          name="SBS_DOXYGEN"
          type="tool" />
   </var>
+  
+  <var name="dox-sdk">
+    <set name="INTERFACE.exe"
+         value="doxygen-sdk.exe" />
+    <set name="INTERFACE.dll"
+         value="doxygen-sdk.dll" />
+    <set name="INTERFACE.extension"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.ani"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.exexp"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.implib"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.fsy"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.kdll"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.kext"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.klib"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.ldd"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.lib"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.pdd"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.pdl"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.plugin"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.resource"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.stddll"
+         value="doxygen-sdknop" />
+    <set name="INTERFACE.stdexe"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.stdlib"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.textnotifier2"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.var"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.var2"
+         value="doxygen-sdk.nop" />
+    <set name="INTERFACE.none"
+         value="doxygen-sdk.nop" />
+    <env default="doxygen"
+         host="linux*"
+         name="SBS_DOXYGEN"
+         type="tool" />
+    <env default="doxygen"
+         host="win*"
+         name="SBS_DOXYGEN"
+         type="tool" />
+  </var>
   <!-- sbs -c arm.v5.urel.rvct2_2.dox -->
   <!-- sbs -c doxygen -->
   <!-- create doxygen alias for the above dox variant.
@@ -78,4 +135,7 @@ Contributors:
     -->
   <alias meaning="arm.v5.urel.rvct2_2.dox"
          name="doxygen" />
+         
+  <alias meaning="arm.v5.urel.rvct2_2.dox-sdk"
+         name="doxygen-sdk" />
 </build>

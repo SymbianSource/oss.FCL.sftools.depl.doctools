@@ -698,6 +698,15 @@ void addConfigOptions(Config *cfg)
                  "of the layout file."
                 );
   cs->setWidgetType(ConfigString::File);
+  //----
+  cb = cfg->addBool(
+                 "OUTPUT_INCLUDES",
+                 "If set this will write out documentation for #included files so that links can be\n"
+                 "made from INPUT files to them.\n"
+                 "if PREPROCESS_INCLUDES is not set then this has no effect. You are strongly advised to have EXTRACT_ALL = YES, if not some include files\n"
+                 "may not be linkable to.",
+                 FALSE
+                );
   //---------------------------------------------------------------------------
   cfg->addInfo("Messages","configuration options related to warning and progress messages");
   //---------------------------------------------------------------------------
@@ -1688,13 +1697,47 @@ void addConfigOptions(Config *cfg)
   //----
   cs = cfg->addString(
                  "XML_DITA_OUTPUT",
-                 "The XML_DITA_ OUTPUT tag is used to specify where the DITA XML pages will be put.\n"
+                 "The XML_DITA_OUTPUT tag is used to specify where the DITA XML pages will be put.\n"
                  "If a relative path is entered the value of OUTPUT_DIRECTORY will be\n"
                  "put in front of it. If left blank `dita' will be used as the default path."
                 );
   cs->setDefaultValue("dita");
   cs->setWidgetType(ConfigString::Dir);
   cs->addDependency("GENERATE_XML_DITA");
+  //----
+  cs = cfg->addString(
+                 "XML_DITA_EXTENSION",
+                 "The XML_DITA_EXTENSION is used to specify the file extension for DITA XML pages."
+                );
+  cs->setDefaultValue(".xml");
+  cs->addDependency("GENERATE_XML_DITA");
+  //----
+  cs = cfg->addString(
+                 "XML_DITA_EXTENSION_DITAMAP",
+                 "The XML_DITA_EXTENSION_DITAMAP is used to specify the file extension for DITA maps."
+                );
+  cs->setDefaultValue(".ditamap");
+  cs->addDependency("GENERATE_XML_DITA");
+  //----
+  cb = cfg->addBool(
+                 "XML_DITA_OMIT_UNLINKABLE",
+                 "If the XML_DITA_OMIT_UNLINKABLE tag is set to YES Doxygen will\n"
+                 "not generate DITA XML files for classes that are not fully defined\n"
+                 "(i.e. classes that have member functions that are declared but not defined).\n"
+                 "This happens in component based builds where where Doxygen can see class\n"
+                 "declarations in a header file but not the implememtation of those declarations.\n"
+                 "In that case the documentation for those classes will not be generated.",
+                 FALSE
+                );
+  cb->addDependency("GENERATE_XML_DITA");
+  //----
+  cb = cfg->addBool(
+                 "XML_DITA_OMIT_DUPLICATE_MEMBERS",
+                 "If the XML_DITA_OMIT_DUPLICATE_MEMBERS tag is set to YES Doxygen will\n"
+                 "not generate DITA XML members that have duplicate IDs.",
+                 FALSE
+                );
+  cb->addDependency("GENERATE_XML_DITA");
   //---------------------------------------------------------------------------
   cfg->addInfo("DEF","configuration options for the AutoGen Definitions output");
   //---------------------------------------------------------------------------
@@ -1844,16 +1887,6 @@ void addConfigOptions(Config *cfg)
                 );
   cb->addDependency("ENABLE_PREPROCESSING");
   //----
-  cl = cfg->addList(
-                 "PRE_INCLUDES",
-                 "The PRE_INCLUDES tag can be used to specify a list of files names that will be\n"
-                 "#include'd before preprocesing any file. The files will be included in the\n"
-                 "order specified by the PRE_INCLUDES tag.\n"
-                 "For example if the PRE_INCLUDES has \"foo.h\" in it this will be treated as if\n"
-                 "#include \"foo.h\" preceeded each input file."
-                );
-  cl->addDependency("ENABLE_PREPROCESSING");
-  //----
   cb = cfg->addBool(
                  "PREPROCESS_INCLUDES",
                  "If the PREPROCESS_INCLUDES tag is set to YES then doxygen's preprocessor will\n"
@@ -1862,6 +1895,15 @@ void addConfigOptions(Config *cfg)
                  "#include'd files as well. If set to NO (the default) then the #include\n"
                  "statements will be ignored and documentation on #include'd files will only\n"
                  "be generated if they are in the INPUT.",
+                 FALSE
+                );
+  cb->addDependency("ENABLE_PREPROCESSING");
+  //----
+  cb = cfg->addBool(
+                 "PREPROCCESS_FULL_TU",
+                 "If set then Doxygen will always preprocess the complete translation unit for each\n"
+                 "INPUT. This gives a more accurate picture of the contents of the INPUT but may\n"
+                 "take considerably longer to run.",
                  FALSE
                 );
   cb->addDependency("ENABLE_PREPROCESSING");

@@ -692,6 +692,7 @@ static inline void setOutput(OutputContext ctx)
         stripTrailingWhiteSpace(current->doc);
         if (current->docFile.isEmpty())
         {
+		  //printf("Setting docFile to %s\n", yyFileName.data());
           current->docFile = yyFileName;
           current->docLine = yyLineNr;
         }
@@ -2387,7 +2388,7 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
 {
   //printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
   //    isBrief,isAutoBriefOn,lineNr);
-
+  //printf("parseCommentBlock() lineNr=%d file=%s\n", lineNr, fileName.data());
   initParser();
   guards.setAutoDelete(TRUE);
   guards.clear();

@@ -491,6 +491,13 @@ doxygen&apos;s defaults, run doxygen with the -l option. You can optionally spec
 file name after the option, if omitted DoxygenLayout.xml will be used as the name 
 of the layout file. 
 ' defval=''/>
+    <option type='bool' id='OUTPUT_INCLUDES' docs='
+If set this will write out documentation for #included files so that links can be 
+made from INPUT files to them. 
+if PREPROCESS_INCLUDES is not set then this has no effect.
+You are strongly advised to have EXTRACT_ALL = YES, if not some include files 
+may not be linkable to.
+' defval='0'/>
   </group>
   <group name='Messages' docs='configuration options related to warning and progress messages'>
     <option type='bool' id='QUIET' docs='
@@ -1125,10 +1132,28 @@ the code including all documentation.
 See: http://www.oasis-open.org/committees/dita/
 ' defval='0'/>
     <option type='string' id='XML_DITA_OUTPUT' format='dir' docs='
-The XML_DITA_ OUTPUT tag is used to specify where the DITA XML pages will be put. 
+The XML_DITA_OUTPUT tag is used to specify where the DITA XML pages will be put. 
 If a relative path is entered the value of OUTPUT_DIRECTORY will be 
 put in front of it. If left blank `dita&apos; will be used as the default path. 
 ' defval='dita' depends='GENERATE_XML_DITA'/>
+    <option type='string' id='XML_DITA_EXTENSION' format='string' docs='
+The XML_DITA_EXTENSION is used to specify the file extension for DITA XML pages. 
+' defval='.xml' depends='GENERATE_XML_DITA'/>
+    <option type='string' id='XML_DITA_EXTENSION_DITAMAP' format='string' docs='
+The XML_DITA_EXTENSION_DITAMAP is used to specify the file extension for DITA maps. 
+' defval='.ditamap' depends='GENERATE_XML_DITA'/>
+    <option type='bool' id='XML_DITA_OMIT_UNLINKABLE' docs='
+If the XML_DITA_OMIT_UNLINKABLE tag is set to YES Doxygen will 
+not generate DITA XML files for classes that are not fully defined 
+(i.e. classes that have member functions that are declared but not defined). 
+This happens in component based builds where where Doxygen can see class 
+declarations in a header file but not the implememtation of those declarations. 
+In that case the documentation for those classes will not be generated. 
+' defval='0' depends='GENERATE_XML_DITA'/>
+    <option type='bool' id='XML_DITA_OMIT_DUPLICATE_MEMBERS' docs='
+If the XML_DITA_OMIT_DUPLICATE_MEMBERS tag is set to YES Doxygen will 
+not generate DITA XML members that have duplicate IDs.
+' defval='0' depends='GENERATE_XML_DITA'/>
   </group>
   <group name='DEF' docs='configuration options for the AutoGen Definitions output'>
     <option type='bool' id='GENERATE_AUTOGEN_DEF' docs='
@@ -1223,13 +1248,6 @@ on a line, have an all uppercase name, and do not end with a semicolon. Such
 function macros are typically used for boiler-plate code, and will confuse 
 the parser if not removed. 
 ' defval='1' depends='ENABLE_PREPROCESSING'/>
-    <option type='list' id='PRE_INCLUDES'  format='string' docs='
-The PRE_INCLUDES tag can be used to specify a list of files names that will be 
-#include&apos;d before preprocesing any file. The files will be included in the 
-order specified by the PRE_INCLUDES tag. 
-For example if the PRE_INCLUDES has &quot;foo.h&quot; in it this will be treated as if 
-#include &quot;foo.h&quot; preceeded each input file. 
-' defval='0' depends='ENABLE_PREPROCESSING'/>
     <option type='bool' id='PREPROCESS_INCLUDES' docs='
 If the PREPROCESS_INCLUDES tag is set to YES then doxygen&apos;s preprocessor will 
 search for all #include&apos;d files according the search paths and feed them to 
@@ -1237,6 +1255,11 @@ the preprocessor. This means that documentation will be generated for those
 #include&apos;d files as well. If set to NO (the default) then the #include 
 statements will be ignored and documentation on #include&apos;d files will only 
 be generated if they are in the INPUT. 
+' defval='0' depends='ENABLE_PREPROCESSING'/>
+    <option type='bool' id='PREPROCCESS_FULL_TU' docs='
+If set then Doxygen will always preprocess the complete translation unit for each 
+INPUT. This gives a more accurate picture of the contents of the INPUT but may 
+take considerably longer to run. 
 ' defval='0' depends='ENABLE_PREPROCESSING'/>
   </group>
   <group name='External' docs='Configuration::additions related to external references'>

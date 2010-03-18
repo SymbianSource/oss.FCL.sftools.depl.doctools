@@ -1,0 +1,286 @@
+Folder PATH listing for volume 4GBL06874
+Volume serial number is F8F0-A88B
+C:.
++---+
+|   \---topic_xref
+|       \---pr-d_xref
+|           \---api-d_apipackage
+|               +---cxxapi-d_cxxclass
+|               +---cxxapi-d_cxxdefine
+|               +---cxxapi-d_cxxenumeration
+|               +---cxxapi-d_cxxfile
+|               +---cxxapi-d_cxxfunction
+|               +---cxxapi-d_cxxstruct
+|               +---cxxapi-d_cxxtypedef
+|               +---cxxapi-d_cxxunion
+|               \---cxxapi-d_cxxvariable
+\----
+    +---map_map
+    |   \---apiMap_apiMap
+    |       \---cxxAPIMap_cxxAPIMap
+    +---map_topicref
+    |   \---apiMap_apiItemRef
+    |       +---cxxAPIMap_cxxClassRef
+    |       +---cxxAPIMap_cxxDefineRef
+    |       +---cxxAPIMap_cxxEnumerationRef
+    |       +---cxxAPIMap_cxxFileRef
+    |       +---cxxAPIMap_cxxFunctionRef
+    |       +---cxxAPIMap_cxxStructRef
+    |       +---cxxAPIMap_cxxTypedefRef
+    |       +---cxxAPIMap_cxxUnionRef
+    |       \---cxxAPIMap_cxxVariableRef
+    +---topic_body
+    |   \---reference_refbody
+    |       \---apiRef_apiDetail
+    |           +---apiClassifier_apiClassifierDetail
+    |           |   +---cxxClass_cxxClassDetail
+    |           |   +---cxxStruct_cxxStructDetail
+    |           |   \---cxxUnion_cxxUnionDetail
+    |           +---apiClassifier_apiDetail
+    |           |   +---cxxClass_cxxClassInheritsDetail
+    |           |   +---cxxClass_cxxClassNestedDetail
+    |           |   +---cxxStruct_cxxStructInheritsDetail
+    |           |   +---cxxStruct_cxxStructNestedDetail
+    |           |   +---cxxUnion_cxxUnionInheritsDetail
+    |           |   \---cxxUnion_cxxUnionNestedDetail
+    |           +---apiOperation_apiOperationDetail
+    |           |   +---cxxDefine_cxxDefineDetail
+    |           |   \---cxxFunction_cxxFunctionDetail
+    |           \---apiValue_apiValueDetail
+    |               +---cxxEnumeration_cxxEnumerationDetail
+    |               +---cxxTypedef_cxxTypedefDetail
+    |               \---cxxVariable_cxxVariableDetail
+    +---topic_keyword
+    |   \---reference_keyword
+    |       \---apiRef_apiItemName
+    |           +---apiClassifier_apiItemName
+    |           |   +---cxxClass_cxxClassTemplateParamDeclarationName
+    |           |   +---cxxClass_cxxClassTemplateParamDefinitionName
+    |           |   +---cxxClass_cxxUnionTemplateParamDeclarationName
+    |           |   +---cxxClass_cxxUnionTemplateParamDefinitionName
+    |           |   +---cxxStruct_cxxStructTemplateParamDeclarationName
+    |           |   \---cxxStruct_cxxStructTemplateParamDefinitionName
+    |           +---apiOperation_apiItemName
+    |           |   +---cxxDefine_cxxDefineParameterDeclarationName
+    |           |   +---cxxFunction_cxxFunctionParameterDeclarationName
+    |           |   +---cxxFunction_cxxFunctionParameterDefinitionName
+    |           |   +---cxxFunction_cxxFunctionScopedName
+    |           |   +---cxxFunction_cxxFunctionTemplateParamDeclarationName
+    |           |   \---cxxFunction_cxxFunctionTemplateParamDefinitionName
+    |           \---apiValue_apiItemName
+    |               +---cxxEnumeration_cxxEnumerationScopedName
+    |               +---cxxEnumeration_cxxEnumeratorScopedName
+    |               +---cxxTypedef_cxxTypedefScopedName
+    |               \---cxxVariable_cxxVariableScopedName
+    +---topic_ph
+    |   \---reference_ph
+    |       +---apiRef_apiData
+    |       |   +---apiOperation_apiData
+    |       |   |   \---cxxFunction_cxxFunctionParameterDefaultValue
+    |       |   \---apiValue_apiData
+    |       |       \---cxxEnumeration_cxxEnumeratorInitialiser
+    |       \---apiRef_apiDefItem
+    |           +---apiClassifier_apiDefItem
+    |           |   +---cxxClass_cxxClassAPIItemLocation
+    |           |   +---cxxClass_cxxClassDerivation
+    |           |   +---cxxClass_cxxClassDerivations
+    |           |   +---cxxClass_cxxClassTemplateParameter
+    |           |   +---cxxClass_cxxClassTemplateParamList
+    |           |   +---cxxClass_cxxClassTemplateParamType
+    |           |   +---cxxClass_cxxUnionTemplateParameter
+    |           |   +---cxxClass_cxxUnionTemplateParamList
+    |           |   +---cxxClass_cxxUnionTemplateParamType
+    |           |   +---cxxStruct_cxxStructAPIItemLocation
+    |           |   +---cxxStruct_cxxStructDerivation
+    |           |   +---cxxStruct_cxxStructDerivations
+    |           |   +---cxxStruct_cxxStructTemplateParameter
+    |           |   +---cxxStruct_cxxStructTemplateParamList
+    |           |   +---cxxStruct_cxxStructTemplateParamType
+    |           |   +---cxxUnion_cxxUnionAPIItemLocation
+    |           |   +---cxxUnion_cxxUnionDerivation
+    |           |   \---cxxUnion_cxxUnionDerivations
+    |           +---apiOperation_apiDefItem
+    |           |   +---cxxDefine_cxxDefineAPIItemLocation
+    |           |   +---cxxDefine_cxxDefineNameLookup
+    |           |   +---cxxDefine_cxxDefineParameter
+    |           |   +---cxxDefine_cxxDefineParameters
+    |           |   +---cxxDefine_cxxDefinePrototype
+    |           |   +---cxxFunction_cxxFunctionAPIItemLocation
+    |           |   +---cxxFunction_cxxFunctionDeclaredType
+    |           |   +---cxxFunction_cxxFunctionNameLookup
+    |           |   +---cxxFunction_cxxFunctionParameter
+    |           |   +---cxxFunction_cxxFunctionParameterDeclaredType
+    |           |   +---cxxFunction_cxxFunctionParameters
+    |           |   +---cxxFunction_cxxFunctionPrototype
+    |           |   +---cxxFunction_cxxFunctionReturnType
+    |           |   +---cxxFunction_cxxFunctionTemplateParameter
+    |           |   +---cxxFunction_cxxFunctionTemplateParamList
+    |           |   \---cxxFunction_cxxFunctionTemplateParamType
+    |           +---apiPackage_apiDefItem
+    |           |   \---cxxFile_cxxFileAPIItemLocation
+    |           \---apiValue_apiDefItem
+    |               +---cxxEnumeration_cxxEnumerationAPIItemLocation
+    |               +---cxxEnumeration_cxxEnumerationNameLookup
+    |               +---cxxEnumeration_cxxEnumerationPrototype
+    |               +---cxxEnumeration_cxxEnumerator
+    |               +---cxxEnumeration_cxxEnumeratorAPIItemLocation
+    |               +---cxxEnumeration_cxxEnumeratorNameLookup
+    |               +---cxxEnumeration_cxxEnumeratorPrototype
+    |               +---cxxEnumeration_cxxEnumerators
+    |               +---cxxTypedef_cxxTypedefAPIItemLocation
+    |               +---cxxTypedef_cxxTypedefDeclaredType
+    |               +---cxxTypedef_cxxTypedefNameLookup
+    |               +---cxxTypedef_cxxTypedefPrototype
+    |               +---cxxVariable_cxxVariableAPIItemLocation
+    |               +---cxxVariable_cxxVariableDeclaredType
+    |               +---cxxVariable_cxxVariableNameLookup
+    |               \---cxxVariable_cxxVariablePrototype
+    +---topic_section
+    |   \---reference_section
+    |       \---apiRef_apiDef
+    |           +---apiClassifier_apiClassifierDef
+    |           |   +---cxxClass_cxxClassDefinition
+    |           |   +---cxxStruct_cxxStructDefinition
+    |           |   \---cxxUnion_cxxUnionDefinition
+    |           +---apiOperation_apiOperationDef
+    |           |   +---cxxDefine_cxxDefineDefinition
+    |           |   \---cxxFunction_cxxFunctionDefinition
+    |           \---apiValue_apiValueDef
+    |               +---cxxEnumeration_cxxEnumerationDefinition
+    |               +---cxxTypedef_cxxTypedefDefinition
+    |               \---cxxVariable_cxxVariableDefinition
+    +---topic_state
+    |   \---reference_state
+    |       \---apiRef_apiQualifier
+    |           +---apiClassifier_apiQualifier
+    |           |   +---cxxClass_cxxClassAbstract
+    |           |   +---cxxClass_cxxClassAccessSpecifier
+    |           |   +---cxxClass_cxxClassDeclarationFile
+    |           |   +---cxxClass_cxxClassDeclarationFileLine
+    |           |   +---cxxClass_cxxClassDefinitionFile
+    |           |   +---cxxClass_cxxClassDefinitionFileLineEnd
+    |           |   +---cxxClass_cxxClassDefinitionFileLineStart
+    |           |   +---cxxClass_cxxClassDerivationAccessSpecifier
+    |           |   +---cxxClass_cxxClassDerivationVirtual
+    |           |   +---cxxStruct_cxxStructAbstract
+    |           |   +---cxxStruct_cxxStructAccessSpecifier
+    |           |   +---cxxStruct_cxxStructDeclarationFile
+    |           |   +---cxxStruct_cxxStructDeclarationFileLine
+    |           |   +---cxxStruct_cxxStructDefinitionFile
+    |           |   +---cxxStruct_cxxStructDefinitionFileLineEnd
+    |           |   +---cxxStruct_cxxStructDefinitionFileLineStart
+    |           |   +---cxxStruct_cxxStructDerivationAccessSpecifier
+    |           |   +---cxxStruct_cxxStructDerivationVirtual
+    |           |   +---cxxUnion_cxxUnionAbstract
+    |           |   +---cxxUnion_cxxUnionAccessSpecifier
+    |           |   +---cxxUnion_cxxUnionDeclarationFile
+    |           |   +---cxxUnion_cxxUnionDeclarationFileLine
+    |           |   +---cxxUnion_cxxUnionDefinitionFile
+    |           |   +---cxxUnion_cxxUnionDefinitionFileLineEnd
+    |           |   +---cxxUnion_cxxUnionDefinitionFileLineStart
+    |           |   +---cxxUnion_cxxUnionDerivationAccessSpecifier
+    |           |   \---cxxUnion_cxxUnionDerivationVirtual
+    |           +---apiOperation_apiQualifier
+    |           |   +---cxxDefine_cxxDefineAccessSpecifier
+    |           |   +---cxxDefine_cxxDefineDeclarationFile
+    |           |   +---cxxDefine_cxxDefineDeclarationFileLine
+    |           |   +---cxxFunction_cxxFunctionAccessSpecifier
+    |           |   +---cxxFunction_cxxFunctionConst
+    |           |   +---cxxFunction_cxxFunctionConstructor
+    |           |   +---cxxFunction_cxxFunctionDeclarationFile
+    |           |   +---cxxFunction_cxxFunctionDeclarationFileLine
+    |           |   +---cxxFunction_cxxFunctionDefinitionFile
+    |           |   +---cxxFunction_cxxFunctionDefinitionFileLineEnd
+    |           |   +---cxxFunction_cxxFunctionDefinitionFileLineStart
+    |           |   +---cxxFunction_cxxFunctionDestructor
+    |           |   +---cxxFunction_cxxFunctionExplicit
+    |           |   +---cxxFunction_cxxFunctionInline
+    |           |   +---cxxFunction_cxxFunctionPureVirtual
+    |           |   +---cxxFunction_cxxFunctionStorageClassSpecifierExtern
+    |           |   +---cxxFunction_cxxFunctionStorageClassSpecifierMutable
+    |           |   +---cxxFunction_cxxFunctionStorageClassSpecifierStatic
+    |           |   +---cxxFunction_cxxFunctionVirtual
+    |           |   \---cxxFunction_cxxFunctionVolatile
+    |           +---apiPackage_apiQualifier
+    |           |   \---cxxFile_cxxFileDeclarationFile
+    |           \---apiValue_apiQualifier
+    |               +---cxxEnumeration_cxxEnumerationAccessSpecifier
+    |               +---cxxEnumeration_cxxEnumerationDeclarationFile
+    |               +---cxxEnumeration_cxxEnumerationDeclarationFileLine
+    |               +---cxxEnumeration_cxxEnumerationDefinitionFile
+    |               +---cxxEnumeration_cxxEnumerationDefinitionFileLineEnd
+    |               +---cxxEnumeration_cxxEnumerationDefinitionFileLineStart
+    |               +---cxxEnumeration_cxxEnumeratorDeclarationFile
+    |               +---cxxEnumeration_cxxEnumeratorDeclarationFileLine
+    |               +---cxxTypedef_cxxTypedefAccessSpecifier
+    |               +---cxxTypedef_cxxTypedefDeclarationFile
+    |               +---cxxTypedef_cxxTypedefDeclarationFileLine
+    |               +---cxxVariable_cxxVariableAccessSpecifier
+    |               +---cxxVariable_cxxVariableConst
+    |               +---cxxVariable_cxxVariableDeclarationFile
+    |               +---cxxVariable_cxxVariableDeclarationFileLine
+    |               +---cxxVariable_cxxVariableStorageClassSpecifierExtern
+    |               +---cxxVariable_cxxVariableStorageClassSpecifierMutable
+    |               +---cxxVariable_cxxVariableStorageClassSpecifierStatic
+    |               \---cxxVariable_cxxVariableVolatile
+    +---topic_topic
+    |   \---reference_reference
+    |       \---apiRef_apiRef
+    |           +---apiClassifier_apiClassifier
+    |           |   +---cxxClass_cxxClass
+    |           |   +---cxxClass_cxxClassInherits
+    |           |   +---cxxClass_cxxClassNested
+    |           |   +---cxxStruct_cxxStruct
+    |           |   +---cxxStruct_cxxStructInherits
+    |           |   +---cxxStruct_cxxStructNested
+    |           |   +---cxxUnion_cxxUnion
+    |           |   +---cxxUnion_cxxUnionInherits
+    |           |   \---cxxUnion_cxxUnionNested
+    |           +---apiOperation_apiOperation
+    |           |   +---cxxDefine_cxxDefine
+    |           |   \---cxxFunction_cxxFunction
+    |           +---apiPackage_apiPackage
+    |           |   \---cxxFile_cxxFile
+    |           \---apiValue_apiValue
+    |               +---cxxEnumeration_cxxEnumeration
+    |               +---cxxTypedef_cxxTypedef
+    |               \---cxxVariable_cxxVariable
+    \---topic_xref
+        \---reference_xref
+            \---apiRef_apiRelation
+                +---apiClassifier_apiBaseClassifier
+                |   +---cxxClass_cxxClassBaseClass
+                |   +---cxxClass_cxxClassBaseStruct
+                |   +---cxxClass_cxxClassBaseUnion
+                |   +---cxxStruct_cxxStructBaseClass
+                |   +---cxxStruct_cxxStructBaseStruct
+                |   +---cxxStruct_cxxStructBaseUnion
+                |   +---cxxUnion_cxxUnionBaseClass
+                |   +---cxxUnion_cxxUnionBaseStruct
+                |   \---cxxUnion_cxxUnionBaseUnion
+                +---apiClassifier_apiRelation
+                |   +---cxxClass_cxxClassEnumerationInherited
+                |   +---cxxClass_cxxClassFunctionInherited
+                |   +---cxxClass_cxxClassNestedClass
+                |   +---cxxClass_cxxClassNestedStruct
+                |   +---cxxClass_cxxClassNestedUnion
+                |   +---cxxClass_cxxClassVariableInherited
+                |   +---cxxStruct_cxxStructEnumerationInherited
+                |   +---cxxStruct_cxxStructFunctionInherited
+                |   +---cxxStruct_cxxStructNestedClass
+                |   +---cxxStruct_cxxStructNestedStruct
+                |   +---cxxStruct_cxxStructNestedUnion
+                |   +---cxxStruct_cxxStructVariableInherited
+                |   +---cxxUnion_cxxUnionEnumerationInherited
+                |   +---cxxUnion_cxxUnionFunctionInherited
+                |   +---cxxUnion_cxxUnionNestedClass
+                |   +---cxxUnion_cxxUnionNestedStruct
+                |   +---cxxUnion_cxxUnionNestedUnion
+                |   \---cxxUnion_cxxUnionVariableInherited
+                +---apiOperation_apiRelation
+                |   +---cxxDefine_cxxDefineReimplemented
+                |   \---cxxFunction_cxxFunctionReimplemented
+                \---apiValue_apiRelation
+                    +---cxxEnumeration_cxxEnumerationReimplemented
+                    +---cxxTypedef_cxxTypedefReimplemented
+                    \---cxxVariable_cxxVariableReimplemented

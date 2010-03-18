@@ -18,6 +18,7 @@ from xml.etree import ElementTree as etree
 import os.path
 import logging
 import shutil
+from guidiser import Guidiser
 
 __version__ = "0.1"
 
@@ -28,6 +29,9 @@ class LinkFile(object):
     string representation with inserted ids for linking to cxxFunctions.
     """
     
+    def __init__(self, guidise=False):
+        self.guidiser = Guidiser()
+        self.guidise = guidise
     def _get_cxxfunction_elems(self, elem):
         """
         Takes an elements and generates a list of all child elements that are called cxxFunction 
@@ -82,6 +86,9 @@ class LinkFile(object):
             function_scoped_name+="::"
         
         apiname_id = "".join([function_scoped_name,func_elem.find("apiName").text,"()"])
+       
+        if self.guidise:
+            apiname_id = self.guidiser._get_guid(apiname_id)
 
         func_elem.find("apiName").attrib["id"] = apiname_id
         return func_elem
@@ -160,7 +167,7 @@ class LinkInserter(object):
         
 
 def insertlinks(xml_dir):
-    link_inserter = LinkInserter(LinkFile())
+    link_inserter = LinkInserter(LinkFile(guidise=True))
     link_inserter.linkify_dir(xml_dir)
 
 
@@ -391,7 +398,120 @@ class TestLinkFile(unittest.TestCase):
         returned = self.link_file.get_linkified(file_as_string)
         self.assertEquals(etree.fromstring(returned).find("cxxFunction/apiName").attrib["id"], "BTrace::Init0()")
 
+        
+    def test__insert_a_guidised_id_into_cxxfunction_apiname(self):
+        self.link_file = LinkFile(guidise=True)
+        func_str = """<cxxFunction id="class_b_trace_1a7217f2fa88e99af3dbb5827fdc8507b7">
+        <apiName>Init0</apiName>
+        <shortdesc/>
+        <cxxFunctionDetail>
+            <cxxFunctionDefinition>
+                <cxxFunctionAccessSpecifier value="public"/>
+                <cxxFunctionStorageClassSpecifierStatic/>
+                <cxxFunctionDeclaredType>void</cxxFunctionDeclaredType>
+                <cxxFunctionScopedName>BTrace</cxxFunctionScopedName>
+                <cxxFunctionPrototype>static void Init0(TUint32 a0)</cxxFunctionPrototype>
+                <cxxFunctionNameLookup>BTrace::Init0(TUint32 a0)</cxxFunctionNameLookup>
+                <cxxFunctionParameters>
+                    <cxxFunctionParameter>
+                        <cxxFunctionParameterDeclaredType>
+                            <apiRelation keyref="_always_online_manager_client_8cpp_1a8240e11f17c80b6b222fc2af50234da4">TUint32</apiRelation>
+                        </cxxFunctionParameterDeclaredType>
+                        <cxxFunctionParameterDeclarationName>a0</cxxFunctionParameterDeclarationName>
+                        <apiDefNote/>
+                    </cxxFunctionParameter>
+                </cxxFunctionParameters>
+                <cxxFunctionAPIItemLocation>
+                    <cxxFunctionDeclarationFile name="filePath" value="D:/epoc32/include/e32btrace.h"/>
+                    <cxxFunctionDeclarationFileLine name="lineNumber" value="3882"/>
+                    <cxxFunctionDefinitionFile name="filePath" value="D:/EPOC/master/sf/mw/messagingmw/messagingfw/alwaysonline/AlwaysOnlineManager/src/AlwaysOnlineManagerClient.cpp"/>
+                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
+                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
+                </cxxFunctionAPIItemLocation>
+            </cxxFunctionDefinition>
+            <apiDesc/>
+        </cxxFunctionDetail>
+    </cxxFunction>"""
+        func_elem = etree.fromstring(func_str)
+        returned = self.link_file._insert_id_into_cxxfunction_apiname(func_elem)
+        self.assertEquals(returned.find("apiName").attrib["id"], "GUID-C8A77671-4E2F-3290-9592-84A70B14F88D")
 
+    def test__insert_a_guidised_id_into_cxxfunction_apiname_when_the_cxxfunction_has_no_scoped_name(self):
+        self.link_file = LinkFile(guidise=True)
+        func_str = """<cxxFunction id="class_b_trace_1a7217f2fa88e99af3dbb5827fdc8507b7">
+        <apiName>Init0</apiName>
+        <shortdesc/>
+        <cxxFunctionDetail>
+            <cxxFunctionDefinition>
+                <cxxFunctionAccessSpecifier value="public"/>
+                <cxxFunctionStorageClassSpecifierStatic/>
+                <cxxFunctionDeclaredType>void</cxxFunctionDeclaredType>
+                <cxxFunctionScopedName/>
+                <cxxFunctionPrototype>static void Init0(TUint32 a0)</cxxFunctionPrototype>
+                <cxxFunctionNameLookup>BTrace::Init0(TUint32 a0)</cxxFunctionNameLookup>
+                <cxxFunctionParameters>
+                    <cxxFunctionParameter>
+                        <cxxFunctionParameterDeclaredType>
+                            <apiRelation keyref="_always_online_manager_client_8cpp_1a8240e11f17c80b6b222fc2af50234da4">TUint32</apiRelation>
+                        </cxxFunctionParameterDeclaredType>
+                        <cxxFunctionParameterDeclarationName>a0</cxxFunctionParameterDeclarationName>
+                        <apiDefNote/>
+                    </cxxFunctionParameter>
+                </cxxFunctionParameters>
+                <cxxFunctionAPIItemLocation>
+                    <cxxFunctionDeclarationFile name="filePath" value="D:/epoc32/include/e32btrace.h"/>
+                    <cxxFunctionDeclarationFileLine name="lineNumber" value="3882"/>
+                    <cxxFunctionDefinitionFile name="filePath" value="D:/EPOC/master/sf/mw/messagingmw/messagingfw/alwaysonline/AlwaysOnlineManager/src/AlwaysOnlineManagerClient.cpp"/>
+                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
+                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
+                </cxxFunctionAPIItemLocation>
+            </cxxFunctionDefinition>
+            <apiDesc/>
+        </cxxFunctionDetail>
+    </cxxFunction>"""
+        func_elem = etree.fromstring(func_str)
+        returned = self.link_file._insert_id_into_cxxfunction_apiname(func_elem)
+        self.assertEquals(returned.find("apiName").attrib["id"], "GUID-76C4A377-8597-3952-9E6B-3E61D068EE38")
+        
+    def test_i_can_insert_a_guidised_id_to_a_cxxfunction_apiname(self):
+        self.link_file = LinkFile(guidise=True)
+        file_as_string = """    
+        <cxxClass>
+<cxxFunction id="class_b_trace_1a7217f2fa88e99af3dbb5827fdc8507b7">
+        <apiName>Init0</apiName>
+        <shortdesc/>
+        <cxxFunctionDetail>
+            <cxxFunctionDefinition>
+                <cxxFunctionAccessSpecifier value="public"/>
+                <cxxFunctionStorageClassSpecifierStatic/>
+                <cxxFunctionDeclaredType>void</cxxFunctionDeclaredType>
+                <cxxFunctionScopedName>BTrace</cxxFunctionScopedName>
+                <cxxFunctionPrototype>static void Init0(TUint32 a0)</cxxFunctionPrototype>
+                <cxxFunctionNameLookup>BTrace::Init0(TUint32 a0)</cxxFunctionNameLookup>
+                <cxxFunctionParameters>
+                    <cxxFunctionParameter>
+                        <cxxFunctionParameterDeclaredType>
+                            <apiRelation keyref="_always_online_manager_client_8cpp_1a8240e11f17c80b6b222fc2af50234da4">TUint32</apiRelation>
+                        </cxxFunctionParameterDeclaredType>
+                        <cxxFunctionParameterDeclarationName>a0</cxxFunctionParameterDeclarationName>
+                        <apiDefNote/>
+                    </cxxFunctionParameter>
+                </cxxFunctionParameters>
+                <cxxFunctionAPIItemLocation>
+                    <cxxFunctionDeclarationFile name="filePath" value="D:/epoc32/include/e32btrace.h"/>
+                    <cxxFunctionDeclarationFileLine name="lineNumber" value="3882"/>
+                    <cxxFunctionDefinitionFile name="filePath" value="D:/EPOC/master/sf/mw/messagingmw/messagingfw/alwaysonline/AlwaysOnlineManager/src/AlwaysOnlineManagerClient.cpp"/>
+                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
+                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
+                </cxxFunctionAPIItemLocation>
+            </cxxFunctionDefinition>
+            <apiDesc/>
+        </cxxFunctionDetail>
+    </cxxFunction>
+        </cxxClass>"""
+        returned = self.link_file.get_linkified(file_as_string)
+        self.assertEquals(etree.fromstring(returned).find("cxxFunction/apiName").attrib["id"], "GUID-C8A77671-4E2F-3290-9592-84A70B14F88D")
+        
 basic_class_file_str = """\    
 <cxxClass>
     <cxxFunction id="function_id">

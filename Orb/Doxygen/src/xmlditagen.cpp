@@ -29,6 +29,7 @@
 #include "language.h"
 #include "parserintf.h"
 // DITA Specific includes
+#include "xmldita.h"
 #include "xmlwriter.h"
 #include "xmlditagen.h"
 #include "xmlditaelementprefix.h"
@@ -57,11 +58,10 @@
 
 #define DITA_FILE_MEMBERS_IN_OWN_TOPICS		0
 
-/** If 1 then the internal Doxygen ID is used as the value of the id attribute
-otherwise another ID is used, for example the Fully Qualified name and that
-may contain characters that are not acceptable as an XML ID
-*/
-#define USE_DOXYGEN_ID_AS_XML_ID			0
+// If set this emits keyref attributes, otherwise they are href attributes
+#define DITA_KEYREF_SUPPORT					0
+// If set this emits <shortdesc> element
+#define DITA_SHORTDESC_SUPPORT				0
 
 // Global instance of the DITAElementPrefix class for use within this code
 static DITAElementPrefix g_elemPrefix;
@@ -81,16 +81,33 @@ private:
 // NOTE: There is a strong similarity here with DITAGenertorBase::id()
 void TextGeneratorXMLDITALinker::writeLink(const ClassDef *cd, const char *text) const
 {
+#if DITA_KEYREF_SUPPORT
 	XmlElement elem(m_xt, "apiRelation", "keyref", cd->getOutputFileBase());
+#else
+	QString mdId = cd->getOutputFileBase();
+	mdId.append(Config_getString("XML_DITA_EXTENSION"));
+	mdId.append("#");
+	mdId.append(cd->getOutputFileBase());
+	XmlElement elem(m_xt, "apiRelation", "href", mdId);
+#endif
 	m_xt.characters(text);
 }
 
 // NOTE: There is a strong similarity here with DITAGenertorBase::id()
 void TextGeneratorXMLDITALinker::writeLink(const MemberDef *md, const char *text) const
 {
+#if DITA_KEYREF_SUPPORT
 	QString mdId = md->getOutputFileBase();
 	mdId.append("_1" + md->anchor());
 	XmlElement elem(m_xt, "apiRelation", "keyref", mdId);
+#else
+	QString mdId = md->getOutputFileBase();
+	mdId.append(Config_getString("XML_DITA_EXTENSION"));
+	mdId.append("#");
+	mdId.append(md->getOutputFileBase());
+	mdId.append("_1" + md->anchor());
+	XmlElement elem(m_xt, "apiRelation", "href", mdId);
+#endif
 	m_xt.characters(text);
 }
 
@@ -209,6 +226,33 @@ void linkifyTextDITA(const TextGeneratorXMLDITALinker &out,
 	out.writeString(txtStr.right(txtStr.length()-skipIndex), FALSE);
 }
 
+#if USE_DOXYGEN_ID_AS_XML_ID == 0
+// This is a tempory hack to give Doxygen Definition objects a different ID
+// that can be used by the visitor class when writing xref's
+#include "xmlditaxrefmap.h"
+
+void DITAGeneratorBase::remapXrefs(DocNode *root) const
+{
+	XmlDitaXrefERemapDocVisitor v;
+	// visit all nodes
+	root->accept(&v);
+    XrefMapT::Iterator it;
+	for( it = v.m_XrefRemap.begin(); it != v.m_XrefRemap.end(); ++it ) {
+		//QString myNewStr = id(it.key());
+		Definition *d = it.key();
+		if (d->definitionType() == Definition::TypeMember) {
+			v.m_XrefRemap[it.key()] = id((MemberDef*)it.key());
+		} else {
+			v.m_XrefRemap[it.key()] = id(it.key());
+		}
+	}
+	for( it = v.m_XrefRemap.begin(); it != v.m_XrefRemap.end(); ++it ) {
+		printf("Horrible remap hack: %x -> %s\n", it.key(), it.data().data());
+    }
+}
+
+#endif
+
 
 /****************************************************
  * Section: DITAGeneratorBase - Common functionality.
@@ -230,6 +274,9 @@ void DITAGeneratorBase::writeXMLDocBlock(XmlStream &t,
 	}
 	// convert the documentation string into an abstract syntax tree
 	DocNode *root = validatingParseDoc(fileName, lineNr, scope, md, text+"\n", FALSE, FALSE);
+#if USE_DOXYGEN_ID_AS_XML_ID == 0
+	remapXrefs(root);
+#endif
 	// create a code generator
 	XMLDITACodeGenerator *xmlCodeGen = new XMLDITACodeGenerator(t);
 	// create a parse tree visitor for XML
@@ -361,7 +408,15 @@ For example is suffix is "BaseClass":
 */
 void DITAGeneratorBase::writeReferenceTo(XmlStream &xs, const ClassDef *cd, const QString &suffix)
 {
+#if DITA_KEYREF_SUPPORT
 	XmlElement e(xs, g_elemPrefix.elemReference(cd)+suffix, "keyref", id(cd));
+#else
+	QString mdId = cd->getOutputFileBase();
+	mdId.append(Config_getString("XML_DITA_EXTENSION"));
+	mdId.append("#");
+	mdId.append(id(cd));
+	XmlElement e(xs, g_elemPrefix.elemReference(cd)+suffix, "href", mdId);
+#endif
 	xs.characters(cd->qualifiedName());
 }
 
@@ -370,7 +425,15 @@ For example <cxxFunction+suffix keyref="xvz">xzy</cxxFunction+suffix>
 */
 void DITAGeneratorBase::writeReferenceTo(XmlStream &xs, const MemberDef *md, const QString &suffix)
 {
+#if DITA_KEYREF_SUPPORT
 	XmlElement e(xs, g_elemPrefix.elemReference(md)+suffix, "keyref", id(md));
+#else
+	QString mdId = md->getOutputFileBase();
+	mdId.append(Config_getString("XML_DITA_EXTENSION"));
+	mdId.append("#");
+	mdId.append(id(md));
+	XmlElement e(xs, g_elemPrefix.elemReference(md)+suffix, "href", mdId);
+#endif
 	xs.characters(nameLookup(md));
 }
 
@@ -379,23 +442,60 @@ For example <cxxClassFunction+suffix keyref="xvz">xzy</cxxClassFunction+suffix>
 */
 void DITAGeneratorBase::writeReferenceTo(XmlStream &xs, const ClassDef *cd, const MemberDef *md, const QString &suffix)
 {
+#if DITA_KEYREF_SUPPORT
 	XmlElement e(xs,
 		g_elemPrefix.elemReference(cd)+g_elemPrefix.memberKind(md)+suffix,
 		"keyref",
 		id(md));
+#else
+	QString mdId = cd->getOutputFileBase();
+	mdId.append(Config_getString("XML_DITA_EXTENSION"));
+	mdId.append("#");
+	mdId.append(id(md));
+	XmlElement e(xs,
+		g_elemPrefix.elemReference(cd)+g_elemPrefix.memberKind(md)+suffix,
+		"href",
+		mdId);
+#endif
 	xs.characters(nameLookup(md));
 }
 
 void DITAGeneratorBase::writeInnerClasses(const ClassDef *pc, const ClassSDict *cl, XmlStream &t)
 {
+	bool mustWrite = false;
 	if (cl) {
 		ClassSDict::Iterator cli(*cl);
 		ClassDef *cd;
 		for (cli.toFirst(); (cd = cli.current()); ++cli) {
 			// skip anonymous scopes
+			if (cd && !cd->isHidden() && cd->name().find('@')==-1) {
+				mustWrite = true;
+				break;
+			}
+		}
+	}
+	if (cl && mustWrite) {
+		ClassSDict::Iterator cli(*cl);
+		XmlElement el0(t, g_elemPrefix.elemPrefix(pc, true)+"Nested");
+		XmlElement el1(t, g_elemPrefix.elemPrefix(pc, true)+"NestedDetail");
+		ClassDef *cd;
+		for (cli.toFirst(); (cd = cli.current()); ++cli) {
+			// skip anonymous scopes
 			if (!cd->isHidden() && cd->name().find('@')==-1) {
+				//writeXMLElementAndText(t, "apiName", cd->name());
 				// "Nested*" is chosen because of ISO/IEC 14882:1998(E) 9.7 Nested class declarations [class.nest]
-				writeReferenceTo(t, pc, "Nested" + g_elemPrefix.memberKind(cd));
+				//writeReferenceTo(t, pc, "Nested" + g_elemPrefix.memberKind(cd));
+				//void DITAGeneratorBase::writeReferenceTo(XmlStream &xs, const ClassDef *cd, const MemberDef *md, const QString &suffix)
+				// Note quirky way of composeing this
+				QString mdId = cd->getOutputFileBase();
+				mdId.append(Config_getString("XML_DITA_EXTENSION"));
+				mdId.append("#");
+				mdId.append(id(cd));
+				XmlElement e(t,
+					g_elemPrefix.elemReference(pc)+"Nested" + g_elemPrefix.memberKind(cd),
+					"href",
+					mdId);
+				t.characters(cd->name());
 			}
 		}
 	}
@@ -492,6 +592,7 @@ void DITAGeneratorBase::writeTemplateArgumentList(MemberDef *md,
 
 void DITAGeneratorBase::generateXMLForBriefDescription(Definition *d, MemberDef *md, XmlStream &xs) const
 {
+#if DITA_SHORTDESC_SUPPORT
 	XmlElement e(xs, "shortdesc");
 	// TODO: Remove once we work out what to do here (shortdesc cannot have p etc.)
 	ParamDescriptionMap *pMap = new ParamDescriptionMap();
@@ -503,6 +604,7 @@ void DITAGeneratorBase::generateXMLForBriefDescription(Definition *d, MemberDef 
 		writeXMLDocBlock(xs, md->briefFile(), md->briefLine(), d, md, md->briefDescription(), pMap);
 	}
 	delete pMap;
+#endif
 }
 
 void DITAGeneratorBase::generateXMLForDetailedDescription(Definition *d, MemberDef *md, XmlStream &xs) const
@@ -533,13 +635,20 @@ void DITAGeneratorBase::writeFileLocation(Definition *d, XmlStream &xt, const QS
 		attrs["value"] = lineNum.setNum(d->getDefLine());
 		XmlElement(xt, prefix+"DeclarationFileLine", attrs);
 	}
-	FileDef *fDef = d->getBodyDef();
-	if (fDef && incDef) {
+	if (incDef && d->getStartBodyLine() != -1 && d->getEndBodyLine() != -1) {
+		QString defFileName;
+		FileDef *fDef = d->getBodyDef();
+		if (fDef && d->definitionType() == Definition::TypeMember) {
+			// Functions etc.
+			defFileName = fDef->absFilePath();
+		} else {
+			defFileName = d->getDefFileName();
+		}
 		// <definitionFile name="path" value="src/foo.cpp”/ >
 		// <definitionFileLineStart name="line" value="754"/>
 		// <definitionFileLineEnd name="line" value="778"/>
 		attrs["name"] = "filePath";
-		attrs["value"] = fDef->absFilePath();
+		attrs["value"] = defFileName;
 		XmlElement(xt, prefix+"DefinitionFile", attrs);
 		attrs["name"] = "lineNumber";
 		attrs["value"] = lineNum.setNum(d->getStartBodyLine());
@@ -577,7 +686,7 @@ void DITAGeneratorBase::writeMemberTemplateLists(MemberDef *md, XmlStream &xt)
 QCString DITAGeneratorBase::outputFileNameFromDefinition(Definition *d) const
 {
 	QCString outputDirectory = Config_getString("XML_DITA_OUTPUT");
-	QCString fileName = outputDirectory + "/" + d->getOutputFileBase() + ".xml";
+	QCString fileName = outputDirectory + "/" + d->getOutputFileBase() + Config_getString("XML_DITA_EXTENSION");
 	return fileName;
 }
 
@@ -754,53 +863,60 @@ void DITAGeneratorBase::writeMemberBitField(const MemberDef *md, XmlStream &xt) 
 }
 
 /** Write DITA for member that has enumerator values */
-void DITAGeneratorBase::writeMemberEnumerator(const MemberDef *md, XmlStream &xt) const
+void DITAGeneratorBase::writeMemberEnumerator(const MemberDef *md, XmlStream &xt)
 {
 	ASSERT(md->memberType() == MemberDef::Enumeration);
 	LockingPtr<MemberList> enumFields = md->enumFieldList();
 	if (enumFields != 0) {
 		MemberListIterator emli(*enumFields);
 		MemberDef *emd;
+		// Locals to eliminate duplicate IDs
+		bool eliminateDupeIds = Config_getBool("XML_DITA_OMIT_DUPLICATE_MEMBERS");
 		// Element is cxxEnumerators not cxxEnumerations
 		XmlElement enumeratorListElem(xt, g_elemPrefix.elemPrefix(md, false)+"Enumerators");
 		for (emli.toFirst(); (emd = emli.current()); ++emli) {
-			XmlElement enemElem(
-				xt,
-				g_elemPrefix.elemPrefix(emd, true),
-				"id",
-				id(emd));
-			// Access qualifier
-			//writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(emd, true)+"Name", emd->name());
-			writeXMLElementAndText(xt, "apiName", emd->name());
-			generateXMLForBriefDescription(emd->getOuterScope(), emd, xt);
-			// <cxxEnumeratorDetail>
-			XmlElement enumeratorDetail(xt, g_elemPrefix.elemPrefix(emd, true)+"Detail");
-			{
-				// <cxxEnumeratorDefinition>
-				XmlElement enumeratorDetail(xt, g_elemPrefix.elemPrefix(emd, true)+"Definition");
-				writeAccessSpecifierElement(xt, emd, emd->protection());
-				// Name, prototype and name lookup
-				QCString scopeName;
-				if (md->getClassDef()) { 
-					scopeName=md->getClassDef()->name();
-				} else if (md->getNamespaceDef()) {
-					scopeName=md->getNamespaceDef()->name();
-				}
-				// Scope of this member
-				writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(emd, true)+"ScopedName", scopeName);
-				// 'Visual' prototype
-				writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(emd, true)+"Prototype", visualPrototype(emd));
-				// A string that represents the lookup
-				writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(emd, true)+"NameLookup", nameLookup(emd));
+			if (!eliminateDupeIds || m_memberIdMap.find(id(emd)) == m_memberIdMap.end()) {
+				XmlElement enemElem(
+					xt,
+					g_elemPrefix.elemPrefix(emd, true),
+					"id",
+					id(emd));
+				// Access qualifier
+				//writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(emd, true)+"Name", emd->name());
+				writeXMLElementAndText(xt, "apiName", emd->name());
+				generateXMLForBriefDescription(emd->getOuterScope(), emd, xt);
+				// <cxxEnumeratorDetail>
+				//XmlElement enumeratorDetail(xt, g_elemPrefix.elemPrefix(emd, true)+"Detail");
+				{
+					// <cxxEnumeratorDefinition>
+					//XmlElement enumeratorDetail(xt, g_elemPrefix.elemPrefix(emd, true)+"Definition");
+					//writeAccessSpecifierElement(xt, emd, emd->protection());
+					// Name, prototype and name lookup
+					QCString scopeName;
+					if (md->getClassDef()) { 
+						scopeName=md->getClassDef()->name();
+					} else if (md->getNamespaceDef()) {
+						scopeName=md->getNamespaceDef()->name();
+					}
+					// Scope of this member
+					writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(emd, true)+"ScopedName", scopeName);
+					// 'Visual' prototype
+					writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(emd, true)+"Prototype", visualPrototype(emd));
+					// A string that represents the lookup
+					writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(emd, true)+"NameLookup", nameLookup(emd));
 
-				if (!emd->initializer().isEmpty()) {
-					XmlElement(xt, g_elemPrefix.elemPrefix(emd, true)+"Initialiser", "value", emd->initializer().simplifyWhiteSpace());
-					//writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+"Initializer", emd->initializer().simplifyWhiteSpace());
-				}
-				writeFileLocation(emd, xt, g_elemPrefix.elemPrefix(emd, true), false);
-			} // </cxxEnumeratorDefinition>
-			generateXMLForDetailedDescription(emd->getOuterScope(), emd, xt);
-			// </cxxEnumeratorDetail>
+					if (!emd->initializer().isEmpty()) {
+						XmlElement(xt, g_elemPrefix.elemPrefix(emd, true)+"Initialiser", "value", emd->initializer().simplifyWhiteSpace());
+						//writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+"Initializer", emd->initializer().simplifyWhiteSpace());
+					}
+					writeFileLocation(emd, xt, g_elemPrefix.elemPrefix(emd, true), false);
+				} // </cxxEnumeratorDefinition>
+				generateXMLForDetailedDescription(emd->getOuterScope(), emd, xt);
+				// </cxxEnumeratorDetail>
+			}
+			if (eliminateDupeIds) {
+				m_memberIdMap.insert(id(emd), true);
+			}
 		}
 	}
 }
@@ -818,7 +934,11 @@ void DITAGeneratorBase::generateXMLForMember(MemberDef *md, XmlStream &xt, Defin
 	if(md->memberType() == MemberDef::Friend) {
 		return;
 	}
-
+	// Locals to eliminate duplicate IDs
+	bool eliminateDupeIds = Config_getBool("XML_DITA_OMIT_DUPLICATE_MEMBERS");
+	if (eliminateDupeIds && m_memberIdMap.find(id(md)) != m_memberIdMap.end()) {
+		return;
+	}
 	bool isFunc=FALSE;
 	switch (md->memberType()) {
 		case MemberDef::EnumValue:
@@ -882,8 +1002,10 @@ void DITAGeneratorBase::generateXMLForMember(MemberDef *md, XmlStream &xt, Defin
 			} else if (md->getNamespaceDef()) {
 				scopeName=md->getNamespaceDef()->name();
 			}
-			// Scope of this member
-			writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+"ScopedName", scopeName);
+			// Scope of this member, except for #defines
+			if (md->memberType() != MemberDef::Define) {
+				writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+"ScopedName", scopeName);
+			}
 			// 'Visual' prototype
 			writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+"Prototype", visualPrototype(md));
 			// Lookup string
@@ -901,7 +1023,8 @@ void DITAGeneratorBase::generateXMLForMember(MemberDef *md, XmlStream &xt, Defin
 			// Re-implements
 			{
 				MemberDef *rmd = md->reimplements();
-				if (rmd) {
+				// NOTE: Do not re-implement different types
+				if (rmd && rmd->memberType() == md->memberType()) {
 					//XmlElement reimplementsElem(xt, g_elemPrefix.elemPrefix(md, true)+"Reimplements");
 					writeReferenceTo(xt, rmd, "Reimplemented");
 				}
@@ -938,6 +1061,10 @@ void DITAGeneratorBase::generateXMLForMember(MemberDef *md, XmlStream &xt, Defin
 	if (md->excpString()) {
 		XmlElement exceptionsElem(xt, "exceptions");
 		linkifyTextDITA(TextGeneratorXMLDITALinker(xt), def, md->getBodyDef(), md->excpString());
+	}
+	// Record that we have written this ID
+	if (eliminateDupeIds) {
+		m_memberIdMap.insert(id(md), true);
 	}
 }
 
@@ -1044,8 +1171,11 @@ QString DITAGeneratorBase::visualPrototype(const MemberDef *md) const
 	return retStr;
 }
 
-/** Returns the id as a string. This follows the near-identical convention
-of Doxygen XML id attibutes. */
+/** Returns the id as a string. If USE_DOXYGEN_ID_AS_XML_ID is non-zero
+then this follows the near-identical convention
+of Doxygen XML id attibutes.
+Otherwise it may do something different.
+*/
 QString DITAGeneratorBase::id(const Definition *d) const
 {
 #if USE_DOXYGEN_ID_AS_XML_ID
@@ -1084,9 +1214,13 @@ QString DITAGeneratorBase::id(const PageDef *pd) const
 AttributeMap DITAGeneratorBase::getMapAttributes(const Definition *d) const
 //(const QString &id) const
 {
+	// TODO: DITA does not allow a href to refer to an ID within a topic
+	// so the #... shoudl be removed. It is only here temporarily
+	// so that the map creator can pick up the fully qualified name from
+	// the part after the '#'
 	AttributeMap mapAttrs;
-	//mapAttrs.insert("href", id + ".xml#" + id);
-	QString myHref = d->getOutputFileBase() + ".xml#";
+	//mapAttrs.insert("href", id + Config_getString("XML_DITA_EXTENSION") + #" + id);
+	QString myHref = d->getOutputFileBase() + Config_getString("XML_DITA_EXTENSION") + "#";
 	myHref += id(d);
 	mapAttrs.insert("href", myHref);
 	mapAttrs.insert("navtitle", d->qualifiedName());
@@ -1139,6 +1273,9 @@ void DITAClassGenerator::writeDITAMapEntryForClass(ClassDef *cd)
 	if (skipThisClass(cd)) {
 		return;
 	}
+	if (!isCompletelyDefined(cd)) {
+		return;
+	}
 	/*
 	Definition *d = cd->getOuterScope();
 	Definition::DefType dt = d->definitionType();
@@ -1176,17 +1313,62 @@ bool DITAClassGenerator::skipThisClass(ClassDef *cd) const
 	if (cd->templateMaster() != 0) {
 		return true; // skip generated template instances.
 	}
-	return false;
+	// Check type of class, only class/struct/union supported
+	bool retVal = true;
+	switch (cd->compoundType()) {
+		// Note fall through
+		case ClassDef::Class:
+		case ClassDef::Struct:
+		case ClassDef::Union:
+			retVal = false;
+			break;
+		default:
+			retVal = true;
+			break;
+	}
+	return retVal;
+}
+
+/** Returns true if all members functions are defined */
+bool DITAClassGenerator::isCompletelyDefined(ClassDef *cd) const
+{
+	if (Config_getBool("XML_DITA_OMIT_UNLINKABLE")) {
+		if (cd->memberNameInfoSDict()) {
+			MemberNameInfoSDict::Iterator mnii(*cd->memberNameInfoSDict());
+			MemberNameInfo *mni;
+			for (mnii.toFirst(); (mni=mnii.current()); ++mnii) {
+				MemberNameInfoIterator mii(*mni);
+				MemberInfo *mi;
+				for (mii.toFirst(); (mi=mii.current()); ++mii) {
+					MemberDef *md = mi->memberDef;
+					if (md->memberType() == MemberDef::Function) {
+						if (md->getBodyDef() == 0
+							|| md->getStartBodyLine() == -1
+							|| md->getEndBodyLine() == -1) {
+								return false;
+						}
+					}
+				}
+			}
+		}
+	}
+	return true;
 }
 
 
 void DITAClassGenerator::generateXMLForClass(ClassDef *cd)
 {
+	// Clear the duplicate ID map regardless of what we write
+	m_memberIdMap.clear();
 	if (skipThisClass(cd)) {
 		return;
 	}
-
 	msg("Generating XML DITA output for class %s i.e. %s\n", cd->name().data(), cd->className().data());
+	//msg("Generating XML DITA output for class %s type=%d\n", cd->name().data(), cd->compoundType());
+	if (!isCompletelyDefined(cd)) {
+		msg("Rejecting XML DITA output for class not completely defined: %s\n", cd->name().data());
+		return;
+	}
 	// Initialise DITA file stream for this class
 	XmlStream xt(outputFileNameFromDefinition(cd), "UTF-8", "no", g_elemPrefix.doctypeStr(cd));
 	if (!xt.isOpen()) {
@@ -1265,11 +1447,11 @@ void DITAClassGenerator::generateXMLForClass(ClassDef *cd)
 			MemberNameLookupMap::Iterator iter;
 			for (iter = memberMap.begin(); iter != memberMap.end(); ++iter) {
 				MemberDef *tempMd = iter.data();
-				if (tempMd->getClassDef() != cd) {
+				if (tempMd->getClassDef() && tempMd->getClassDef() != cd) {
 					//printf("Inherited members, accepting formal name: \"%s\"\n", iter.key().data());
 					// TODO: Fix once cxxClassTypedefInherited and cxxClassFriendInherited are supported by the dtds
 					if ((iter.data()->memberType() != MemberDef::Typedef) && (g_elemPrefix.memberKind(iter.data()) != "Friend")) {
-						writeReferenceTo(xt, cd, iter.data(), "Inherited");
+						writeReferenceTo(xt, tempMd->getClassDef(), iter.data(), "Inherited");
 					}
 				} else {
 					//printf("Inherited members, rejecting formal name: \"%s\"\n", iter.key().data());
@@ -1298,7 +1480,8 @@ void DITAClassGenerator::generateXMLForBaseDerivedClasses(XmlStream& t, BaseClas
 /** Returns a map of class/struct/union members in source code declaration line order. 
 If incAllMembers is true then all members (including inherited members) is added
 otherwise only direct members are included. The test is: md->getClassDef() == cd */
-SrcDeclMemberMap DITAClassGenerator::membersInDeclOrder(ClassDef *cd, bool incAllMembers)
+SrcDeclMemberMap DITAClassGenerator::membersInDeclOrder(ClassDef *cd,
+														bool incAllMembers)
 {
 	SrcDeclMemberMap retMap;
 	//printf("membersInDeclOrder() class is \"%s\"\n", cd->qualifiedName().data());
@@ -1330,7 +1513,7 @@ If incAllMembers is true then all members (including inherited members) is added
 otherwise only direct members are included. The test is: md->getClassDef() == cd
 */
 MemberNameLookupMap DITAClassGenerator::membersInFormalDeclOrder(ClassDef *cd,
-													bool incAllMembers)
+														bool incAllMembers)
 {
 	MemberNameLookupMap retMap;
 	//printf("membersInDeclOrder() class is \"%s\"\n", cd->qualifiedName().data());
@@ -1381,6 +1564,7 @@ void DITANamespaceGenerator::generateXMLForNamespaces()
 
 void DITANamespaceGenerator::generateXMLForNamespace(NamespaceDef *nd)
 {
+	m_memberIdMap.clear();
 	if (nd->isReference() || nd->isHidden()) {
 		return; // skip external references
 	}
@@ -1491,6 +1675,7 @@ void DITAPageGenerator::generateXMLForMainPage()
 
 void DITAPageGenerator::generateXMLForPage(PageDef *pd, bool isExample)
 {
+	m_memberIdMap.clear();
 	if (pd->isReference()) {
 		return;
 	}
@@ -1498,9 +1683,9 @@ void DITAPageGenerator::generateXMLForPage(PageDef *pd, bool isExample)
 	// Index entry
 	XmlElement(ix, "topicref", getMapAttributes(pd));
 	// Note: Non-standard way of creating filename
-	QCString pageName = id(pd);
+	QCString pageName = pd->getOutputFileBase();//id(pd);
 	QCString outputDirectory = Config_getString("XML_DITA_OUTPUT");
-	XmlStream xt(outputDirectory+"/"+pageName+".xml",
+	XmlStream xt(outputDirectory+"/"+pageName+Config_getString("XML_DITA_EXTENSION"),
 		"UTF-8",
 		"no",
 		"topic PUBLIC \"-//OASIS//DTD DITA Topic//EN\" \"../../dtd/topic.dtd\"");
@@ -1533,7 +1718,7 @@ void DITAFileGenerator::generateXMLForFiles()
 		FileNameIterator fni(*fn);
 		FileDef *fd;
 		for (;(fd=fni.current());++fni) {
-			msg("Generating XML DITA output for file %s\n", fd->name().data());
+			//printf("Generting DITA for File: %s\n", fd->absFilePath().data());
 			generateXMLForFile(fd);
 		}
 	}
@@ -1557,12 +1742,14 @@ void DITAFileGenerator::writeXMLDITACodeBlock(XmlStream &t,FileDef *fd)
 
 void DITAFileGenerator::generateXMLForFile(FileDef *fd)
 {
+	m_memberIdMap.clear();
 	if (fd->isReference()) {
 		return; // skip external references
 	}
 	// Look ahead to see if there are any members if not don't write anything
 	// and don't make an index entry
 	if (!fileHasMembers(fd, false)) {
+		msg("Generating XML DITA output for file %s - no members\n", fd->name().data());
 		return;
 	}
 	// Index entry
@@ -1571,6 +1758,7 @@ void DITAFileGenerator::generateXMLForFile(FileDef *fd)
 	QCString outputDirectory = Config_getString("XML_DITA_OUTPUT");
 	// Initialise DITA file stream for this file
 	XmlStream xt(outputFileNameFromDefinition(fd), "UTF-8", "no", g_elemPrefix.doctypeStr(fd));
+	msg("Generating XML DITA output for file %s -> %s\n", fd->name().data(), outputFileNameFromDefinition(fd).data());
 	if (!xt.isOpen()) {
 		err("Cannot open file %s for writing!\n", outputFileNameFromDefinition(fd).data());
 		return;
@@ -1639,19 +1827,21 @@ void DITAFileGenerator::generateXMLForFile(FileDef *fd)
 			//generateXMLForMember(iter.data(), ix, xt, fd);
 			QCString memberFileName = outputDirectory + "/";
 			memberFileName.append(id(iter.data()));
-			memberFileName.append(".xml");
+			memberFileName.append(Config_getString("XML_DITA_EXTENSION"));
 			XmlStream xm(memberFileName, "UTF-8", "no", g_elemPrefix.doctypeStr(iter.data()));
 			generateXMLForMember(iter.data(), xm, fd);
 		}
 	}
 #endif
 	// This is file description stuff, make it a cxxHeader???
-	generateXMLForBriefDescription(fd, 0, xt);
+	//generateXMLForBriefDescription(fd, 0, xt);
+	/*
 	// <cxxFileDetail>
 	{
 		XmlElement elemClassDetail(xt, g_elemPrefix.elemPrefix(fd, true)+"Detail");
 		generateXMLForDetailedDescription(fd, 0, xt);
 	}
+	*/
 #if DITA_FILE_MEMBERS_IN_OWN_TOPICS
 	{
 		XmlElement elemRoot(xt, g_elemPrefix.elemPrefix(fd, true)+"Members");
@@ -1702,7 +1892,7 @@ is the supplied file - this test is done with a file name string match */
 SrcDeclMemberMap DITAFileGenerator::membersInDeclOrder(FileDef *fd, bool incAllMembers)
 {
 	SrcDeclMemberMap retMap;
-	printf("membersInDeclOrder() file is \"%s\"\n", fd->absFilePath().data());
+	//printf("membersInDeclOrder() file is \"%s\"\n", fd->absFilePath().data());
 	QListIterator<MemberList> mli(fd->getMemberLists());
 	MemberList *ml;
 	for (mli.toFirst();(ml=mli.current());++mli) {
@@ -1781,6 +1971,7 @@ void DITADirGenerator::writeInnerDirs(const DirList *dl, XmlStream & xt)
 
 void DITADirGenerator::generateXMLForDir(DirDef *dd)
 {
+	m_memberIdMap.clear();
 	if (dd->isReference()) {
 		return; // skip external references
 	}
@@ -1806,6 +1997,7 @@ void DITAGroupGenerator::generateXMLForGroups()
 
 void DITAGroupGenerator::generateXMLForGroup(GroupDef *gd)
 {
+	m_memberIdMap.clear();
 	if (gd->isReference()) {
 		return; // skip external references
 	}
@@ -1839,8 +2031,9 @@ void generateXML(QCString outputDirectory)
 	if (mapTitle == "") {
 		mapTitle = "root";
 	}
+	msg("DITA output for project \"%s\" - started.\n", mapTitle.data());
 	XmlStream ix(
-		outputDirectory+"/"+mapTitle+".ditamap",
+		outputDirectory+"/"+mapTitle+Config_getString("XML_DITA_EXTENSION_DITAMAP"),
 		"UTF-8",
 		"no",
 		g_elemPrefix.doctypeStr("C++", "cxxAPIMap", "Map")
@@ -1888,6 +2081,7 @@ void generateXML(QCString outputDirectory)
 	traceComment.append(versionString);
 	traceComment.append("\n");
 	ix.comment(traceComment);
+	msg("DITA output for project \"%s\" - finished.\n", mapTitle.data());
 }
 
 bool createOutputDirectory(QCString &outputDirectory) 

@@ -7,7 +7,7 @@
  *-->
 <!--vocabulary declarations-->
 <!ENTITY % mapgroup-d-dec PUBLIC "-//OASIS//ENTITIES DITA Map Group Domain//EN" 
-  "../../../dtd/mapgroup.ent">
+  "../../../dtd/base/dtd/mapGroup.ent">
   %mapgroup-d-dec;
 
 <!--vocabulary substitution (one for each extended base element,
@@ -18,7 +18,7 @@
 <!ENTITY included-domains "&mapgroup-d-att;"                         >
 
 <!--Embed map to get generic elements -->
-<!ENTITY % map-type PUBLIC "-//OASIS//Elements DITA Map//EN" "../../../dtd/map.mod">
+<!ENTITY % map-type PUBLIC "-//OASIS//Elements DITA Map//EN" "../../../dtd/base/dtd/map.mod">
   %map-type;
 
 <!ENTITY % apimap-type PUBLIC "-//IBM//ELEMENTS DITA API Reference Map//EN" "apiMap.mod">
@@ -27,6 +27,6 @@
 
 <!--vocabulary definitions-->
 <!ENTITY % mapgroup-d-def PUBLIC "-//OASIS//ELEMENTS DITA Map Group Domain//EN" 
-  "../../../dtd/mapgroup.mod">
+  "../../../dtd/base/dtd/mapGroup.mod">
   %mapgroup-d-def;
 

@@ -2613,6 +2613,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\xmldita.h"
+				>
+			</File>
+			<File
 				RelativePath="..\src\xmlditacodegenerator.h"
 				>
 			</File>
@@ -2630,6 +2634,10 @@
 			</File>
 			<File
 				RelativePath="..\src\xmlditatrace.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\xmlditaxrefmap.h"
 				>
 			</File>
 			<File

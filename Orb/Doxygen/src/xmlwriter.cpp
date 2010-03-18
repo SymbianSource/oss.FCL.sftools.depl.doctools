@@ -1,14 +1,29 @@
+/******************************************************************************
+ *
+ * Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+ *
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation under the terms of the GNU General Public License is hereby 
+ * granted. No representations are made about the suitability of this software 
+ * for any purpose. It is provided "as is" without express or implied warranty.
+ * See the GNU General Public License for more details.
+ *
+ */
+
+
+
 #include "xmlwriter.h"
 #include "message.h"
+#include "xmldita.h"
 
 char ILLEGAL_UNICODE_REPLACEMENT = ' ';
 /******************** XmlStream ********************/
 XmlStream::XmlStream(const QString &fileName, const QString &aEncoding, const QString &aStandalone, const QString &doctypeStr) : mFile(fileName), \
 											mStreamP(0), \
 											mElemStack(), \
-											mInElement(false), \
-											mCanIndent(true)
+											mInElement(false)
 {
+	mCanIndentList.setAutoDelete(true);
 	mIsOpen = mFile.open(IO_WriteOnly);
 	if (mIsOpen) {
 		mStreamP = new QTextStream(&mFile);
@@ -121,13 +136,37 @@ void XmlStream::startElement(const QString& aElemName, const AttributeMap& aAttr
 		// Attributes in sorted order
 		AttributeMapIter it = aAttrs.begin();
 		while (it != aAttrs.end()){
-			*mStreamP << " " << it.key() << "=\"" << encodeText(it.data()) << "\"";
+			QString attrVal = encodeText(it.data());
+#ifdef DITA_OT_BUG_ATTRIBUTE_VALUE_HACK
+			// DITA Open Toolkit error, it fails to re-encode files properly
+			// Replace "&lt;" with "&amp;lt;"
+			// Replace "&gt;" with "&amp;gt;"
+			int fIdx = 0;
+			QString toFind;
+			QString toReplace;
+			toFind = "&lt;";
+			toReplace = "&amp;lt;";
+			fIdx = attrVal.find(toFind, 0);
+			while (fIdx != -1) {
+				attrVal.replace(fIdx, toFind.length(), toReplace);
+				fIdx = attrVal.find(toFind, 0);
+			}
+			toFind = "&gt;";
+			toReplace = "&amp;gt;";
+			fIdx = attrVal.find(toFind, 0);
+			while (fIdx != -1) {
+				attrVal.replace(fIdx, toFind.length(), toReplace);
+				fIdx = attrVal.find(toFind, 0);
+			}
+#endif
+			*mStreamP << " " << it.key() << "=\"" << attrVal << "\"";
 			++it;
 		}
 		// Update internals
 		mInElement = true;
-		mCanIndent = true;
+		//mCanIndent = true;
 		mElemStack.push(&aElemName);
+		mCanIndentList.append(new bool(true));
 	}
 }
 
@@ -141,8 +180,15 @@ void XmlStream::characters(const QString& aText)
 			*mStreamP << encodeText(aText);
 		}
 		// Don't indent mixed content
-		mCanIndent = false;
+		//mCanIndent = false;
+		setLastIndent(false);
 	}
+#ifdef DITA_TRACE
+#ifdef DITA_TRACE_TO_XML
+	// Useful for assertion crashes where otherwise the buffer would be lost
+	flush(*mStreamP);
+#endif
+#endif
 }
 
 void XmlStream::characters(char c)
@@ -160,7 +206,14 @@ void XmlStream::characters(char c)
 		}
 	}
 	// Don't indent mixed content
-	mCanIndent = false;
+	//mCanIndent = false;
+	setLastIndent(false);
+#ifdef DITA_TRACE
+#ifdef DITA_TRACE_TO_XML
+	// Useful for assertion crashes where otherwise the buffer would be lost
+	flush(*mStreamP);
+#endif
+#endif
 }
 
 XmlStream& XmlStream::operator<<(const QCString& s)
@@ -198,7 +251,8 @@ XmlStream& XmlStream::writeUnicode(const QCString& s)
 		}
 	}
 	// Don't indent mixed content
-	mCanIndent = false;
+	//mCanIndent = false;
+	setLastIndent(false);
 	return *this;
 }
 
@@ -208,7 +262,7 @@ void XmlStream::processingInstruction(const QString& aText)
 		closeElementDeclIfOpen();
 		*mStreamP << "<?" << aText << "?>";
 	}
-	mCanIndent = true;
+	//mCanIndent = true;
 }
 
 void XmlStream::comment(const QString& aText)
@@ -217,7 +271,7 @@ void XmlStream::comment(const QString& aText)
 		closeElementDeclIfOpen();
 		*mStreamP << "<!-- " << aText << " -->";
 	}
-	mCanIndent = true;
+	//mCanIndent = true;
 }
 
 void XmlStream::endElement(const QString& aElemName)
@@ -233,7 +287,7 @@ void XmlStream::endElement(const QString& aElemName)
 			*mStreamP << "</" << *(mElemStack.pop()) << ">";
 		}
 	}
-	mCanIndent = true;
+	mCanIndentList.removeLast();
 }
 
 void XmlStream::closeElementDeclIfOpen()
@@ -248,7 +302,7 @@ void XmlStream::closeElementDeclIfOpen()
 
 void XmlStream::indent(unsigned int aInitVal)
 {
-	if (mStreamP && mIsOpen && mCanIndent && mCanWrite) {
+	if (mStreamP && mIsOpen && canIndent() && mCanWrite) {
 		*mStreamP << XML_OUTPUT_ENDL;
 		for (unsigned int i = aInitVal; i < mElemStack.count(); i++) {
 			*mStreamP << XML_INDENT;
@@ -276,7 +330,7 @@ inline bool XmlStream::isLegalXmlChar(QChar c) const
 				((u >= 0x20) && (u <= 0x7F)) \
 			);
 	if (!result) {
-		printf("XmlStream::isLegalXmlChar() rejecting 0x%X\n", u);
+		msg("XmlStream::isLegalXmlChar() rejecting 0x%X\n", u);
 	}
 	return result;
 }
@@ -333,6 +387,23 @@ bool XmlStream::mustEncodeChar(char c) const
 			break;
 	}
 	return false;
+}
+
+bool XmlStream::canIndent()
+{
+	bool *bP;
+	for (bP = mCanIndentList.first(); bP != 0; bP = mCanIndentList.next()) {
+		if (!*bP) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void XmlStream::setLastIndent(bool theB)
+{
+	mCanIndentList.removeLast();
+	mCanIndentList.append(new bool(theB));
 }
 
 /// Suspend output

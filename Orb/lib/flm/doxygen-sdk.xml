@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<build xmlns="http://symbian.com/xml/build"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://symbian.com/xml/build ../../schema/build/2_0.xsd">
+  <!-- Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved. -->
+  <!-- This component and the accompanying materials are made available under the terms of the License 
+"Eclipse Public License v1.0" which accompanies this distribution, 
+and is available at the URL "http://www.eclipse.org/legal/epl-v10.html". -->
+  <!-- Initial Contributors:
+        Nokia Corporation - initial contribution.
+Contributors: 
+-->
+  <!-- interfaces which do not correspond to target types:
+         they are added automatically to the build specification for a given
+         build configuration if listed in its INTERFACE.config variable -->
+  <interface extends="Symbian.mmp"
+             flm="doxygen-sdk.flm"
+             name="doxygen-sdk">
+    <param name="OUTPUTPATH" />
+    <param name="SBS_DOXYGEN" />
+    <param name="GNUTOUCH" />
+    <param name="GNUSED" />
+    <param name="GNUCAT" />
+    <param name="GNUCPP" />
+    <param name='GNUCP' />
+    <param name="GNUTR" />
+    <param name="SBS_PYTHON" />
+    <param default=''
+           name="EXPORTHEADERS" />
+    <param default=''
+           name='TARGETTYPE' />
+    <param default=''
+           name='CAPABILITY' />
+    <param default=''
+           name='CDEFS' />
+    <param default=''
+           name='OPT.PREINCLUDE' />
+    <param default=''
+           name='OPT.SPLITINCLUDE' />
+    <param default=''
+           name='OPT.SYSINCLUDE' />
+    <param default=''
+           name='OPT.USERINCLUDE' />
+    <param default=''
+           name='SYSTEMINCLUDE' />
+  </interface>
+  <interface flm="null.flm"
+             name="doxygen-sdk.nop" />
+  <interface extends="doxygen-sdk"
+             name="doxygen-sdk.exe" />
+  <interface extends="doxygen-sdk"
+             name="doxygen-sdk.dll" />
+</build>

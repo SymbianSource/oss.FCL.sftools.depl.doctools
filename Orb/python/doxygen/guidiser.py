@@ -18,13 +18,15 @@ import stat
 import sys
 import shutil
 import xml
+import logging
+from optparse import OptionParser, check_choice
 from xml.etree import ElementTree as etree
 from cStringIO import StringIO
-from lib import scan, main, xml_decl, doctype_identifier
+from lib import scan, xml_decl, doctype_identifier, XmlParser
+from doxyidredirect import DoxyIdRedirect, ExceptionDoxyIdRedirectLookup
 
 
 __version__ = "0.1"
-
 
 class Guidiser(object):
     """
@@ -39,62 +41,219 @@ class Guidiser(object):
     >>> root.attrib['id']
     'GUID-25825EC4-341F-3EA4-94AA-7DCE380E6D2E'
     """
-    def __init__(self, namespace='www.nokia.com'):
-        self.namespace = self._get_namespace(namespace)
+    # Publishing targets
+    PT_MODE = 0
+    PT_DITAOT = 1
+    PUBLISHING_TARGETS = (PT_MODE, PT_DITAOT)
     
+    def __init__(self, namespace='www.nokia.com', publishing_target=0, xmlparser=XmlParser(), doxyidredirect=DoxyIdRedirect(None)):
+        self.namespace = self._get_namespace(namespace)
+        self.set_publishing_target(publishing_target)
+        self.xmlparser = xmlparser
+        self.doxyidredirect = doxyidredirect
+        
+    def set_publishing_target(self, target):
+        if not target in self.PUBLISHING_TARGETS:
+            raise Exception('Invalid Publishing Target \"%s\"' % target)
+        self._publishing_target = target
+        
+    def get_publishing_target(self):
+        return self._publishing_target
+        
     def _get_namespace(self, namespace, LEN_BYTES=16):
         if len(namespace) < LEN_BYTES:
             namespace = namespace + (' ' * (LEN_BYTES - len(namespace)))
         return uuid.UUID(bytes=namespace[:LEN_BYTES])
     
-    def _get_guid(self, id):
-        # Sometimes need to remove filepath and hash if id is an href
-        id = id.split('#')[-1]
-        # If id is an href and points to a ditamap, then the id of the map is filename minus ".ditamap"
-        if id.endswith(".ditamap"):
-            id = id[:-8]
-        return ('GUID-%s' % (uuid.uuid3(self.namespace, id))).upper()
+    def _get_guid(self, fqn):
+        return ('GUID-%s' % (uuid.uuid3(self.namespace, fqn))).upper()
+                        
+    def _guidise_href(self, href, tag):
+        if tag == "xref":
+            return self._guidise_xref_href(href)
+        else:
+            # Tag is a topicref or topicref descended element
+            return self._guidise_topicref_href(href)
+    
+    def _guidise_topicref_href(self, href):
+        # Guidise an href that points to a ditamap
+        # NOTE: the id of the map is assumed to be the same as the filename
+        # (minus the ".ditamap" extension)
+        if href.endswith(".ditamap"):
+            guid = self._get_guid(href[:-len(".ditamap")])
+            if self.get_publishing_target() == self.PT_DITAOT:
+                guid += ".ditamap"
+            return guid
+        
+        # Guidise an href that points to a topic
+        # NOTE: Doxygen currently outputs "filepath#topicid" for topicref hrefs
+        # the "#topicid" is redundant (as topicrefs can't reference below the topic level)
+        # so will probably be removed from doxygen output at some point.
+        filename = href.split('#')[0]
+        id = os.path.splitext(filename)[0]
+        fqn = None
+        try:
+            filename, fqn = self.doxyidredirect.lookupId(id)
+        except ExceptionDoxyIdRedirectLookup, err:
+            logging.error("Could not file id %s in DoxyIdRedirect\n" % id)
+        #if the id was not found just guidise the id
+        #this is just to make the id unique for mode
+        guid = self._get_guid(fqn) if fqn else self._get_guid(id)
+        if self.get_publishing_target() == self.PT_DITAOT:
+            guid+=".xml"
+        return guid
+    
+    def _guidise_xref_href(self, href):
+        # Don't guidise references without hashes. Assume they are filepaths
+        # to files other than ditatopics
+        if href.find('#') == -1:
+            return href
+			
+        # Doxygen currently outputs hrefs in the format autolink_8cpp.xml#autolink_8cpp_1ae0e289308b6d2cbb5c86e753741981dc
+        # The right side of the # is not enough to extract the fully qualified name of the function because it is md5ed
+        # Send the right side to doxyidredirect to get the fqn of the function			
+        filename, id = href.split('#')
+        try:
+            fqn = self.doxyidredirect.lookupId(id)[1]
+        except ExceptionDoxyIdRedirectLookup, err:
+            logging.error("No API name for element id %s, guidising id instead" % id)
+            fqn = None
+        guid = self._get_guid(fqn) if fqn else self._get_guid(id)
+
+        basename, ext = os.path.splitext(filename)
+        try:
+            base_guid = self._get_guid(self.doxyidredirect.lookupId(basename)[1])
+        except ExceptionDoxyIdRedirectLookup, e:
+            base_guid = self._get_guid(basename)
+            
+        if self.get_publishing_target() == self.PT_DITAOT:
+            return base_guid + ext + "#" + guid
+        else:
+            return guid
+    
+    def _guidise_id(self, id):
+        try:
+            filename, fqn = self.doxyidredirect.lookupId(id)
+            return self._get_guid(fqn)
+        except ExceptionDoxyIdRedirectLookup, err:
+            logging.debug("Could not file id %s in DoxyIdRedirect\n" % id)
+            return self._get_guid(id)
     
     def guidise(self, xmlfile):
-        def _update_attrib(el, key):
-            child.attrib[key] = self._get_guid(child.attrib[key])
+        #WORKAROUND: ElementTree provides no function to set prefixes and makes up its own if they are not set (ns0, ns1, ns2)
+        etree._namespace_map["http://dita.oasis-open.org/architecture/2005/"] = 'ditaarch'
         try:
             root = etree.parse(xmlfile).getroot()
         except xml.parsers.expat.ExpatError, e:
-            sys.stderr.write("ERROR: %s could not be parser: %s\n" % (xmlfile, str(e)))
+            logging.error("%s could not be parsed: %s\n" % (xmlfile, str(e)))
             return None
         for child in root.getiterator():
             for key in [key for key in ('id', 'href', 'keyref') if key in child.attrib]:
-                _update_attrib(child, key) 
+                if key == 'id':
+                    child.attrib['id'] = self._guidise_id(child.attrib['id'])
+                elif key == 'href':
+                    if 'format' in child.attrib and child.attrib['format'] == 'html':
+                        continue
+                    else:
+                        base_dir = os.path.dirname(xmlfile) if isinstance(xmlfile, str) else ""
+                        child.attrib['href'] = self._guidise_href(child.attrib['href'], child.tag)
+                elif key == 'keyref':
+                    child.attrib['keyref'] = self._get_guid(child.attrib['keyref'])                    
+
         return root
+    
 
-
-def updatefiles(xmldir):
-    guidiser = Guidiser()
+def updatefiles(xmldir, publishing_target=Guidiser.PT_MODE):
+    guidiser = Guidiser(publishing_target=publishing_target, doxyidredirect=DoxyIdRedirect(xmldir))
     for filepath in scan(xmldir):
+        logging.debug('Guidising file \"%s\"' % filepath)
         root = guidiser.guidise(filepath)
         if root is not None:
-            os.chmod(filepath, stat.S_IWRITE)
+            try:
+                os.chmod(filepath, stat.S_IWRITE)
+            except Exception, e:
+                logging.error("Could not make file \"%s\" writable, error was \"%s\"" % (filepath, e))
+                continue            
             with open(filepath, 'w') as f:
                 f.write(xml_decl()+'\n')
-                f.write(doctype_identifier(root.tag)+'\n')
+                try:
+                    doc_id = doctype_identifier(root.tag)
+                except Exception, e:
+                    logging.error("Could not write doctype identifier for file \"%s\", error was \"%s\""
+                                  %(filepath, e))
+                else:
+                    f.write(doc_id+'\n')
                 f.write(etree.tostring(root))        
+                f.close()
+                
+def main():
+    usage = "usage: %prog [options] <Path to the XML content>"
+    parser = OptionParser(usage, version='%prog ' + __version__)
+    parser.add_option("-p", dest="publishing_target", type="choice", choices=["mode", "ditaot"], default="mode", 
+                      help="Publishing Target: mode|ditaot, [default: %default]")
+    parser.add_option("-l", "--loglevel", type="int", default=30, help="Log Level (debug=10, info=20, warning=30, [error=40], critical=50)")      
+    (options, args) = parser.parse_args()
+    if len(args) < 1:
+        parser.print_help()
+        parser.error("Please supply the path to the XML content")
+    if options.loglevel:
+        logging.basicConfig(level=options.loglevel)
+    pub_target = Guidiser.PT_MODE if (options.publishing_target == "mode") else Guidiser.PT_DITAOT  
+    updatefiles(args[0], pub_target)
 
 
 if __name__ == '__main__':
-    sys.exit(main(updatefiles, __version__))
+    sys.exit(main())
+
     
 ######################################
 # Test code
 ######################################
 
+class StubDoxyIdRedirect(object):
+    def __init__(self, theDir):
+        self.dict = {'struct_e_sock_1_1_t_addr_update':('struct_e_sock_1_1_t_addr_update.xml', 'ESock::TAddrUpdate'),
+        'class_c_active_scheduler_1_1_t_cleanup_bundle':('class_c_active_scheduler_1_1_t_cleanup_bundle.xml', 'CActiveScheduler::TCleanupBundle'),
+        'class_test':('class_test.xml', 'Test'),
+        'class_test_1a99f2bbfac6c95612322b0f10e607ebe5':('cxxclass.xml', 'Test')}
+    
+    def lookupId(self, doxy_id):
+        try:
+            filename, fqn = self.dict[doxy_id]
+            return (filename, fqn)
+        except Exception, e:
+            raise ExceptionDoxyIdRedirectLookup("StubException: %s" % e)
+
+
 class TestGuidiser(unittest.TestCase):
     def setUp(self):
-        self.guidiser = Guidiser()
+        self.guidiser = Guidiser(publishing_target=Guidiser.PT_MODE, doxyidredirect=StubDoxyIdRedirect('adir'))
+        self.test_dir = "guidiser_test_dir"
+        
+    def _create_test_data(self):
+        f = open("struct_e_sock_1_1_t_addr_update.xml", "w")
+        f.write(struct_e_sock_1_1_t_addr_update)
+        f.close()
+        os.mkdir(self.test_dir)
+        f = open(os.path.join(self.test_dir, "struct_e_sock_1_1_t_addr_update.xml"), "w")
+        f.write(struct_e_sock_1_1_t_addr_update)
+        f.close()        
+        
+    def _cleanup_test_data(self):
+        os.remove("struct_e_sock_1_1_t_addr_update.xml")
+        shutil.rmtree(self.test_dir)
+        
+    def test_i_can_get_and_set_a_PT(self):
+        self.assertEqual(self.guidiser.get_publishing_target(), Guidiser.PT_MODE)
+        self.guidiser.set_publishing_target(Guidiser.PT_DITAOT)
+        self.assertEqual(self.guidiser.get_publishing_target(), Guidiser.PT_DITAOT)
+        
+    def test_i_raise_an_exception_when_trying_to_set_an_invalid_PT(self):
+        self.assertRaises(Exception, self.guidiser.set_publishing_target, 2) 
         
     def test_i_update_root_elements_id(self):        
         root = self.guidiser.guidise(StringIO(cxxclass))
-        self.assertTrue(root.attrib['id'] == "GUID-25825EC4-341F-3EA4-94AA-7DCE380E6D2E")
+        self.assertEqual(root.attrib['id'], "GUID-56866D87-2CE9-31EA-8FA7-F4275FDBCB93")
 
     def test_i_continue_if_passed_an_invalid_file(self):
         try:
@@ -142,26 +301,68 @@ class TestGuidiser(unittest.TestCase):
                         "GUID-BED8A733-2ED7-31AD-A911-C1F4707C67FD" 
                        )
         
-    def test_based_toplevel_class_jarnos_output(self):
-        self.assertTrue(self.guidiser._get_guid("RConnection") ==
-                         "GUID-01926597-E8A1-35E5-A221-B4530CF1783F"
-                         )
-        
     def test_target_id(self):
         self.assertTrue(self.guidiser._get_guid("ESock::TAddrUpdate") ==
                          "GUID-E72084E6-C1CE-3388-93F7-5B7A3F506C3B"
                          )
         
-    def test_map_href(self):
-        self.assertTrue(self.guidiser._get_guid("ESock::struct_e_sock_1_1_t_addr_update.xml#ESock::TAddrUpdate") ==
+    def test_topicref_href_to_topic_for_mode(self):
+        self.assertEquals(self.guidiser._guidise_href("struct_e_sock_1_1_t_addr_update.xml#struct_e_sock_1_1_t_addr_update", "topicref"),
                  "GUID-E72084E6-C1CE-3388-93F7-5B7A3F506C3B"
                  )
-                
-    def test_map_href_to_another_map(self):
-        self.assertTrue(self.guidiser._get_guid("ziplib.ditamap") ==
+        
+    def test_topicref_href_to_topic_for_ditaot(self):
+        self.guidiser.set_publishing_target(Guidiser.PT_DITAOT)
+        self._create_test_data()
+        try:
+            self.assertEquals(self.guidiser._guidise_href("struct_e_sock_1_1_t_addr_update.xml#struct_e_sock_1_1_t_addr_update", "topicref"),
+                              "GUID-E72084E6-C1CE-3388-93F7-5B7A3F506C3B.xml")
+        finally:
+            self._cleanup_test_data()            
+                        
+    def test_topicref_href_to_map_for_mode(self):
+        self.assertEquals(self.guidiser._guidise_href("ziplib.ditamap", "topicref"),
                  "GUID-7C7A889C-AE2B-31FC-A5DA-A87019E1251D"
                  )
         
+    def test_topicref_href_to_map_for_ditaot(self):
+        self.guidiser.set_publishing_target(Guidiser.PT_DITAOT)
+        self.assertEquals(self.guidiser._guidise_href("ziplib.ditamap", "topicref"),
+                 "GUID-7C7A889C-AE2B-31FC-A5DA-A87019E1251D.ditamap"
+                 )
+                
+    def test_xref_href_to_topic_in_same_file_for_mode(self):
+        self.assertEquals(self.guidiser._guidise_href("struct_e_sock_1_1_t_addr_update.xml#struct_e_sock_1_1_t_addr_update", "xref"),
+                 "GUID-E72084E6-C1CE-3388-93F7-5B7A3F506C3B"
+                 )
+
+    def test_xref_href_to_topic_in_same_file_for_ditaot(self):
+        self.guidiser.set_publishing_target(Guidiser.PT_DITAOT)
+        self.assertEquals(self.guidiser._guidise_href("struct_e_sock_1_1_t_addr_update.xml#struct_e_sock_1_1_t_addr_update", "xref"),
+                 "GUID-E72084E6-C1CE-3388-93F7-5B7A3F506C3B.xml#GUID-E72084E6-C1CE-3388-93F7-5B7A3F506C3B"
+                 )
+				 
+    def test_xref_href_to_some_other_file_on_file_system(self):
+        self.guidiser.set_publishing_target(Guidiser.PT_DITAOT)
+        self.assertEquals(self.guidiser._guidise_href("../../documentation/RFCs/rfc3580.txt", "xref"),
+                 "../../documentation/RFCs/rfc3580.txt"
+                 )
+    
+    def test_i_guidise_the_id_of_a_fully_qualified_apiname(self):
+        self.assertEquals(self.guidiser._guidise_id("struct_e_sock_1_1_t_addr_update"),
+         "GUID-E72084E6-C1CE-3388-93F7-5B7A3F506C3B"
+         )
+         
+    def test_id_guidise_the_id_something_that_is_not_a_fully_qualified_apiname(self):
+        self.assertEquals(self.guidiser._guidise_id("commsdataobjects"),
+         "GUID-2F2463E0-6C84-3FAB-8B60-57E57315FDEB"
+         )
+         
+    def test_i_preserve_namespaces(self):  
+        xml_in = """<reference ditaarch:DITAArchVersion="1.1" xmlns:ditaarch="http://dita.oasis-open.org/architecture/2005/" />"""
+        xml_expected = """<reference ditaarch:DITAArchVersion="1.1" xmlns:ditaarch="http://dita.oasis-open.org/architecture/2005/" />"""
+        root = self.guidiser.guidise(StringIO(xml_in))
+        self.assertEqual(etree.tostring(root), xml_expected)
         
 class Testupdate_files(unittest.TestCase):
     
@@ -176,835 +377,234 @@ class Testupdate_files(unittest.TestCase):
             return open(os.path.join(self.test_dir, "reference.dita"), mode) 
         os.mkdir(self.test_dir)
         f = reference_file_handle("w")
-        f.write(reference)
+        f.write(filesys_cxxclass)
         f.close()
         updatefiles(self.test_dir)
-        self.assertEquals(reference_file_handle("r").read(), guidised_reference)
+        self.assertEquals(reference_file_handle("r").read(), filesys_cxxclass_guidised)
         
+struct_e_sock_1_1_t_addr_update = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE cxxStruct PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.1.0//EN" "dtd/cxxStruct.dtd" >
+<cxxStruct id="struct_coord_struct">
+	<apiName>CoordStruct</apiName>
+	<shortdesc/>
+	<cxxStructDetail>
+		<cxxStructDefinition>
+			<cxxStructAccessSpecifier value="public"/>
+			<cxxStructAPIItemLocation>
+				<cxxStructDeclarationFile name="filePath" value="C:/wip/sysdoc/tools/Doxygen/branches/DITA/test/PaulRo/linking/src/restypedef.cpp"/>
+				<cxxStructDeclarationFileLine name="lineNumber" value="10"/>
+				<cxxStructDefinitionFile name="filePath" value="C:/wip/sysdoc/tools/Doxygen/branches/DITA/test/PaulRo/linking/src/restypedef.cpp"/>
+				<cxxStructDefinitionFileLineStart name="lineNumber" value="9"/>
+				<cxxStructDefinitionFileLineEnd name="lineNumber" value="15"/>
+			</cxxStructAPIItemLocation>
+		</cxxStructDefinition>
+		<apiDesc>
+			<p>A coordinate pair. </p>
+		</apiDesc>
+	</cxxStructDetail>
+	<cxxVariable id="struct_coord_struct_1a183d7226fc5a8470ce9b9f04f9cb69bb">
+		<apiName>x</apiName>
+		<shortdesc/>
+		<cxxVariableDetail>
+			<cxxVariableDefinition>
+				<cxxVariableAccessSpecifier value="public"/>
+				<cxxVariableDeclaredType>float</cxxVariableDeclaredType>
+				<cxxVariableScopedName>CoordStruct</cxxVariableScopedName>
+				<cxxVariablePrototype>float x</cxxVariablePrototype>
+				<cxxVariableNameLookup>CoordStruct::x</cxxVariableNameLookup>
+				<cxxVariableAPIItemLocation>
+					<cxxVariableDeclarationFile name="filePath" value="C:/wip/sysdoc/tools/Doxygen/branches/DITA/test/PaulRo/linking/src/restypedef.cpp"/>
+					<cxxVariableDeclarationFileLine name="lineNumber" value="12"/>
+				</cxxVariableAPIItemLocation>
+			</cxxVariableDefinition>
+			<apiDesc>
+				<p>The x coordinate </p>
+			</apiDesc>
+		</cxxVariableDetail>
+	</cxxVariable>
+	<cxxVariable id="struct_coord_struct_1a1a5966a881bc3e76e9becf00639585ac">
+		<apiName>y</apiName>
+		<shortdesc/>
+		<cxxVariableDetail>
+			<cxxVariableDefinition>
+				<cxxVariableAccessSpecifier value="public"/>
+				<cxxVariableDeclaredType>float</cxxVariableDeclaredType>
+				<cxxVariableScopedName>CoordStruct</cxxVariableScopedName>
+				<cxxVariablePrototype>float y</cxxVariablePrototype>
+				<cxxVariableNameLookup>CoordStruct::y</cxxVariableNameLookup>
+				<cxxVariableAPIItemLocation>
+					<cxxVariableDeclarationFile name="filePath" value="C:/wip/sysdoc/tools/Doxygen/branches/DITA/test/PaulRo/linking/src/restypedef.cpp"/>
+					<cxxVariableDeclarationFileLine name="lineNumber" value="14"/>
+				</cxxVariableAPIItemLocation>
+			</cxxVariableDefinition>
+			<apiDesc>
+				<p>The y coordinate </p>
+			</apiDesc>
+		</cxxVariableDetail>
+	</cxxVariable>
+</cxxStruct>"""
         
-        
-reference = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
-<reference id="CActiveScheduler::TCleanupBundle">
-    <title>CActiveScheduler::TCleanupBundle</title>
+filesys_cxxclass = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.1.0//EN" "dtd/cxxClass.dtd" >
+<cxxClass id="class_c_active_scheduler_1_1_t_cleanup_bundle">
+    <apiName>CActiveScheduler::TCleanupBundle</apiName>
     <shortdesc/>
-    <refbody>
-        <section>
-            <ph>
-            </ph>
-        </section>
-        <section/>
-    </refbody>
-    <reference id="CActiveScheduler::TCleanupBundle::iCleanupPtr">
-        <title>iCleanupPtr</title>
+    <cxxClassDetail>
+        <cxxClassDefinition>
+            <cxxClassAccessSpecifier value="private"/>
+            <cxxClassAPIItemLocation>
+                <cxxClassDeclarationFile name="filePath" value="K:/epoc32/include/e32base.h"/>
+                <cxxClassDeclarationFileLine name="lineNumber" value="2832"/>
+                <cxxClassDefinitionFile name="filePath" value="K:/sf/os/commsfw/datacommsserver/esockserver/csock/CS_CLI.CPP"/>
+                <cxxClassDefinitionFileLineStart name="lineNumber" value="2831"/>
+                <cxxClassDefinitionFileLineEnd name="lineNumber" value="2836"/>
+            </cxxClassAPIItemLocation>
+        </cxxClassDefinition>
+        <apiDesc/>
+    </cxxClassDetail>
+    <cxxVariable id="class_c_active_scheduler_1_1_t_cleanup_bundle_1aaa7a637534aa0b9164dda2816be6fbf4">
+        <apiName>iCleanupPtr</apiName>
         <shortdesc/>
-        <refbody>
-            <section>
-                <ph>
-                </ph>
-            </section>
-            <section/>
-        </refbody>
-    </reference>
-    <reference id="CActiveScheduler::TCleanupBundle::iDummyInt">
-        <title>iDummyInt</title>
+        <cxxVariableDetail>
+            <cxxVariableDefinition>
+                <cxxVariableAccessSpecifier value="public"/>
+                <cxxVariableDeclaredType>
+                    <apiRelation keyref="class_c_cleanup">CCleanup</apiRelation> *</cxxVariableDeclaredType>
+                <cxxVariableScopedName>CActiveScheduler::TCleanupBundle</cxxVariableScopedName>
+                <cxxVariablePrototype>CCleanup * iCleanupPtr</cxxVariablePrototype>
+                <cxxVariableNameLookup>CActiveScheduler::TCleanupBundle::iCleanupPtr</cxxVariableNameLookup>
+                <cxxVariableAPIItemLocation>
+                    <cxxVariableDeclarationFile name="filePath" value="K:/epoc32/include/e32base.h"/>
+                    <cxxVariableDeclarationFileLine name="lineNumber" value="2834"/>
+                </cxxVariableAPIItemLocation>
+            </cxxVariableDefinition>
+            <apiDesc/>
+        </cxxVariableDetail>
+    </cxxVariable>
+    <cxxVariable id="class_c_active_scheduler_1_1_t_cleanup_bundle_1ad750b8dbf966def2486a52b6c3d236fc">
+        <apiName>iDummyInt</apiName>
         <shortdesc/>
-        <refbody>
-            <section>
-            </section>
-            <section/>
-        </refbody>
-    </reference>
-</reference>
-"""
+        <cxxVariableDetail>
+            <cxxVariableDefinition>
+                <cxxVariableAccessSpecifier value="public"/>
+                <cxxVariableDeclaredType>
+                    <apiRelation keyref="_c_s___c_l_i_8_c_p_p_1abb88f5378e8305d934297176fe5fa298">TInt</apiRelation>
+                </cxxVariableDeclaredType>
+                <cxxVariableScopedName>CActiveScheduler::TCleanupBundle</cxxVariableScopedName>
+                <cxxVariablePrototype>TInt iDummyInt</cxxVariablePrototype>
+                <cxxVariableNameLookup>CActiveScheduler::TCleanupBundle::iDummyInt</cxxVariableNameLookup>
+                <cxxVariableAPIItemLocation>
+                    <cxxVariableDeclarationFile name="filePath" value="K:/epoc32/include/e32base.h"/>
+                    <cxxVariableDeclarationFileLine name="lineNumber" value="2835"/>
+                </cxxVariableAPIItemLocation>
+            </cxxVariableDefinition>
+            <apiDesc/>
+        </cxxVariableDetail>
+    </cxxVariable>
+</cxxClass>"""
 
-guidised_reference = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
-<reference id="GUID-83FD90ED-B2F7-3ED5-ABC5-83ED6A3F1C2F">
-    <title>CActiveScheduler::TCleanupBundle</title>
+filesys_cxxclass_guidised = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.1.0//EN" "dtd/cxxClass.dtd">
+<cxxClass id="GUID-83FD90ED-B2F7-3ED5-ABC5-83ED6A3F1C2F">
+    <apiName>CActiveScheduler::TCleanupBundle</apiName>
     <shortdesc />
-    <refbody>
-        <section>
-            <ph>
-            </ph>
-        </section>
-        <section />
-    </refbody>
-    <reference id="GUID-903F7E6D-EFFE-3A37-9348-B9FE3A27AF4A">
-        <title>iCleanupPtr</title>
+    <cxxClassDetail>
+        <cxxClassDefinition>
+            <cxxClassAccessSpecifier value="private" />
+            <cxxClassAPIItemLocation>
+                <cxxClassDeclarationFile name="filePath" value="K:/epoc32/include/e32base.h" />
+                <cxxClassDeclarationFileLine name="lineNumber" value="2832" />
+                <cxxClassDefinitionFile name="filePath" value="K:/sf/os/commsfw/datacommsserver/esockserver/csock/CS_CLI.CPP" />
+                <cxxClassDefinitionFileLineStart name="lineNumber" value="2831" />
+                <cxxClassDefinitionFileLineEnd name="lineNumber" value="2836" />
+            </cxxClassAPIItemLocation>
+        </cxxClassDefinition>
+        <apiDesc />
+    </cxxClassDetail>
+    <cxxVariable id="GUID-903F7E6D-EFFE-3A37-9348-B9FE3A27AF4A">
+        <apiName>iCleanupPtr</apiName>
         <shortdesc />
-        <refbody>
-            <section>
-                <ph>
-                </ph>
-            </section>
-            <section />
-        </refbody>
-    </reference>
-    <reference id="GUID-DA4580F4-EBCC-3FA2-A856-810EAFC82236">
-        <title>iDummyInt</title>
+        <cxxVariableDetail>
+            <cxxVariableDefinition>
+                <cxxVariableAccessSpecifier value="public" />
+                <cxxVariableDeclaredType>
+                    <apiRelation keyref="GUID-3BB23EB1-2F65-378D-918B-1FBBD6E46C90">CCleanup</apiRelation> *</cxxVariableDeclaredType>
+                <cxxVariableScopedName>CActiveScheduler::TCleanupBundle</cxxVariableScopedName>
+                <cxxVariablePrototype>CCleanup * iCleanupPtr</cxxVariablePrototype>
+                <cxxVariableNameLookup>CActiveScheduler::TCleanupBundle::iCleanupPtr</cxxVariableNameLookup>
+                <cxxVariableAPIItemLocation>
+                    <cxxVariableDeclarationFile name="filePath" value="K:/epoc32/include/e32base.h" />
+                    <cxxVariableDeclarationFileLine name="lineNumber" value="2834" />
+                </cxxVariableAPIItemLocation>
+            </cxxVariableDefinition>
+            <apiDesc />
+        </cxxVariableDetail>
+    </cxxVariable>
+    <cxxVariable id="GUID-DA4580F4-EBCC-3FA2-A856-810EAFC82236">
+        <apiName>iDummyInt</apiName>
         <shortdesc />
-        <refbody>
-            <section>
-            </section>
-            <section />
-        </refbody>
-    </reference>
-</reference>"""
+        <cxxVariableDetail>
+            <cxxVariableDefinition>
+                <cxxVariableAccessSpecifier value="public" />
+                <cxxVariableDeclaredType>
+                    <apiRelation keyref="GUID-1A4B29B0-5E06-39E5-A0A8-4A33E093C872">TInt</apiRelation>
+                </cxxVariableDeclaredType>
+                <cxxVariableScopedName>CActiveScheduler::TCleanupBundle</cxxVariableScopedName>
+                <cxxVariablePrototype>TInt iDummyInt</cxxVariablePrototype>
+                <cxxVariableNameLookup>CActiveScheduler::TCleanupBundle::iDummyInt</cxxVariableNameLookup>
+                <cxxVariableAPIItemLocation>
+                    <cxxVariableDeclarationFile name="filePath" value="K:/epoc32/include/e32base.h" />
+                    <cxxVariableDeclarationFileLine name="lineNumber" value="2835" />
+                </cxxVariableAPIItemLocation>
+            </cxxVariableDefinition>
+            <apiDesc />
+        </cxxVariableDetail>
+    </cxxVariable>
+</cxxClass>"""
         
 cxxclass = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
 <!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.1.0//EN" "dtd/cxxClass.dtd" >
-<cxxClass id="CP_class">
-    <apiName>CP_class</apiName>
-    <shortdesc/>
-    <cxxClassDetail>
-      <cxxClassNestedStruct keyref="CB_class">CB_class</cxxClassNestedStruct>
-      <cxxClassNestedUnion keyref="CB_class">CB_class</cxxClassNestedUnion>
-      <cxxClassNestedClass keyref="CB_class">CB_class</cxxClassNestedClass>    
-        <cxxClassDefinition>
-            <cxxClassAccessSpecifier value="public"/>
-            <cxxClassAPIItemLocation>
-                <cxxClassDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                <cxxClassDeclarationFileLine name="lineNumber" value="25"/>
-                <cxxClassDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                <cxxClassDefinitionFileLineStart name="lineNumber" value="21"/>
-                <cxxClassDefinitionFileLineEnd name="lineNumber" value="168"/>
-            </cxxClassAPIItemLocation>
-        </cxxClassDefinition>
-        <apiDesc>
-            <p>CP_class_text. A link to a method, <xref href="CP_class::CPD_function(CPD_type_1)">CP_class::CPD_function(CPD_type_1)</xref>.</p>
-        </apiDesc>
-    </cxxClassDetail>
-    <cxxFunction id="CP_class::CPD_function(CPD_type_1)">
-        <apiName>CPD_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="private"/>
-                <cxxFunctionDeclaredType>CPD_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>CPD_return CPD_function(CPD_type_1 CPD_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPD_function(CPD_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPD_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPD_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPD_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="33"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPD_function_text. CPD_return CPD_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPC_function(CPC_type_1)">
-        <apiName>CPC_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="private"/>
-                <cxxFunctionDeclaredType>CPC_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>CPC_return CPC_function(CPC_type_1 CPC_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPC_function(CPC_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPC_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPC_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPC_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="39"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPC_function_text. CPC_return CPC_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPF_function(CPF_type_1)">
-        <apiName>CPF_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="protected"/>
-                <cxxFunctionDeclaredType>CPF_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>CPF_return CPF_function(CPF_type_1 CPF_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPF_function(CPF_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPF_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPF_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPF_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="46"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPF_function_text. CPF_return CPF_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPE_function(CPE_type_1)">
-        <apiName>CPE_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="protected"/>
-                <cxxFunctionDeclaredType>CPE_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>CPE_return CPE_function(CPE_type_1 CPE_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPE_function(CPE_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPE_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPE_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPE_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="52"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPE_function_text. CPE_return CPE_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPB_function(CPB_type_1)">
-        <apiName>CPB_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="public"/>
-                <cxxFunctionDeclaredType>CPB_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>CPB_return CPB_function(CPB_type_1 CPB_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPB_function(CPB_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPB_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPB_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPB_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="59"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPB_function_text. CPB_return CPB_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPA_function(CPA_type_1)">
-        <apiName>CPA_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="public"/>
-                <cxxFunctionDeclaredType>CPA_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>CPA_return CPA_function(CPA_type_1 CPA_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPA_function(CPA_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPA_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPA_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPA_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="65"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPA_function_text. CPA_return CPA_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPH_function(CPH_type_1)">
-        <apiName>CPH_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="protected"/>
-                <cxxFunctionStorageClassSpecifierStatic/>
-                <cxxFunctionDeclaredType>CPH_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>static CPH_return CPH_function(CPH_type_1 CPH_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPH_function(CPH_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPH_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPH_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPH_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="76"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPH_function_text. CPH_return CPH_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPG_function(CPG_type_1)">
-        <apiName>CPG_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="protected"/>
-                <cxxFunctionStorageClassSpecifierStatic/>
-                <cxxFunctionDeclaredType>CPG_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>static CPG_return CPG_function(CPG_type_1 CPG_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPG_function(CPG_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPG_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPG_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPG_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="82"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPG_function_text. CPG_return CPG_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPJ_function(CPJ_type_1)">
-        <apiName>CPJ_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="private"/>
-                <cxxFunctionStorageClassSpecifierStatic/>
-                <cxxFunctionDeclaredType>CPJ_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>static CPJ_return CPJ_function(CPJ_type_1 CPJ_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPJ_function(CPJ_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPJ_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPJ_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPJ_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="89"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPJ_function_text. CPJ_return CPJ_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPI_function(CPI_type_1)">
-        <apiName>CPI_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="private"/>
-                <cxxFunctionStorageClassSpecifierStatic/>
-                <cxxFunctionDeclaredType>CPI_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>static CPI_return CPI_function(CPI_type_1 CPI_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPI_function(CPI_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPI_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPI_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPI_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="95"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPI_function_text. CPI_return CPI_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPL_function(CPL_type_1)">
-        <apiName>CPL_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="public"/>
-                <cxxFunctionStorageClassSpecifierStatic/>
-                <cxxFunctionDeclaredType>CPL_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>static CPL_return CPL_function(CPL_type_1 CPL_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPL_function(CPL_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPL_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPL_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPL_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="102"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPL_function_text. CPL_return CPL_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxFunction id="CP_class::CPK_function(CPK_type_1)">
-        <apiName>CPK_function</apiName>
-        <shortdesc/>
-        <cxxFunctionDetail>
-            <cxxFunctionDefinition>
-                <cxxFunctionAccessSpecifier value="public"/>
-                <cxxFunctionStorageClassSpecifierStatic/>
-                <cxxFunctionDeclaredType>CPK_return</cxxFunctionDeclaredType>
-                <cxxFunctionScopedName>CP_class</cxxFunctionScopedName>
-                <cxxFunctionPrototype>static CPK_return CPK_function(CPK_type_1 CPK_param_1)</cxxFunctionPrototype>
-                <cxxFunctionNameLookup>CP_class::CPK_function(CPK_type_1)</cxxFunctionNameLookup>
-                <cxxFunctionParameters>
-                    <cxxFunctionParameter>
-                        <cxxFunctionParameterDeclaredType>CPK_type_1</cxxFunctionParameterDeclaredType>
-                        <cxxFunctionParameterDeclarationName>CPK_param_1</cxxFunctionParameterDeclarationName>
-                        <apiDefNote>CPK_param_1_text </apiDefNote>
-                    </cxxFunctionParameter>
-                </cxxFunctionParameters>
-                <cxxFunctionAPIItemLocation>
-                    <cxxFunctionDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDeclarationFileLine name="lineNumber" value="108"/>
-                    <cxxFunctionDefinitionFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxFunctionDefinitionFileLineStart name="lineNumber" value="-1"/>
-                    <cxxFunctionDefinitionFileLineEnd name="lineNumber" value="-1"/>
-                </cxxFunctionAPIItemLocation>
-            </cxxFunctionDefinition>
-            <apiDesc>
-                <p>CPK_function_text. CPK_return CPK_return_text </p>
-            </apiDesc>
-        </cxxFunctionDetail>
-    </cxxFunction>
-    <cxxVariable id="CP_class::CPN_name">
-        <apiName>CPN_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="public"/>
-                <cxxVariableDeclaredType>CPN_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>CPN_type CPN_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPN_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="114"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPN_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPM_name">
-        <apiName>CPM_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="public"/>
-                <cxxVariableDeclaredType>CPM_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>CPM_type CPM_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPM_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="116"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPM_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPP_name">
-        <apiName>CPP_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="protected"/>
-                <cxxVariableDeclaredType>CPP_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>CPP_type CPP_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPP_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="119"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPP_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPO_name">
-        <apiName>CPO_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="protected"/>
-                <cxxVariableDeclaredType>CPO_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>CPO_type CPO_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPO_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="121"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPO_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPR_name">
-        <apiName>CPR_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="private"/>
-                <cxxVariableDeclaredType>CPR_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>CPR_type CPR_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPR_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="124"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPR_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPQ_name">
-        <apiName>CPQ_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="private"/>
-                <cxxVariableDeclaredType>CPQ_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>CPQ_type CPQ_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPQ_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="126"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPQ_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPX_name">
-        <apiName>CPX_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="private"/>
-                <cxxVariableStorageClassSpecifierStatic/>
-                <cxxVariableDeclaredType>CPX_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>static CPX_type CPX_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPX_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="132"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPX_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPW_name">
-        <apiName>CPW_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="private"/>
-                <cxxVariableStorageClassSpecifierStatic/>
-                <cxxVariableDeclaredType>CPW_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>static CPW_type CPW_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPW_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="134"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPW_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPV_name">
-        <apiName>CPV_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="protected"/>
-                <cxxVariableStorageClassSpecifierStatic/>
-                <cxxVariableDeclaredType>CPV_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>static CPV_type CPV_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPV_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="137"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPV_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPU_name">
-        <apiName>CPU_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="protected"/>
-                <cxxVariableStorageClassSpecifierStatic/>
-                <cxxVariableDeclaredType>CPU_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>static CPU_type CPU_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPU_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="139"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPU_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPT_name">
-        <apiName>CPT_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="public"/>
-                <cxxVariableStorageClassSpecifierStatic/>
-                <cxxVariableDeclaredType>CPT_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>static CPT_type CPT_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPT_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="142"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPT_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxVariable id="CP_class::CPS_name">
-        <apiName>CPS_name</apiName>
-        <shortdesc/>
-        <cxxVariableDetail>
-            <cxxVariableDefinition>
-                <cxxVariableAccessSpecifier value="public"/>
-                <cxxVariableStorageClassSpecifierStatic/>
-                <cxxVariableDeclaredType>CPS_type</cxxVariableDeclaredType>
-                <cxxVariableScopedName>CP_class</cxxVariableScopedName>
-                <cxxVariablePrototype>static CPS_type CPS_name</cxxVariablePrototype>
-                <cxxVariableNameLookup>CP_class::CPS_name</cxxVariableNameLookup>
-                <cxxVariableAPIItemLocation>
-                    <cxxVariableDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxVariableDeclarationFileLine name="lineNumber" value="144"/>
-                </cxxVariableAPIItemLocation>
-            </cxxVariableDefinition>
-            <apiDesc>
-                <p>CPS_text </p>
-            </apiDesc>
-        </cxxVariableDetail>
-    </cxxVariable>
-    <cxxTypedef id="CP_class::CPb_type_alias">
-        <apiName>CPb_type_alias</apiName>
-        <shortdesc/>
-        <cxxTypedefDetail>
-            <cxxTypedefDefinition>
-                <cxxTypedefAccessSpecifier value="public"/>
-                <cxxTypedefDeclaredType>CPb_typedef</cxxTypedefDeclaredType>
-                <cxxTypedefScopedName>CP_class</cxxTypedefScopedName>
-                <cxxTypedefPrototype>CPb_typedef CPb_type_alias</cxxTypedefPrototype>
-                <cxxTypedefNameLookup>CP_class::CPb_type_alias</cxxTypedefNameLookup>
-                <cxxTypedefAPIItemLocation>
-                    <cxxTypedefDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxTypedefDeclarationFileLine name="lineNumber" value="150"/>
-                </cxxTypedefAPIItemLocation>
-            </cxxTypedefDefinition>
-            <apiDesc>
-                <p>CPb_text </p>
-            </apiDesc>
-        </cxxTypedefDetail>
-    </cxxTypedef>
-    <cxxTypedef id="CP_class::CPa_type_alias">
-        <apiName>CPa_type_alias</apiName>
-        <shortdesc/>
-        <cxxTypedefDetail>
-            <cxxTypedefDefinition>
-                <cxxTypedefAccessSpecifier value="public"/>
-                <cxxTypedefDeclaredType>CPa_typedef</cxxTypedefDeclaredType>
-                <cxxTypedefScopedName>CP_class</cxxTypedefScopedName>
-                <cxxTypedefPrototype>CPa_typedef CPa_type_alias</cxxTypedefPrototype>
-                <cxxTypedefNameLookup>CP_class::CPa_type_alias</cxxTypedefNameLookup>
-                <cxxTypedefAPIItemLocation>
-                    <cxxTypedefDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxTypedefDeclarationFileLine name="lineNumber" value="152"/>
-                </cxxTypedefAPIItemLocation>
-            </cxxTypedefDefinition>
-            <apiDesc>
-                <p>CPa_text </p>
-            </apiDesc>
-        </cxxTypedefDetail>
-    </cxxTypedef>
-    <cxxTypedef id="CP_class::CPd_type_alias">
-        <apiName>CPd_type_alias</apiName>
-        <shortdesc/>
-        <cxxTypedefDetail>
-            <cxxTypedefDefinition>
-                <cxxTypedefAccessSpecifier value="private"/>
-                <cxxTypedefDeclaredType>CPd_typedef</cxxTypedefDeclaredType>
-                <cxxTypedefScopedName>CP_class</cxxTypedefScopedName>
-                <cxxTypedefPrototype>CPd_typedef CPd_type_alias</cxxTypedefPrototype>
-                <cxxTypedefNameLookup>CP_class::CPd_type_alias</cxxTypedefNameLookup>
-                <cxxTypedefAPIItemLocation>
-                    <cxxTypedefDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxTypedefDeclarationFileLine name="lineNumber" value="155"/>
-                </cxxTypedefAPIItemLocation>
-            </cxxTypedefDefinition>
-            <apiDesc>
-                <p>CPd_text </p>
-            </apiDesc>
-        </cxxTypedefDetail>
-    </cxxTypedef>
-    <cxxTypedef id="CP_class::CPc_type_alias">
-        <apiName>CPc_type_alias</apiName>
-        <shortdesc/>
-        <cxxTypedefDetail>
-            <cxxTypedefDefinition>
-                <cxxTypedefAccessSpecifier value="private"/>
-                <cxxTypedefDeclaredType>CPc_typedef</cxxTypedefDeclaredType>
-                <cxxTypedefScopedName>CP_class</cxxTypedefScopedName>
-                <cxxTypedefPrototype>CPc_typedef CPc_type_alias</cxxTypedefPrototype>
-                <cxxTypedefNameLookup>CP_class::CPc_type_alias</cxxTypedefNameLookup>
-                <cxxTypedefAPIItemLocation>
-                    <cxxTypedefDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxTypedefDeclarationFileLine name="lineNumber" value="157"/>
-                </cxxTypedefAPIItemLocation>
-            </cxxTypedefDefinition>
-            <apiDesc>
-                <p>CPc_text </p>
-            </apiDesc>
-        </cxxTypedefDetail>
-    </cxxTypedef>
-    <cxxTypedef id="CP_class::CPf_type_alias">
-        <apiName>CPf_type_alias</apiName>
-        <shortdesc/>
-        <cxxTypedefDetail>
-            <cxxTypedefDefinition>
-                <cxxTypedefAccessSpecifier value="protected"/>
-                <cxxTypedefDeclaredType>CPf_typedef</cxxTypedefDeclaredType>
-                <cxxTypedefScopedName>CP_class</cxxTypedefScopedName>
-                <cxxTypedefPrototype>CPf_typedef CPf_type_alias</cxxTypedefPrototype>
-                <cxxTypedefNameLookup>CP_class::CPf_type_alias</cxxTypedefNameLookup>
-                <cxxTypedefAPIItemLocation>
-                    <cxxTypedefDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxTypedefDeclarationFileLine name="lineNumber" value="160"/>
-                </cxxTypedefAPIItemLocation>
-            </cxxTypedefDefinition>
-            <apiDesc>
-                <p>CPf_text </p>
-            </apiDesc>
-        </cxxTypedefDetail>
-    </cxxTypedef>
-    <cxxTypedef id="CP_class::CPe_type_alias">
-        <apiName>CPe_type_alias</apiName>
-        <shortdesc/>
-        <cxxTypedefDetail>
-            <cxxTypedefDefinition>
-                <cxxTypedefAccessSpecifier value="protected"/>
-                <cxxTypedefDeclaredType>CPe_typedef</cxxTypedefDeclaredType>
-                <cxxTypedefScopedName>CP_class</cxxTypedefScopedName>
-                <cxxTypedefPrototype>CPe_typedef CPe_type_alias</cxxTypedefPrototype>
-                <cxxTypedefNameLookup>CP_class::CPe_type_alias</cxxTypedefNameLookup>
-                <cxxTypedefAPIItemLocation>
-                    <cxxTypedefDeclarationFile name="filePath" value="C:/p4work/EPOC/DV3/team/2005/sysdoc/tools/Doxygen/branches/DITA/test/CXX/daft/structure/classes/src/CP.h"/>
-                    <cxxTypedefDeclarationFileLine name="lineNumber" value="162"/>
-                </cxxTypedefAPIItemLocation>
-            </cxxTypedefDefinition>
-            <apiDesc>
-                <p>CPe_text </p>
-            </apiDesc>
-        </cxxTypedefDetail>
-    </cxxTypedef>
+<cxxClass id="class_test">
+	<apiName>Test</apiName>
+	<shortdesc/>
+	<cxxClassDetail>
+		<cxxClassDefinition>
+			<cxxClassAccessSpecifier value="public"/>
+			<cxxClassAPIItemLocation>
+				<cxxClassDeclarationFile name="filePath" value="C:/wip/sysdoc/tools/Doxygen/branches/DITA/test/PaulRo/linking/src/autolink.cpp"/>
+				<cxxClassDeclarationFileLine name="lineNumber" value="59"/>
+				<cxxClassDefinitionFile name="filePath" value="C:/wip/sysdoc/tools/Doxygen/branches/DITA/test/PaulRo/linking/src/autolink.cpp"/>
+				<cxxClassDefinitionFileLineStart name="lineNumber" value="58"/>
+				<cxxClassDefinitionFileLineEnd name="lineNumber" value="74"/>
+			</cxxClassAPIItemLocation>
+		</cxxClassDefinition>
+		<apiDesc>
+        <p>Points to function <xref href="class_test.xml#class_test_1a99f2bbfac6c95612322b0f10e607ebe5">Test()</xref></p>
+		</apiDesc>
+	</cxxClassDetail>
+	<cxxFunction id="class_test_1a99f2bbfac6c95612322b0f10e607ebe5">
+		<apiName>Test</apiName>
+		<shortdesc/>
+		<cxxFunctionDetail>
+			<cxxFunctionDefinition>
+				<cxxFunctionAccessSpecifier value="public"/>
+				<cxxFunctionConstructor/>
+				<cxxFunctionDeclaredType/>
+				<cxxFunctionScopedName>Test</cxxFunctionScopedName>
+				<cxxFunctionPrototype>Test()</cxxFunctionPrototype>
+				<cxxFunctionNameLookup>Test::Test()</cxxFunctionNameLookup>
+				<cxxFunctionParameters/>
+				<cxxFunctionAPIItemLocation>
+					<cxxFunctionDeclarationFile name="filePath" value="C:/wip/sysdoc/tools/Doxygen/branches/DITA/test/PaulRo/linking/src/autolink.cpp"/>
+					<cxxFunctionDeclarationFileLine name="lineNumber" value="61"/>
+					<cxxFunctionDefinitionFile name="filePath" value="C:/wip/sysdoc/tools/Doxygen/branches/DITA/test/PaulRo/linking/src/autolink.cpp"/>
+					<cxxFunctionDefinitionFileLineStart name="lineNumber" value="77"/>
+					<cxxFunctionDefinitionFileLineEnd name="lineNumber" value="77"/>
+				</cxxFunctionAPIItemLocation>
+			</cxxFunctionDefinition>
+			<apiDesc>
+				<p>details. </p>
+			</apiDesc>
+		</cxxFunctionDetail>
+	</cxxFunction>
 </cxxClass>""" 

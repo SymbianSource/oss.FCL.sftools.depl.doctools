@@ -9,19 +9,19 @@
 
 <!--vocabulary declarations-->
 <!ENTITY % pr-d-dec PUBLIC "-//OASIS//ENTITIES DITA Programming Domain//EN"
-  "../../../dtd/programmingDomain.ent">
+  "../../../dtd/technicalContent/dtd/programmingDomain.ent">
   %pr-d-dec;
 <!ENTITY % sw-d-dec PUBLIC "-//OASIS//ENTITIES DITA Software Domain//EN"
-  "../../../dtd/softwareDomain.ent">
+  "../../../dtd/technicalContent/dtd/softwareDomain.ent">
   %sw-d-dec;
 <!ENTITY % ui-d-dec PUBLIC "-//OASIS//ENTITIES DITA User Interface Domain//EN"
-  "../../../dtd/uiDomain.ent">
+  "../../../dtd/technicalContent/dtd/uiDomain.ent">
   %ui-d-dec;
 <!ENTITY % ut-d-dec PUBLIC "-//OASIS//ENTITIES DITA Utilities Domain//EN" 
-  "../../../dtd/utilitiesDomain.ent">
+  "../../../dtd/base/dtd/utilitiesDomain.ent">
   %ut-d-dec;
 <!ENTITY % hi-d-dec PUBLIC "-//OASIS//ENTITIES DITA Highlight Domain//EN" 
-  "../../../dtd/highlightDomain.ent">
+  "../../../dtd/base/dtd/highlightDomain.ent">
   %hi-d-dec;
 <!ENTITY % api-d-dec PUBLIC "-//IBM//ENTITIES DITA API Domain//EN"
   "apiDomain.ent">
@@ -46,17 +46,17 @@
 <!ENTITY % info-types "apiRef">
 
 <!ENTITY % topicDefns PUBLIC "-//OASIS//ENTITIES DITA Topic Definitions//EN"
-  "../../../dtd/topicDefn.ent">
+  "../../../dtd/base/dtd/topicDefn.ent">
   %topicDefns;
 
 <!--Embed the base topic module to define the base elements-->
 <!ENTITY % topic-type PUBLIC "-//OASIS//ELEMENTS DITA Topic//EN"
-  "../../../dtd/topic.mod">
+  "../../../dtd/base/dtd/topic.mod">
   %topic-type;
 
 <!--Embed the base reference module to define the base elements-->
 <!ENTITY % reference-type PUBLIC "-//OASIS//ELEMENTS DITA Reference//EN"
-  "../../../dtd/reference.mod">
+  "../../../dtd/technicalContent/dtd/reference.mod">
   %reference-type;
 
 <!--Embed the API module to get the generic API Reference elements-->
@@ -66,19 +66,19 @@
 
 <!--vocabulary definitions-->
 <!ENTITY % pr-d-def PUBLIC "-//OASIS//ELEMENTS DITA Programming Domain//EN"
-  "../../../dtd/programmingDomain.mod">
+  "../../../dtd/technicalContent/dtd/programmingDomain.mod">
   %pr-d-def;
 <!ENTITY % hi-d-def PUBLIC "-//OASIS//ELEMENTS DITA Highlight Domain//EN" 
-  "../../../dtd/highlightDomain.mod"                                               >
+  "../../../dtd/base/dtd/highlightDomain.mod"                                               >
   %hi-d-def;
 <!ENTITY % sw-d-def PUBLIC "-//OASIS//ELEMENTS DITA Software Domain//EN"
-  "../../../dtd/softwareDomain.mod">
+  "../../../dtd/technicalContent/dtd/softwareDomain.mod">
   %sw-d-def;
 <!ENTITY % ui-d-def PUBLIC "-//OASIS//ELEMENTS DITA User Interface Domain//EN"
-  "../../../dtd/uiDomain.mod">
+  "../../../dtd/technicalContent/dtd/uiDomain.mod">
   %ui-d-def;
 <!ENTITY % ut-d-def PUBLIC "-//OASIS//ELEMENTS DITA Utilities Domain//EN" 
-  "../../../dtd/utilitiesDomain.mod">
+  "../../../dtd/base/dtd/utilitiesDomain.mod">
   %ut-d-def;
 <!ENTITY % api-d-def PUBLIC "-//IBM//ELEMENTS DITA API Domain//EN"
   "apiDomain.mod">

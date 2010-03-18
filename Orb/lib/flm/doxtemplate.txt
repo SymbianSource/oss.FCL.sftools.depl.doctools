@@ -5,7 +5,7 @@
 # Initial Contributors:
 	# Nokia Corporation - initial contribution.
 # Contributors: 
-# Doxyfile 1.5.9-20090622-DITA 
+# Doxyfile 1.6.2-20100106_dita_0.1.38 
 #--------------------------------------------------------------------------- 
 # Project related configuration options 
 #--------------------------------------------------------------------------- 
@@ -14,8 +14,6 @@ PROJECT_NAME           =  ##PROJECT_NAME##
 PROJECT_NUMBER         =  
 OUTPUT_DIRECTORY =##OUTPUTPATH##/dox 
 
-PREPROCESS_INCLUDES	   = YES
- 
 CREATE_SUBDIRS         = NO 
 OUTPUT_LANGUAGE        = English 
 BRIEF_MEMBER_DESC      = NO 
@@ -217,6 +215,7 @@ XML_PROGRAMLISTING     = NO
 #--------------------------------------------------------------------------- 
 GENERATE_XML_DITA      = YES 
 XML_DITA_OUTPUT        = dita 
+XML_DITA_OMIT_DUPLICATE_MEMBERS = YES
 #--------------------------------------------------------------------------- 
 # configuration options for the AutoGen Definitions output 
 #--------------------------------------------------------------------------- 
@@ -232,13 +231,17 @@ PERLMOD_MAKEVAR_PREFIX =
 # Configuration options related to the preprocessor    
 #--------------------------------------------------------------------------- 
 ENABLE_PREPROCESSING   = YES 
-MACRO_EXPANSION        = NO 
+MACRO_EXPANSION        = YES 
 EXPAND_ONLY_PREDEF     = NO 
 SEARCH_INCLUDES        = YES 
 INCLUDE_PATH           = ##INCLUDES##
 INCLUDE_FILE_PATTERNS  = *.h 
 EXPAND_AS_DEFINED      =  
-SKIP_FUNCTION_MACROS   = YES 
+SKIP_FUNCTION_MACROS   = NO 
+PREPROCESS_INCLUDES    = YES
+OUTPUT_INCLUDES        = YES
+PREPROCCESS_FULL_TU    = YES
+ 
 #--------------------------------------------------------------------------- 
 # Configuration::additions related to external references    
 #--------------------------------------------------------------------------- 
@@ -281,4 +284,32 @@ DOT_CLEANUP            = YES
 # Options related to the search engine 
 #--------------------------------------------------------------------------- 
 SEARCHENGINE           = NO
-PREDEFINED             = __SYMBIAN32__ __EPOC32__ MARM MM_MULTIPLE __POSIX_VISIBLE=200112 __XSI_VISIBLE=600 __ISO_C_VISIBLE=1999 __BEGIN_DECLS __END_DECLS _UNICODE __BIG_ENDIAN__ __EMI_SUPPORT__ __DEBUGGER_SUPPORT__ __cplusplus UTRACE_ENABLED ZEXTERN=extern __DOXYGEN__ IMPORT_C=IMPORT_C EXPORT_C=EXPORT_C UIMPORT_C=UIMPORT_C KIMPORT_C=KIMPORT_C UEXPORT_C=UEXPORT_C UIMPORT_C=UIMPORT_C GLAPI=GLAPI ZEXPORT=ZEXPORT ZEXPORTVA=ZEXPORTVA ##DEFINES##
+PREDEFINED             = __SYMBIAN32__ \
+__EPOC32__ \
+__GCC32__ \
+__MARM__ \
+MARM \
+MM_MULTIPLE \
+__POSIX_VISIBLE=200112 \
+__XSI_VISIBLE=600 \
+__ISO_C_VISIBLE=1999 \
+__BEGIN_DECLS \
+__END_DECLS \
+_UNICODE \
+__BIG_ENDIAN__ \
+__EMI_SUPPORT__ \
+__DEBUGGER_SUPPORT__ \
+__cplusplus \
+UTRACE_ENABLED \
+ZEXTERN=extern \
+__DOXYGEN__ \
+IMPORT_C=IMPORT_C \
+EXPORT_C=EXPORT_C \
+UIMPORT_C=UIMPORT_C \
+KIMPORT_C=KIMPORT_C \
+UEXPORT_C=UEXPORT_C \
+UIMPORT_C=UIMPORT_C \
+GLAPI=GLAPI \
+ZEXPORT=ZEXPORT \
+ZEXPORTVA=ZEXPORTVA \
+##DEFINES##

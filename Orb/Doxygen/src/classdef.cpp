@@ -310,7 +310,26 @@ void ClassDef::insertBaseClass(ClassDef *cd,const char *n,Protection p,
     m_impl->inherits = new BaseClassList;
     m_impl->inherits->setAutoDelete(TRUE);
   }
-  m_impl->inherits->append(new BaseClassDef(cd,n,p,s,t));
+  if (Config_getBool("PREPROCESS_INCLUDES")) {
+    // If we are preprocessing the #included files we might have seen
+    // this class declaration, and inheritance more than once so we
+    // only add a relationship where one did not exist before
+    bool hasAlready = false;
+	BaseClassListIterator bcli(*baseClasses());
+	BaseClassDef *bcd;
+	for (bcli.toFirst();(bcd=bcli.current());++bcli) {
+	  if (bcd->usedName == n) {
+		hasAlready = true;
+		//printf("*** Seen it...\n");
+		break;
+	  }
+	}
+	if (!hasAlready) {
+	  m_impl->inherits->append(new BaseClassDef(cd,n,p,s,t));
+	}
+  } else {
+	m_impl->inherits->append(new BaseClassDef(cd,n,p,s,t));
+  }
 }
 
 // inserts a sub class in the inherited list
@@ -360,7 +379,7 @@ void ClassDef::internalInsertMember(MemberDef *md,
                                     bool addToAllList
                                    )
 {
-  //printf("insertInternalMember(%s) isHidden()=%d\n",md->name().data(),md->isHidden());
+  //printf("%p:insertInternalMember(%s) isHidden()=%d\n", this, md->name().data(),md->isHidden());
   if (md->isHidden()) return;
 
   if (!isReference())
@@ -3186,11 +3205,68 @@ MemberList *ClassDef::getMemberList(MemberList::ListType lt)
   return 0;
 }
 
+/** Need this to check the function, If we wait until we are trying
+to insert a MemberDef thatn we will (a) have a memory leak and
+(b) call makeresident on that MemberDef prematurely.
+*/
+bool ClassDef::hasFunction(const QCString &theDef, Protection prot)
+{
+	bool retVal = false;
+	switch (prot) {
+		case Protected: 
+			retVal = hasFunction(MemberList::proMethods, theDef);
+			break;
+		case Package: 
+			retVal = hasFunction(MemberList::pacMethods, theDef);
+			break;
+		case Public:    
+			retVal = hasFunction(MemberList::pubMethods, theDef);
+			break;
+		case Private:   
+			retVal = hasFunction(MemberList::priMethods, theDef);
+			break;
+	}
+	return retVal;
+}
+
+bool ClassDef::hasFunction(MemberList::ListType lt, const QCString &theDef)
+{
+	MemberList *ml = createMemberList(lt);
+	MemberListIterator mli(*ml);
+	MemberDef *cmd;
+	for (mli.toFirst(); (cmd = mli.current()); ++mli) {
+		if (theDef == cmd->declaration()) {
+			//printf("ClassDef::addMemberToList() rejecting duplicate %d \"%s::%s\"\n", md->memberType(), name().data(), md->declaration() ? md->declaration() : "");
+			return true;
+		}
+	}
+	return false;
+}
+
 void ClassDef::addMemberToList(MemberList::ListType lt,MemberDef *md,bool isBrief)
 {
   static bool sortBriefDocs = Config_getBool("SORT_BRIEF_DOCS");
   static bool sortMemberDocs = Config_getBool("SORT_MEMBER_DOCS");
   MemberList *ml = createMemberList(lt);
+  /*
+  if (Config_getBool("PREPROCESS_INCLUDES")) {
+    // If we are preprocessing the #included files we might have seen
+    // this member  more than once so we
+    // only add a member where one did not exist before
+	MemberListIterator mli(*ml);
+	MemberDef *cmd;
+	for (mli.toFirst(); (cmd = mli.current()); ++mli) {
+		if (strcmp(md->declaration(), cmd->declaration()) == 0) {
+		//if (md->anchor() == cmd->anchor()) {
+			printf("ClassDef::addMemberToList() rejecting duplicate %d \"%s::%s\"\n", md->memberType(), name().data(), md->declaration() ? md->declaration() : "");
+			// TODO: Delete md to avoid memory leak???
+			// But some callers still use md after it has been inserted...
+			return;
+		}
+	}
+  }
+  printf("ClassDef::addMemberToList() adding %d, \"%s::%s\"\n", md->memberType(), name().data(), md->declaration() ? md->declaration() : "");
+  */
   if (( isBrief && sortBriefDocs ) ||
       (!isBrief && sortMemberDocs)
      )

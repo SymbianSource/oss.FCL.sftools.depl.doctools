@@ -13,9 +13,20 @@
 # to generate documentation.
 
 
+
 #Print version and generated dox file in log file
 $(info Using Doxygen Extension Version: 0.1)
 $(info DOXYFILE: $(OUTPUTPATH)/$(DOXY_FILE))
+
+# The groupin10 macro allows us to construct a via file, 10 objects at a time
+# to avoid limits on argument lengths and sizes on Windows.
+# It expands to a list of commands, each of which is on a separate line.
+# This causes the shell to be invoked once for each line but each line should
+# be shorter than the maximum allowed by windows.
+define groupin10
+	$(if $1,echo -e $(foreach L,$(wordlist 1,10,$1),"<header>$(L)</header>\\n") >>$(OUTPUTPATH)/meta.xml,)
+	$(if $1,$(call groupin10,$(wordlist 11,$(words $1),$1)),@true)
+endef
 
 #definition that generates a doxygen configuration file and runs doxygen on it
 define generatedoxconfig
@@ -28,14 +39,13 @@ $(OUTPUTPATH)/$(DOXY_FILE).done: $(OUTPUTPATH)/$(DOXY_FILE) $(OUTPUTPATH)/meta.x
 	$(SBS_DOXYGEN) $(OUTPUTPATH)/$(DOXY_FILE) &&  \
 	$(GNUTOUCH) $(OUTPUTPATH)/$(DOXY_FILE).done && \
 	$(SBS_PYTHON) "$(SBS_HOME)/python/doxygen/mapfilter.py" $(OUTPUTPATH)/dox/dita/$(TARGET).ditamap $(OUTPUTPATH)/meta.xml && \
-	$(SBS_PYTHON) "$(SBS_HOME)/python/doxygen/linkinserter.py" $(OUTPUTPATH)/dox/dita && \
 	$(GNUCP) -r $(OUTPUTPATH)/dox/dita $(EPOCROOT)/epoc32/release/doxygen \
 	$(call endrule,rundoxygen)
 
 # Create a meta.xml file which lists all of the project exports (header files exported by this target to epoc32)
 $(OUTPUTPATH)/meta.xml: $(PROJECT_META)
 	echo "<exports>" > $(OUTPUTPATH)/meta.xml && \
-	echo -e "$(foreach header,$(EXPORTHEADERS),<header>$(header)</header>\n)" >> $(OUTPUTPATH)/meta.xml && \
+    $(call groupin10,$(EXPORTHEADERS)) && \
 	echo "</exports>" >> $(OUTPUTPATH)/meta.xml
 	
 #Generate the doxygen configuration file from a template
@@ -109,6 +119,7 @@ TMP_DOXY_FILE:=config.dox.tmp
 DOXY_FILE:=config.dox
 TMP_HRH_DEFINES_FILE:=hrhdefines.txt.tmp
 HRH_DEFINES_FILE:=hrhdefines.txt
+
 $(eval $(generatedoxconfig))
 
 # make the output directories while reading makefile - some build engines prefer this

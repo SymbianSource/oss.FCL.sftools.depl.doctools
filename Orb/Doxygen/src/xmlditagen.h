@@ -12,6 +12,7 @@
 
 #ifndef XMLDITAGEN_H
 #define XMLDITAGEN_H
+#include "xmldita.h"
 
 void generateXMLDITA();
 
@@ -23,6 +24,8 @@ typedef QMap<int, MemberDef*> SrcDeclMemberMap;
 typedef QMap<QString, MemberDef*> MemberNameLookupMap;
 // Used for extracting parameter descriptions
 typedef QMap<QString, QString> ParamDescriptionMap;
+// Used for removing duplicate member IDs, actually we treat this map as a set
+typedef QMap<QString, bool> MemberIdMap;
 
 class DITAGeneratorBase
 {
@@ -63,6 +66,9 @@ public:
 	void generateXMLForDefFileName(const Definition *d, XmlStream &xt, bool incLine=true);
 	void writeFileLocation(Definition *d, XmlStream &xt, const QString &prefix, bool incDef) const;
 	QCString outputFileNameFromDefinition(Definition *d) const;
+#if USE_DOXYGEN_ID_AS_XML_ID == 0
+	void remapXrefs(DocNode *root) const;
+#endif
 protected:
 	/** This is the index XML stream */
 	XmlStream &ix;
@@ -104,13 +110,16 @@ private:
 	void writeFunctionProperties(const MemberDef *md, XmlStream &xt) const;
 	void writeMacroAndFunctionParameters(MemberDef *md, Definition *def, XmlStream &xt) const;
 	void writeMemberBitField(const MemberDef *md, XmlStream &xt) const;
-	void writeMemberEnumerator(const MemberDef *md, XmlStream &xt) const;
+	void writeMemberEnumerator(const MemberDef *md, XmlStream &xt);
 	void writeMemberTemplateLists(MemberDef *md, XmlStream &xt);
 protected:
 	void writeVirtualElement(XmlStream &xs, QString p, Specifier v) const;
 private:
 	DITAGeneratorBase (const DITAGeneratorBase &rhs);
 	DITAGeneratorBase& operator=(const DITAGeneratorBase &rhs);
+protected:
+	// Used to eliminate duplicate IDs in a class
+	MemberIdMap m_memberIdMap;
 };
 
 class DITAClassGenerator : public DITAGeneratorBase
@@ -126,6 +135,7 @@ private:
 	void writeDITAMapEntryForClass(ClassDef *cd);
 	void generateXMLForClass(ClassDef *cd);
 	bool skipThisClass(ClassDef *cd) const;
+	bool isCompletelyDefined(ClassDef *cd) const;
 private:
 	DITAClassGenerator (const DITAClassGenerator &rhs);
 	DITAClassGenerator& operator=(const DITAClassGenerator &rhs);

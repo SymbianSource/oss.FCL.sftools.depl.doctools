@@ -2668,6 +2668,7 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
   					  current->bitfields+=*yytext;
   					}
 <FindMembers>[;,]			{ 
+					  //printf("scanner.l: <FindMembers>[;,] name=%s, endBodyLine=%d\n", current->name.data(), current->endBodyLine);
   					  QCString oldType = current->type.copy();
 					  if (current->bodyLine==-1)
 					  {
@@ -2694,6 +2695,7 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 					    current->section = Entry::VARIABLE_SEC ;
 					    current->fileName = yyFileName;
 					    current->startLine = yyLineNr;
+						//printf("scanner.l: <FindMembers>[;,] file=%s line=%d\n", current->fileName.data(), current->startLine);
 					    current_root->addSubEntry( current ) ;
 					    needNewCurrent=TRUE;
 					  }

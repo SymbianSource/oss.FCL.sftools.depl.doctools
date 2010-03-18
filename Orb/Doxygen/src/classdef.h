@@ -260,6 +260,7 @@ class ClassDef : public Definition
 
     bool isUsedOnly() const;
 
+	bool hasFunction(const QCString &theDef, Protection prot);
     //-----------------------------------------------------------------------------------
     // --- setters ----
     //-----------------------------------------------------------------------------------
@@ -320,6 +321,7 @@ class ClassDef : public Definition
     bool hasExamples();
     bool hasNonReferenceSuperClass();
     void showUsedFiles(OutputList &ol);
+	bool hasFunction(MemberList::ListType lt, const QCString &theDef);
 
   private: 
     void internalInsertMember(MemberDef *md,Protection prot,bool addToAllList);

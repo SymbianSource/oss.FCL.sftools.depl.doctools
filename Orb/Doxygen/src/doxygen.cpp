@@ -155,8 +155,6 @@ static bool             g_successfulRun = FALSE;
 static bool             g_dumpSymbolMap = FALSE;
 static bool             g_dumpConfigAsXML = FALSE;
 
-
-
 void clearAll()
 {
   g_inputFiles.clear();      
@@ -673,7 +671,9 @@ static void buildFileList(EntryNav *rootNav)
         }
       }
     }
-    else
+	// NOTE: if OUTPUT_INCLUDES is true then we will see files that are not in
+	// the INPUT list
+    else if (!Config_getBool("OUTPUT_INCLUDES"))
     {
       const char *fn = root->fileName.data();
       QCString text;
@@ -1983,6 +1983,99 @@ static MemberDef *addVariableToClass(
 }
 
 //----------------------------------------------------------------------
+/** Recursively dumps the include files.*/
+void dumpIncludeGraphRecursive(const FileDef *fd, const QCString &prefix)
+{
+	if (fd && fd->includeFileList()) {
+		QList<IncludeInfo> *incList = fd->includeFileList();
+		IncludeInfo *ii;
+		for (ii=incList->first(); ii != 0; ii=incList->next()) {
+			FileDef *incFd = ii->fileDef;
+			if (incFd) {
+				Debug::print(Debug::IncludeGraph, 0, "%sInc: %s\n", prefix.data(), incFd->absFilePath().data());
+				dumpIncludeGraphRecursive(incFd, "  "+prefix);
+			}
+		}
+	}
+}
+
+/** Dumps the include files.*/
+void dumpIncludeGraph()
+{
+	if (Debug::isFlagSet(Debug::IncludeGraph)) {
+		Debug::print(Debug::IncludeGraph, 0, "Include Graph:\n");
+		FileNameListIterator incFnli(*Doxygen::inputNameList);
+		FileName *incFnLoop;
+		for (;(incFnLoop=incFnli.current()); ++incFnli) {
+			FileNameIterator incFni(*incFnLoop);
+			FileDef *fd;
+			for (;(fd=incFni.current()); ++incFni) {
+				Debug::print(Debug::IncludeGraph, 0, "File: %s\n", fd->absFilePath().data());
+				dumpIncludeGraphRecursive(fd, "  ");
+			}
+		}
+	}
+}
+
+/** Recursively searches the supplied FileDef for an filename that
+matches the rootFileName and returns the FileDef* of the include file or
+0 on failure.
+@param fd The FileDef to search.
+@param rootFileName The filename to match on.
+*/
+static FileDef* findIncludeMatch(const FileDef *fd, const QCString &rootFileName)
+{
+	if (fd && fd->includeFileList()) {
+		// Search the include dependency list for a file that matches root->fileName
+		QList<IncludeInfo> *incList = fd->includeFileList();
+		IncludeInfo *ii;
+		for (ii=incList->first(); ii != 0; ii=incList->next()) {
+			FileDef *incFd = ii->fileDef;
+			// NOTE: this test stops only direct recursion, not indirect recursion
+			if (incFd && incFd != fd) {
+				if (incFd->absFilePath() == rootFileName) {
+					return incFd;
+				} else {
+					// Depth first search
+					FileDef *recurseFd = findIncludeMatch(incFd, rootFileName);
+					if (recurseFd) {
+						return recurseFd;
+					}
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+/** Adds an include file represented by fd to the list of input files
+add it to the Doxygen::inputNameList so that the back ends can see it
+as 'forced include'.
+@param fd The FileDef that describes the file to include.
+*/
+static void addIncludeFileToInput(FileDef *fd)
+{
+	FileNameListIterator incFnli(*Doxygen::inputNameList);
+	FileName *incFnLoop;
+	for (;(incFnLoop=incFnli.current()); ++incFnli) {
+		FileNameIterator incFni(*incFnLoop);
+		FileDef *listFd;
+		for (;(listFd=incFni.current()); ++incFni) {
+			// TODO: Test for file name not FileDef address
+			if (listFd == fd) {
+				// Already have it
+				return;
+			}
+		}
+	}
+	//printf("Forcing include file onto inputNameList: %s\n", incFd->absFilePath().data());
+	//FileName *fn = Doxygen::inputNameList->first();
+	FileNameList *fnList = Doxygen::inputNameList;
+	FileName *incFn = new FileName(fd->absFilePath(), fd->name());
+	incFn->append(fd);
+	fnList->inSort(incFn);
+	//printf("Forced include file pushed onto inputNameList %p: %s\n", fnList, fd->absFilePath().data());
+}
 
 static MemberDef *addVariableToFile(
     EntryNav *rootNav,
@@ -2170,8 +2263,42 @@ static MemberDef *addVariableToFile(
   // it into the namespace. 
   if (fd)
   {
-    md->setFileDef(fd); 
-    fd->insertMember(md);
+		//printf("Setting FileDef %s\n", fd->fileName().data());
+		if (root->fileName != fd->absFilePath()) {
+			//printf("addVariableToFile() Missmatch Name=\"%s\" Root=%s, FileDef=%s\n",
+			//	name.data(),
+			//	root->fileName.data(),
+			//	fd->absFilePath().data()
+			//	);
+			// Now search the include dependency list for a file that matches root->fileName
+			FileDef *incFd = findIncludeMatch(fd, root->fileName);
+			if (incFd) {
+				//printf("Found include file match on: %s\n", incFd->absFilePath().data());
+				// If found add this FileDef* to the member and add the MemberDef* to the FileDef
+				md->setFileDef(incFd);
+				incFd->insertMember(md);
+				md->setBodyDef(incFd);
+				// If this FileDef is not in Doxygen::inputNameList and
+				// Config_getBool("OUTPUT_INCLUDES") is true then
+				// add it to the Doxygen::inputNameList so that the back ends
+				// can see it as 'forced include'.
+				if (Config_getBool("OUTPUT_INCLUDES")) {
+					addIncludeFileToInput(incFd);
+				}
+			} else {
+				printf("Warning: addVariableToFile() failed to resolve missmatch Name=\"%s\" Root=%s, FileDef=%s\n",
+					name.data(),
+					root->fileName.data(),
+					fd->absFilePath().data()
+					);
+				//md->setFileDef(fd);
+				//fd->insertMember(md);
+			}
+	  } else {
+		//printf("addVariableToFile() Match OK FileDef=%s\n", fd->absFilePath().data());
+		md->setFileDef(fd); 
+		fd->insertMember(md);
+	  }
   }
 
   // add member definition to the list of globals 
@@ -2183,7 +2310,9 @@ static MemberDef *addVariableToFile(
   {
     mn = new MemberName(name);
     mn->append(md);
+	// PaulRoss: This first line looks wrong to me but links to typedef's don't work without it!
     Doxygen::functionNameSDict->append(name,mn);
+    //Doxygen::memberNameSDict->append(name,mn);
   }
   rootNav->changeSection(Entry::EMPTY_SEC);
   return md;
@@ -2354,8 +2483,12 @@ static void addVariable(EntryNav *rootNav,int isFuncPtr=-1)
                    root->bodyLine,
                    root->mGrpId
                 );
-    //printf("root->parent->name=%s\n",root->parent->name.data());
-
+	//Entry *pParent = root->parent();
+	//if (pParent) {
+	//	printf("root->parent->name=%s\n",root->parent()->name.data());
+	//} else {
+	//	printf("NO Parent\n");
+	//}
     if (root->type.isEmpty() && root->name.find("operator")==-1 &&
         (root->name.find('*')!=-1 || root->name.find('&')!=-1))
     {
@@ -2558,6 +2691,7 @@ static void buildTypedefList(EntryNav *rootNav)
      ) 
   {
     addVariable(rootNav);
+	//printf("addVariable() done\n");
   }
   if (rootNav->children())
   {
@@ -2645,6 +2779,19 @@ static void addMethodToClass(EntryNav *rootNav,ClassDef *cd,
      name.left(9)!="operator " && (i=name.find('<'))!=-1 && name.find('>')!=-1)
   {
     name=name.left(i); 
+  }
+  if (Config_getBool("PREPROCESS_INCLUDES")) {
+    // If we are preprocessing the #included files we might have seen
+    // this member  more than once so we
+    // only add a member where one did not exist before
+	  QCString myDefName = name;
+	  myDefName.append(root->args);
+	  if(cd->hasFunction(myDefName, root->protection)) {
+	  //if (Doxygen::memberNameSDict->find(name)) {
+		//printf("addMethodToClass() rejecting: %p %d %s::%s\n", cd, root->protection, cd->name().data(), myDefName.data());
+		return;
+	}
+	//printf("addMethodToClass() accepting: %p %d %s::%s\n", cd, root->protection, cd->name().data(), myDefName.data());
   }
 
   //printf("root->name=`%s; root->args=`%s' root->argList=`%s'\n", 
@@ -8484,6 +8631,29 @@ static void copyStyleSheet()
   }
 }
 
+static void reportParseFileSize(const QCString *fileName, const BufStr &theBuf)
+{
+	int numLines = 1;
+	int numWs = 0;
+	int byteCount = 0;
+	for (int i=0; i < theBuf.size(); ++i) {
+		if ('\n' == theBuf.at(i)) {
+			++numLines;
+		} else if (' ' == theBuf.at(i)) {
+			++numWs;
+		}
+		++byteCount;
+		//if ('\0' == theBuf.at(i)) {
+		//	break;
+		//}
+	}
+	msg("Have input for \"%s\", bytes=%d, buffer size=%d bytes, lines=%d ws=%d\n",
+		fileName->data(),
+		byteCount,
+		theBuf.size(),
+		numLines,
+		numWs);
+}
 
 //! parse the list of input files
 static void parseFiles(Entry *root,EntryNav *rootNav)
@@ -8527,7 +8697,7 @@ static void parseFiles(Entry *root,EntryNav *rootNav)
       msg("Reading %s...\n",s->data());
       readInputFile(fileName,preBuf);
     }
-	msg("Have input for \"%s\", size=%d bytes.\n", s->data(), preBuf.size());
+	reportParseFileSize(s, preBuf);
     BufStr convBuf(preBuf.curPos()+1024);
 
     // convert multi-line C++ comments to C style comments
@@ -10105,6 +10275,7 @@ void parseInput()
   findDocumentedEnumValues();
 
   msg("Computing member relations...\n");
+  // TODO: This seems to generate an infinite loop
   computeMemberRelations();
 
   msg("Building full member lists recursively...\n");
@@ -10162,6 +10333,7 @@ void parseInput()
 
   msg("Adding members to index pages...\n");
   addMembersToIndex();
+  dumpIncludeGraph();
 }
 
 void generateOutput()

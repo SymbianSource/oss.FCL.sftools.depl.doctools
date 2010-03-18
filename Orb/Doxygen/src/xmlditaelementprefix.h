@@ -20,6 +20,7 @@
 #include "filedef.h"
 #include <qstring.h>
 #include <qdict.h>
+#include <qfileinfo.h>
 
 /** Class that handles mappings between file name extensions and the
 source code language. This also handles mappings from source code language
@@ -59,6 +60,7 @@ private:
 	QDict<char> m_extToLang;
 	QDict<char> m_langToPrefix;
 	QDict<char> m_langToDoctypeOwner;
+	QString m_defaultLanguage;
 private:
 	QString capFirstLetter(const QString& in) const;
 	QString doctypeStr(const Definition *d, const QString &ePref, const QString& sInsert);

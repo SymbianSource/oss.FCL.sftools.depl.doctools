@@ -14,6 +14,8 @@ import unittest
 import os
 import shutil
 import sys
+import xml
+import logging
 from optparse import OptionParser
 from xml.etree import ElementTree as etree
 from lib import scan, xml_decl, doctype_identifier
@@ -38,53 +40,70 @@ class ComponentMapCreator(object):
         component_names.sort()
         return component_names 
     
-    def _get_ditamap_names_for_component_dir(self, component_dir):
-        self._check_dir_exists(component_dir)
-        ditamap_names = []
+    def _get_ditamaps_for_component(self, component_name):
+        component_dir = self._get_component_dir_for_component(component_name)
+        ditamaps = []
         for root, dirs, files in os.walk(component_dir):
-            ditamap_names.extend([os.path.splitext(f)[0] for f in files if f.lower().endswith(".ditamap")])
-        ditamap_names.sort()
-        return ditamap_names
+            for filename in (filename for filename in files if filename.lower().endswith(".ditamap")):
+                ditamaps.append(os.path.join(root, filename))
+        return ditamaps
     
     def _get_component_dir_for_component(self, component):
         return os.path.join(self.build_dir, component)
     
     def _create_topicref(self, target_name):
-        return etree.Element("topicref", href=target_name+".ditamap", type="ditamap")
+        return etree.Element("topicref", href=target_name+".ditamap", format="ditamap")
     
-    def _create_topichead(self, target_name):
-        topichead = etree.Element("topichead", navtitle=target_name)
-        topichead.append(self._create_topicref(target_name))
-        return topichead
+    def _get_topicrefs_from_map(self, ditamap):
+        try:
+            root = etree.parse(ditamap).getroot()
+        except xml.parsers.expat.ExpatError, e:
+            logging.error("Could not parse ditamap: %s, error was: %s " % (ditamap, e))
+            return None
+        else:
+            return root.getchildren()
     
-    def _create_map(self, component_name):
-        return etree.Element("map", title=component_name, id="cmp_"+component_name)
+    def _get_topicrefs_for_component(self, component_name):
+        topicrefs = []
+        seen = []
+        for ditamap in self._get_ditamaps_for_component(component_name):
+            target_topicrefs = self._get_topicrefs_from_map(ditamap)
+            if target_topicrefs is not None:
+                for topicref in target_topicrefs:
+                    if not topicref.attrib['navtitle'] in seen:
+                        seen.append(topicref.attrib['navtitle'])
+                        topicrefs.append(topicref)
+        topicrefs.sort()
+        return topicrefs
     
-    def _create_ditamap(self, component_name):
-        root = self._create_map(component_name)
-        for topichead in self._get_topicheads_for_component(component_name):
-            root.append(topichead)
-        return root
+    def _create_map_root(self, component_name):
+        return etree.Element("cxxAPIMap", title=component_name, id='cmp_'+component_name)    
+
+    def _get_ditamap(self, component_name):
+        root = self._create_map_root(component_name)
+        for topicref in self._get_topicrefs_for_component(component_name):
+            root.append(topicref)
+        if len(root.getchildren()) > 0: # If the component does not link to anything 
+            return root                 # return None (instead of an empty map)
+        else:
+            return None    
     
-    def _get_topicheads_for_component(self, component_name):
-        topicheads = []
-        for ditamap_name in self._get_ditamap_names_for_component_dir(self._get_component_dir_for_component(component_name)):
-            topicheads.append(self._create_topichead(ditamap_name))
-        topicheads.sort()
-        return topicheads
-    
-    def _write_ditamap_for_component(self, component_name):
-        f = open(os.path.join(self.output_dir, "cmp_"+component_name+".ditamap"), "w")
-        f.write(xml_decl()+"\n")
-        f.write(doctype_identifier("map")+"\n")
-        map = self._create_ditamap(component_name)
-        f.write(etree.tostring(map))
-        f.close()
+    def _handle_component(self, component_name):
+        map = self._get_ditamap(component_name)
+        if map is not None:
+            f = open(os.path.join(self.output_dir, 'cmp_'+component_name+".ditamap"), "w")
+            f.write(xml_decl()+"\n")
+            f.write(doctype_identifier("cxxAPIMap")+"\n")
+            f.write(etree.tostring(map))
+            f.close()
+        else:
+            logging.info("No component ditamap needed to be generated for component \"%s\"" % component_name)
                 
     def create_component_maps(self):
         components = self._get_component_names()
         for component in components:
-            self._write_ditamap_for_component(component)     
+            self._handle_component(component)     
+            
             
 def create_component_maps(build_dir, output_dir):
     cmp = ComponentMapCreator(build_dir, output_dir)
@@ -106,16 +125,24 @@ if __name__ == '__main__':
     
                 
 cmp_audiomsg_ditamap = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE map PUBLIC "-//OASIS//DTD DITA Map//EN" "map.dtd">
-<map id="cmp_audiomsg" title="audiomsg"><topichead navtitle="audiomessage"><topicref href="audiomessage.ditamap" type="ditamap" /></topichead></map>"""
+<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.5.0//EN" "dtd/cxxAPIMap.dtd" >
+<cxxAPIMap id="cmp_audiomsg" title="audiomsg"><cxxStructRef href="struct___array_util.xml#_ArrayUtil" navtitle="_ArrayUtil" />
+    </cxxAPIMap>"""
 
-audiomessage_ditamap = """
-<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+audiomessage_ditamap = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
 <!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.1.0//EN" "dtd/cxxAPIMap.dtd" >
 <cxxAPIMap id="audiomessage" title="audiomessage">
     <cxxStructRef href="struct___array_util.xml#_ArrayUtil" navtitle="_ArrayUtil"/>
+    <cxxStructRef href="struct___array_util.xml#_ArrayUtil" navtitle="_ArrayUtil"/>
 </cxxAPIMap>
 """
+
+empty_target_ditamap = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.1.0//EN" "dtd/cxxAPIMap.dtd" >
+<cxxAPIMap id="empty_target" title="empty_target">
+</cxxAPIMap>
+"""
+
 
 class TestComponentCreator(unittest.TestCase):
     def setUp(self):
@@ -130,20 +157,26 @@ class TestComponentCreator(unittest.TestCase):
         self._clean_output_dir()
         
     def _create_test_build_dir(self):
-        # Create 3 components
-        for comp_name in ("audiomsg", "console", "autotest"):
+        # Create 2 components
+        for comp_name in ("audiomsg", "component_with_no_dita_in_it"):
             os.makedirs(os.path.join(self.test_build_dir, comp_name))
         # Create logfiles
         makefile = open(os.path.join(self.test_build_dir, "Makefile"), "w")
         logfile = open(os.path.join(self.test_build_dir, "logfile.log"), "w")
-        # Create target ditamap
+        # Create target ditamaps
         audiomessage_ditamap_dir = os.path.join(self.test_build_dir, "audiomsg", "c_96422b786aab3b96", "audiomessage_exe", "dox", "dita")
-        audiomessage_ditamap_path = os.path.join(audiomessage_ditamap_dir, "audiomessage.ditamap") 
+        empty_target_ditamap_dir = os.path.join(self.test_build_dir, "audiomsg", "c_96422b786aab3b96", "empty_target_exe", "dox", "dita")
+        self.audiomessage_ditamap_path = os.path.join(audiomessage_ditamap_dir, "audiomessage.ditamap")
+        self.empty_target_ditamap_path = os.path.join(empty_target_ditamap_dir, "empty_target.ditamap") 
         os.makedirs(audiomessage_ditamap_dir)
-        audiomessage_ditamap_handle = open(audiomessage_ditamap_path, "w")
+        os.makedirs(empty_target_ditamap_dir)
+        audiomessage_ditamap_handle = open(self.audiomessage_ditamap_path, "w")
         audiomessage_ditamap_handle.write(audiomessage_ditamap)
         audiomessage_ditamap_handle.close()
-
+        empty_target_ditamap_handle = open(self.empty_target_ditamap_path, "w")
+        empty_target_ditamap_handle.write(empty_target_ditamap)
+        empty_target_ditamap_handle.close()
+        
     def _create_output_dir(self):
         os.mkdir(self.output_dir)    
             
@@ -155,42 +188,34 @@ class TestComponentCreator(unittest.TestCase):
                     
     def test_i_return_all_the_component_names_when_passed_a_dir(self):
         component_names = self.cmp._get_component_names()
-        self.assertEquals(component_names, ["audiomsg", "autotest", "console"])
+        self.assertEquals(component_names, ["audiomsg", "component_with_no_dita_in_it"])
             
-    def test_i_return_all_target_ditamap_names_for_a_component(self):
-        target_ditamap_names = self.cmp._get_ditamap_names_for_component_dir(os.path.join(self.test_build_dir, "audiomsg"))
-        self.assertEquals(target_ditamap_names, ["audiomessage"])
+    def test_i_return_all_target_ditamaps_for_a_component(self):
+        target_ditamaps = self.cmp._get_ditamaps_for_component("audiomsg")
+        self.assertEquals(target_ditamaps, [self.audiomessage_ditamap_path, self.empty_target_ditamap_path])
         
     def test_i_return_a_component_directory_for_a_component(self):
         component_dir = self.cmp._get_component_dir_for_component("audiomsg")
         self.assertEquals(component_dir, os.path.join(self.test_build_dir, "audiomsg"))
         
-    def test_i_return_a_topicref_element_for_a_target(self):
-        topicref = self.cmp._create_topicref("audiomessage")
-        self.assertEquals(topicref.attrib["href"], "audiomessage.ditamap")
-        self.assertEquals(topicref.attrib["type"], "ditamap")
-        
-    def test_i_return_a_list_of_topicheads_for_a_component(self):
-        topicheads = self.cmp._get_topicheads_for_component("audiomsg")
-        self.assertEquals(len(topicheads), 1)
-        
-        
     def test_i_create_a_ditamap_for_a_component(self):
-        ditamap = self.cmp._create_ditamap("audiomsg")
-        self.assertEquals(ditamap.tag, "map") 
+        ditamap = self.cmp._get_ditamap("audiomsg")
+        self.assertEquals(ditamap.tag, "cxxAPIMap") 
         self.assertEquals(ditamap.attrib.get("title", ""), "audiomsg")
         self.assertEquals(ditamap.attrib.get("id", ""), "cmp_audiomsg")
         
+    def test_i_dont_create_a_ditamap_for_a_component_with_no_dita(self):
+        ditamap = self.cmp._get_ditamap("component_with_no_dita_in_it")
+        self.assertEquals(ditamap, None)
+        
     def test_i_can_write_out_a_ditamap_file_for_a_component(self): 
-        self.cmp._write_ditamap_for_component("audiomsg")
+        self.cmp._handle_component("audiomsg")
         self.assertTrue(os.path.exists(os.path.join(self.output_dir,"cmp_audiomsg.ditamap")))
-        map = open(os.path.join(self.output_dir,"cmp_audiomsg.ditamap"),"r").read()
-        print map
-        print cmp_audiomsg_ditamap
+        map = open(os.path.join(self.output_dir,"cmp_audiomsg.ditamap"),"r").read()        
         self.assertEquals(map, cmp_audiomsg_ditamap)
         
     def test_i_write_component_maps(self):
         self.cmp.create_component_maps()
         file_list = os.listdir(self.output_dir)
         file_list.sort()
-        self.assertEquals(file_list, ["cmp_audiomsg.ditamap", "cmp_autotest.ditamap", "cmp_console.ditamap"])    
+        self.assertEquals(file_list, ["cmp_audiomsg.ditamap"])    
