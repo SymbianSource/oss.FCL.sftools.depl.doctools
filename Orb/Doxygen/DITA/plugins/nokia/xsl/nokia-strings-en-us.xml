@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<strings xml:lang="en-us">
-  <!--
-  <str name="cxxBaseClass">Inherites from</str>
-  <str name="cxxClass">A C++ class</str>
-  <str name="cxxParameters">Parameters</str>
-  -->
-  <str name="Related API Reference">Related API Reference</str>
-</strings>

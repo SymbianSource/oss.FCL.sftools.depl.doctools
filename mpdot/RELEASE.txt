@@ -1,0 +1,28 @@
+linkchecker Version 0.1.5
+=========================
+Added shelve support for working with large data sets. This stores everything
+on the file system so uses minimal memory (10MB or so). It takes 50% longer
+to read and about 12x longer to analyse (there are some obvious optimisations
+that could be made in that code area however).
+
+mpdot Version 0.1.3
+===================
+Added quoting on command line for directories that have spaces in them.
+Added format="html" to DitamapLinkConverter converted html links for DITA-OT compatibility.
+
+
+Known issues
+============
+
+Url checking
+------------
+Needs the proxy settings adding so that external URLs can be checked.
+External URL checking has to be unit tested.
+
+ID checking
+-----------
+Currently IDs are not checked that they conform to NMTOKEN constraints.
+
+Error codes
+-----------
+The error codes listed in the linkchecker have not all yet been implemented. 
