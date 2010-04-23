@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE map PUBLIC "-//OASIS//DTD DITA Map//EN" "../dtd/map.dtd">
+<map title="Doxygen DITA Edition User Guide" id="doxygenditaug_top">
+	<topicref href="concepts/configuring_doxygen.dita" format="dita">
+	</topicref>
+	<topicref href="concepts/examples.dita" format="dita">
+	</topicref>
+	<topicref href="concepts/supported_commands.dita" format="dita">
+	</topicref>
+</map>

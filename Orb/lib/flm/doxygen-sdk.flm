@@ -1,0 +1,138 @@
+# Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved.
+# This component and the accompanying materials are made available under the terms of the License 
+# "Eclipse Public License v1.0" which accompanies this distribution, 
+# and is available at the URL "http://www.eclipse.org/legal/epl-v10.html".
+#
+# Initial Contributors:
+# Nokia Corporation - initial contribution.
+#
+# Contributors:
+#
+# Description:
+# An FLM, for creating a Doxygen configuration file and running Doxygen on that file
+# to generate documentation.
+
+# The groupin8 macro allows us to construct a via file, 8 objects at a time
+# to avoid limits on argument lengths and sizes on Windows.
+# It expands to a list of commands, each of which is on a separate line.
+# This causes the shell to be invoked once for each line but each line should
+# be shorter than the maximum allowed by windows.
+define groupin8
+	# NOTE: echo wierdness with -e means that we have to use ocatal escape code \0134\n (or \0134\0012)
+	# If we use "\\\n" make discards the '\\' char. If we use "\\ \n" then we get a spurious space
+	# after the '\' line continuation character (which consigns the line continuation character to
+	# oblivion). So we use \0134 and that gives us a '\' immediatly followed by a newline.
+	$(if $1,@echo -e -n $(foreach L,$(wordlist 1,8,$1),"$(L) \0134\n")>>$(OUTPUTPATH)/$(DOXY_FILE),)
+	$(if $1,$(call groupin8,$(wordlist 9,$(words $1),$1)),@true)
+endef
+
+#Print version and generated dox file in log file
+$(info Using Doxygen Extension Version: 0.1)
+$(info DOXYFILE: $(OUTPUTPATH)/$(DOXY_FILE))
+
+#definition that generates a doxygen configuration file and runs doxygen on it
+define generatedoxconfig
+ALL:: $(OUTPUTPATH)/$(DOXY_FILE).done
+
+# Run doxygen on the dox file. Indicate doxygen was run by creating an empty .done file
+# Also runs the Orb python plug-ins which post-process the XML.
+$(OUTPUTPATH)/$(DOXY_FILE).done: $(OUTPUTPATH)/$(DOXY_FILE)
+	$(call startrule,rundoxygen) \
+	$(SBS_DOXYGEN) $(OUTPUTPATH)/$(DOXY_FILE) &&  \
+	$(GNUTOUCH) $(OUTPUTPATH)/$(DOXY_FILE).done && \
+	$(GNUCP) -r -u $(OUTPUTPATH)/dox/dita $(EPOCROOT)/epoc32/release/doxygen \
+	$(call endrule,rundoxygen)
+
+#Generate the doxygen configuration file from a template
+#cpp is run on the PROUDCT_INLCLUDE hrh file to output all defines. 
+#The cpp output piped to several SED regular expressions to create doxygen compatible defines to the TMP_HRH_DEFINES_FILE file
+#The list is newline delimited so the tr command is used to remove all new lines and replace them with a space and this is output to HRH_DEFINES_FILE
+#sed is used to  replace placeholders in the doxygen configuration template doxtemplate.txt with Raptor variables to produce TMP_DOXY_FILE
+#TMP_DOXY_FILE is concatonated to HRH_DEFINES_FILE (last line in TMP_DOXY_FILE is "PREDEFINED =")
+$(OUTPUTPATH)/$(DOXY_FILE): $(PROJECT_META)
+	# Capture #define statements in .hrh file
+	$(GNUCP) $(FLMHOME)/doxtemplate.txt $(OUTPUTPATH)/$(DOXY_FILE)
+	$(GNUCHMOD) 777 $(OUTPUTPATH)/$(DOXY_FILE)
+	# Add to PREDEFINED, this must be done first
+	$(call groupin8, $(DEFINES))
+	@echo -e "" >>$(OUTPUTPATH)/$(DOXY_FILE)
+	# The rest can be done in any order
+	# First the one-liners Note: echo does not use -n as we want the newline
+	@echo -e "PROJECT_NAME = $(TARGET)" >>$(OUTPUTPATH)/$(DOXY_FILE)
+	@echo -e "OUTPUT_DIRECTORY = $(OUTPUTPATH)/dox" >>$(OUTPUTPATH)/$(DOXY_FILE)
+	@echo -e "WARN_LOGFILE = $(OUTPUTPATH)/warning.log" >>$(OUTPUTPATH)/$(DOXY_FILE)
+	# Next INPUT i.e. source files
+	@echo -e -n "INPUT = " >>$(OUTPUTPATH)/$(DOXY_FILE)
+	$(call groupin8, $(SOURCE))
+	@echo -e "" >>$(OUTPUTPATH)/$(DOXY_FILE)
+	@echo -e -n "INCLUDE_PATH = " >>$(OUTPUTPATH)/$(DOXY_FILE)
+	$(call groupin8, $(INCLUDES))
+endef
+
+# Deduce whether we should be performing a build with standard CPP characteristics
+# This operates differently per-OS release, although OE TARGETTYPEs always build with standard CPP traits
+ifeq ($(OPEN_ENVIRONMENT),1)
+  STDCPP_BUILD:=1
+endif
+
+ifeq ($(SUPPORTS_STDCPP_NEWLIB),1)
+  ifeq ($(NOSTDCPP),1)
+    STDCPP_BUILD:=
+  else
+    ifeq ($(STDCPP),1)
+      STDCPP_BUILD:=1
+    endif
+  endif
+endif
+  
+ifeq ($(STDCPP_BUILD),1)
+  CDEFS:=$(CDEFS) $(STDCPP_DEF)
+  SYSTEMINCLUDE:=$(SYSTEMINCLUDE) $(STDCPP_INCLUDE)
+endif
+
+CDEFS:=$(CDEFS) $(TARGET_DEFS)
+SYSTEMINCLUDE:=$(SYSTEMINCLUDE) $(TARGET_INCLUDES)
+
+# include paths
+UINCLUDE:=$(patsubst %,$(OPT.USERINCLUDE)%,$(USERINCLUDE))
+SINCLUDE:=$(patsubst %,$(OPT.SYSINCLUDE)%,$(SYSTEMINCLUDE))
+PINCLUDE:=$(OPT.PREINCLUDE)$(PRODUCT_INCLUDE)
+INCLUDES:=$(UINCLUDE) $(OPT.SPLITINCLUDE) $(SINCLUDE) $(PINCLUDE)
+#combination of all macros made available by Raptor
+DEFINES:=$(call makemacrodef,$(OPT.DEFINE),$(CDEFS) $(TARGET_MACRO)) 
+
+#Debug info
+$(info SBS_DOXYGEN: $(SBS_DOXYGEN))
+$(info GNUTOUCH: $(GNUTOUCH))
+$(info OUTPUTPATH: $(OUTPUTPATH))
+$(info CDEFS: $(CDEFS))
+$(info OPT.PREINCLUDE :$(OPT.PREINCLUDE))
+$(info OPT.SPLITINCLUDE :$(OPT.SPLITINCLUDE))
+$(info OPT.SYSINCLUDE :$(OPT.SYSINCLUDE))
+$(info OPT.USERINCLUDE :$(OPT.USERINCLUDE))
+$(info SYSTEMINCLUDE :$(SYSTEMINCLUDE))
+$(info DEFINES : $(DEFINES))
+$(info INCLUDES : $(INCLUDES))
+$(info EXPORTHEADERS : $(EXPORTHEADERS))
+$(info PRODUCT_INCLUDE: $(PRODUCT_INCLUDE))
+$(info TARGETTYPE: $(TARGETTYPE))
+$(info COMPONENT_NAME: $(COMPONENT_NAME))
+$(info CAPABILITY: $(CAPABILITY))
+
+#Variables specific to generatedoxconfig
+TMP_DOXY_FILE:=config.dox.tmp
+DOXY_FILE:=config.dox
+TMP_HRH_DEFINES_FILE:=hrhdefines.txt.tmp
+HRH_DEFINES_FILE:=hrhdefines.txt
+$(eval $(generatedoxconfig))
+
+
+# make the output directories while reading makefile - some build engines prefer this
+$(call makepath,$(OUTPUTPATH))
+$(call makepath,$(EPOCROOT)/epoc32/release/doxygen)
+
+## Clean up - problem here - how do we know what docs to remove?  Anyhow removing the marker (.done) file will at least
+## ensure that we regenerate documentation when needed even if we don't actually get rid of old docs.
+$(eval $(call GenerateStandardCleanTarget,$(OUTPUTPATH)/$(DOXY_FILE) $(OUTPUTPATH)/$(DOXY_FILE).done,$(OUTPUTPATH),))
+
+

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.5.0//EN" "dtd/cxxAPIMap.dtd" >
+<cxxAPIMap id="cxxApiExamples" title="cxxApiExamples">
+	<cxxClassRef href="class_test_class.xml#class_test_class" navtitle="TestClass"/><!-- 
+Doxygen version: 1.6.2-20100106_dita_0.1.43
+ -->
+</cxxAPIMap>

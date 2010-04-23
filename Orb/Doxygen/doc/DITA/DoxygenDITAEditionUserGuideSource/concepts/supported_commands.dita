@@ -1,0 +1,389 @@
+<?xml version="1.0"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
+<reference id="supported.doxygen.cmds">
+  <title>Supported Doxygen Commands</title>
+
+  <shortdesc>This is the list of supported and not supported (marked Unsupported) doxygen tags
+and other html items.</shortdesc>
+
+  <refbody>
+
+<section id="section_438FAF59ABDB41469617FE1FD452991B"><title>Special Commands</title><p> The descriptions of these tags have been
+taken from the <xref scope="external" format="html" href="http://www.doxygen.nl/commands.html">Doxygen special commands manual</xref>. Refer to this
+manual for more information about special commands.</p><table id="table_68AD343E6C504FB8B0DA24DEF403594C">
+<tgroup cols="4">
+				<colspec colnum="1" colwidth="1.00*"/>
+				<colspec colnum="2" colwidth="2.00*"/>
+				<colspec colnum="3" colwidth="3.66*"/>
+				<colspec colnum="4" colwidth="3.22*"/>
+				<thead>
+<row><entry>Command</entry><entry>Command Format</entry><entry>Description</entry><entry>Supported in DITA</entry>
+</row>
+</thead><tbody>
+<row>
+<entry> \a </entry><entry> a &lt;word&gt; </entry><entry> Displays the argument &lt;word&gt; using a special font. Use this command to refer to member arguments in the running text. </entry><entry> Unsupported </entry>
+</row><row><entry> \addindex </entry><entry> addindex (text) </entry><entry> This command adds (text) to the index. </entry><entry> Unsupported </entry>
+</row><row><entry> \addtogroup </entry><entry> addtogroup &lt;name&gt; [(title)] </entry><entry> Defines a group just like \defgroup, but in contrast to that command using the same name more than once will not result in a warning, but rather one group with a merged documentation and the first title found in any of the commands. </entry><entry> Unsupported </entry>
+</row><row><entry> \anchor </entry><entry> anchor &lt;word&gt; </entry><entry> This command places an invisible, named anchor into the documentation to which you can refer with the \ref command.  </entry><entry> Unsupported </entry>
+</row><row><entry> \arg  </entry><entry> arg { item-description } </entry><entry> This command has one argument that continues until the first blank line or until another \arg is encountered. The command can be used to generate a simple, not nested list of arguments. Each argument should start with a \arg command. </entry><entry> Unsupported </entry>
+</row><row><entry> \attention  </entry><entry> attention { attention text } </entry><entry> Starts a paragraph where a message that needs attention may be entered.  </entry><entry> Unsupported </entry>
+</row><row><entry> \author </entry><entry> author { list of authors } </entry><entry> Starts a paragraph where one or more author names may be entered.  </entry><entry> Unsupported </entry>
+</row><row><entry> \b </entry><entry> b &lt;word&gt;  </entry><entry> Displays the argument &lt;word&gt; using a bold font. Equivalent to &lt;b&gt;word&lt;/b&gt;. To put multiple words in bold use &lt;b&gt;multiple words. </entry><entry> Unsupported </entry>
+</row><row><entry> \brief  </entry><entry> brief {brief description}  </entry><entry> Starts a paragraph that serves as a brief description. For classes and files the brief description will be used in lists and at the start of the documentation page. For class and file members, the brief description will be placed at the declaration of the member and prepended to the detailed description. </entry><entry> Unsupported </entry>
+</row><row><entry> \bug  </entry><entry> bug { bug description }  </entry><entry> Starts a paragraph where one or more bugs may be reported. </entry><entry> Unsupported </entry>
+</row><row><entry> \c </entry><entry> c &lt;word&gt; </entry><entry> Displays the argument &lt;word&gt; using a typewriter font. Use this to refer to a word of code. </entry><entry> Supported as <codeblock>&lt;tt&gt;...&lt;/tt&gt;</codeblock> </entry>
+</row><row><entry> \callergraph </entry><entry> callergraph  </entry><entry> When this command is put in a comment block of a function or method and HAVE_DOT is set to YES, then doxygen will generate a caller graph for that function (provided the implementation of the function or method calls other documented functions). The caller graph will generated regardless of the value of CALLER_GRAPH. </entry><entry> Unsupported </entry>
+</row><row><entry> \callgraph </entry><entry> callgraph  </entry><entry> When this command is put in a comment block of a function or method and HAVE_DOT is set to YES, then doxygen will generate a call graph for that function (provided the implementation of the function or method calls other documented functions). The call graph will generated regardless of the value of CALL_GRAPH. </entry><entry> Unsupported </entry>
+</row><row><entry> \category  </entry><entry> category &lt;name&gt; [&lt;header-file&gt;] [&lt;header-name&gt;]  </entry><entry> For Objective-C only </entry><entry> Unsupported </entry>
+</row><row><entry> \class  </entry><entry> class &lt;name&gt;[&lt;header-file&gt;] [&lt;header-name&gt;]  </entry><entry> Indicates that a comment block contains documentation for a class with name &lt;name&gt;. </entry><entry> Supported</entry>
+</row><row><entry> \code  </entry><entry> code  </entry><entry> Starts a block of code. </entry><entry> Supported as <codeblock>&lt;codeblock&gt;...&lt;/codeblock&gt;</codeblock> </entry>
+</row><row><entry> \cond  </entry><entry> cond [&lt;section-label&gt;]  </entry><entry> Starts a conditional section that ends with a corresponding \endcond command, which is typically found in another comment block. The main purpose of this pair of commands is to (conditionally) exclude part of a file from processing (in older version of doxygen this could only be achieved using C preprocessor commands). </entry><entry> Unsupported </entry>
+</row><row><entry> \copybrief  </entry><entry> copybrief &lt;link-object&gt;  </entry><entry> Works in a similar way as \copydoc but will only copy the brief description, not the detailed documentation. </entry><entry> Unsupported </entry>
+</row><row><entry> \copydetails </entry><entry> copydetails &lt;link-object&gt;  </entry><entry> Works in a similar way as \copydoc but will only copy the detailed documentation, not the brief description. </entry><entry> Unsupported </entry>
+</row><row><entry> \copydoc  </entry><entry> copydoc &lt;link-object&gt;  </entry><entry> Copies a documentation block from the object specified by &lt;link-object&gt; and pastes it at the location of the command.&lt;/link-object&gt; </entry><entry> Unsupported </entry>
+</row><row><entry> \date  </entry><entry> date { date description }  </entry><entry> Starts a paragraph where one or more dates may be entered. </entry><entry> Unsupported </entry>
+</row><row><entry> \def  </entry><entry> def &lt;name&gt;  </entry><entry> Indicates that a comment block contains documentation for a #define macro. </entry><entry> Supported as specialisation:<codeblock>&lt;cxxDefine id="def_8h_1aacc3ee1a7f283f8ef65cea31f4436a95"&gt;
+	&lt;apiName&gt;MAX&lt;/apiName&gt;
+	&lt;shortdesc/&gt;
+	&lt;cxxDefineDetail&gt;
+		&lt;cxxDefineDef&gt;
+			&lt;cxxDefineAccessSpecifier value="public"/&gt;
+			&lt;cxxDefineScopedName/&gt;
+			&lt;cxxDefinePrototype&gt;#define MAX(xParam, yParam)&lt;/cxxDefinePrototype&gt;
+			&lt;cxxDefineNameLookup&gt;MAX&lt;/cxxDefineNameLookup&gt;
+			&lt;cxxParameter&gt;
+				&lt;cxxParameterDeclarationName&gt;xParam&lt;/cxxParameterDeclarationName&gt;
+				&lt;apiDefNote/&gt;
+			&lt;/cxxParameter&gt;
+			&lt;cxxParameter&gt;
+				&lt;cxxParameterDeclarationName&gt;yParam&lt;/cxxParameterDeclarationName&gt;
+				&lt;apiDefNote/&gt;
+			&lt;/cxxParameter&gt;
+		&lt;/cxxDefineDef&gt;
+		&lt;apiDesc&gt;
+			&lt;p&gt;Computes max xParam and yParam.&lt;/p&gt;
+		&lt;/apiDesc&gt;
+	&lt;/cxxDefineDetail&gt;
+	&lt;initializer&gt;((xParam)&gt;(yParam)?(xParam):(yParam))&lt;/initializer&gt;
+&lt;/cxxDefine&gt;</codeblock></entry>
+</row><row><entry> \defgroup  </entry><entry> defgroup &lt;name&gt; (group title)  </entry><entry> Indicates that a comment block contains documentation for a group of classes, files or namespaces. This can be used to categorize classes, files or namespaces, and document those categories. You can also use groups as members of other groups, thus building a hierarchy of groups. </entry><entry> Unsupported </entry>
+</row><row><entry> \deprecated </entry><entry> deprecated { description }  </entry><entry> Starts a paragraph indicating that this documentation block belongs to a deprecated entity. </entry><entry> Treated as IM tag <codeblock>&lt;title&gt;Deprecated List&lt;/title&gt;
+&lt;body&gt;
+    &lt;p/&gt;
+    &lt;p id="deprecated_1_deprecated000001"&gt; &lt;dl&gt;
+            &lt;dlentry&gt;
+                &lt;dt&gt;Member &lt;xref href="class_test_deprecated_1a5c6767c449b21eb7c4c06abd7066da81"&gt;TestDeprecated::test_deprecated&lt;/xref&gt; () &lt;/dt&gt;
+                &lt;dd&gt;
+                    &lt;p&gt;Test for deprecated tag &lt;/p&gt;
+                &lt;/dd&gt;
+            &lt;/dlentry&gt;
+        &lt;/dl&gt;
+    &lt;/p&gt;
+&lt;/body&gt;</codeblock></entry>
+</row><row><entry> \details  </entry><entry> details {detailed decription}  </entry><entry> Just like \brief starts a brief description, \details starts the detailed description. </entry><entry> Unsupported </entry>
+</row><row><entry> \dir  </entry><entry> dir [&lt;path fragment&gt;]  </entry><entry> Indicates that a comment block contains documentation for a directory. </entry><entry> Unsupported </entry>
+</row><row><entry> \dontinclude </entry><entry> dontinclude &lt;file-name&gt;  </entry><entry> This command can be used to parse a source file without actually verbatim including it in the documentation (as the \include command does). This is useful if you want to divide the source file into smaller pieces and add documentation between the pieces. </entry><entry> Unsupported </entry>
+</row><row><entry> \dot  </entry><entry> dot  </entry><entry> Starts a text fragment which should contain a valid description of a dot graph. The text fragment ends with \enddot. </entry><entry> Unsupported </entry>
+</row><row><entry> \dotfile </entry><entry> dotfile &lt;file&gt; ["caption"]  </entry><entry> Inserts an image generated by dot from &lt;file&gt; into the documentation. </entry><entry> Unsupported </entry>
+</row><row><entry> \e </entry><entry> e &lt;word&gt;  </entry><entry> Displays the argument &lt;word&gt; in italics. Use this command to emphasize words. </entry><entry> Unsupported </entry>
+</row><row><entry> \else </entry><entry> else  </entry><entry> Starts a conditional section if the previous conditional section was not enabled. </entry><entry> Unsupported </entry>
+</row><row><entry> \elseif </entry><entry> elseif &lt;section-label&gt;  </entry><entry> Starts a conditional documentation section if the previous section was not enabled. </entry><entry> Unsupported </entry>
+</row><row><entry> \em  </entry><entry> em &lt;word&gt;  </entry><entry> Displays the argument &lt;word&gt; in italics. Use this command to emphasize words. </entry><entry> Unsupported </entry>
+</row><row><entry> \endcode  </entry><entry> endcode  </entry><entry> Ends a block of code.  </entry><entry> Supported, See \code</entry>
+</row><row><entry> \endcond  </entry><entry> endcond  </entry><entry> Ends a conditional section that was started by \cond. </entry><entry> Unsupported </entry>
+</row><row><entry> \enddot  </entry><entry> enddot  </entry><entry> Ends a blocks that was started with \dot. </entry><entry> Unsupported </entry>
+</row><row><entry> \endhtmlonly  </entry><entry> endhtmlonly  </entry><entry> Ends a block of text that was started with a \htmlonly command. </entry><entry> Unsupported </entry>
+</row><row><entry> \endif  </entry><entry> endif  </entry><entry> Ends a conditional section that was started by \if or \ifnot For each \if or \ifnot one and only one matching \endif must follow. </entry><entry> Unsupported </entry>
+</row><row><entry> \endlatexonly  </entry><entry> endlatexonly  </entry><entry> Ends a block of text that was started with a \latexonly command. </entry><entry> Unsupported </entry>
+</row><row><entry> \endlink  </entry><entry> endlink  </entry><entry> This command ends a link that is started with the \link command. </entry><entry> Unsupported </entry>
+</row><row><entry> \endmanonly  </entry><entry> endmanonly  </entry><entry> Ends a block of text that was started with a \manonly command. </entry><entry> Unsupported </entry>
+</row><row><entry> \endmsc  </entry><entry> endmsc  </entry><entry> Ends a blocks that was started with \msc. </entry><entry> Unsupported </entry>
+</row><row><entry> \endverbatim  </entry><entry> endverbatim  </entry><entry> Ends a block of text that was started with a \verbatim command. </entry><entry> Supported, See \verbatim</entry>
+</row><row><entry> \endxmlonly  </entry><entry> endxmlonly  </entry><entry> Ends a block of text that was started with a \xmlonly command. </entry><entry> Unsupported </entry>
+</row><row><entry> \enum  </entry><entry> enum &lt;name&gt;  </entry><entry> Indicates that a comment block contains documentation for an enumeration, with name &lt;name&gt;. If the enum is a member of a class and the documentation block is located outside the class definition, the scope of the class should be specified as well. </entry><entry> Supported </entry>
+</row><row><entry> \example  </entry><entry> example &lt;file-name&gt;  </entry><entry> Indicates that a comment block contains documentation for a source code example. </entry><entry> Unsupported </entry>
+</row><row><entry> \exception </entry><entry> exception &lt;exception-object&gt; { exception description }  </entry><entry> Starts an exception description for an exception object with name &lt;exception-object&gt;.&lt;/exception-object&gt; </entry><entry> Unsupported </entry>
+</row><row><entry> \extends  </entry><entry> extends &lt;name&gt; </entry><entry> This command can be used to manually indicate an inheritance relation, when the programming language does not support this concept natively (e.g. C). </entry><entry> Unsupported </entry>
+</row><row><entry> \f\$  </entry><entry> f$ </entry><entry> Marks the start and end of an in-text formula. </entry><entry> Unsupported </entry>
+</row><row><entry> \f[  </entry><entry> f[ </entry><entry> Marks the start of a long formula that is displayed centered on a separate line. </entry><entry> Unsupported </entry>
+</row><row><entry> \f]  </entry><entry> f] </entry><entry> Marks the end of a long formula that is displayed centered on a separate line. </entry><entry> Unsupported </entry>
+</row><row><entry> \f{  </entry><entry> f{environment}{ </entry><entry> Marks the start of a formula that is in a specific environment. NOTE: The second is optional and is only to help editors (such as Vim) to do proper syntax highlighting by making the number of opening and closing braces the same. </entry><entry> Unsupported </entry>
+</row><row><entry> \f}  </entry><entry> f} </entry><entry> Marks the end of a formula that is in a specific environment. </entry><entry> Unsupported </entry>
+</row><row><entry> \file  </entry><entry> file [&lt;name&gt;] </entry><entry> Indicates that a comment block contains documentation for a source or header file with name &lt;name&gt;. </entry><entry> Supported </entry>
+</row><row><entry> \fn  </entry><entry> fn (function declaration) </entry><entry> Indicates that a comment block contains documentation for a function (either global or as a member of a class). This command is only needed if a comment block is not placed in front (or behind) the function declaration or definition. </entry><entry> Supported </entry>
+</row><row><entry> \headerfile  </entry><entry> headerfile &lt;header-file&gt; [&lt;header-name&gt;] </entry><entry> Intended to be used for class, struct, or union documentation, where the documentation is in front of the definition. </entry><entry> Unsupported </entry>
+</row><row><entry> \hideinitializer  </entry><entry> hideinitializer  </entry><entry> By default the value of a define and the initializer of a variable are displayed unless they are longer than 30 lines. By putting this command in a comment block of a define or variable, the initializer is always hidden. </entry><entry> Unsupported </entry>
+</row><row><entry> \htmlinclude  </entry><entry> htmlinclude &lt;file-name&gt;  </entry><entry> This command includes the file &lt;file-name&gt; as is in the HTML documentation. The command is equivalent to pasting the file in the documentation and placing \htmlonly and \endhtmlonly commands around it.&lt;/file-name&gt; </entry><entry> Unsupported </entry>
+</row><row><entry> \htmlonly  </entry><entry> htmlonly  </entry><entry> Starts a block of text that will be verbatim included in the generated HTML documentation only. The block ends with an \endhtmlonly command. </entry><entry> Unsupported </entry>
+</row><row><entry> \if  </entry><entry> if &lt;section-label&gt;  </entry><entry> Starts a conditional documentation section. The section ends with a matching \endif command. </entry><entry> Unsupported </entry>
+</row><row><entry>\ifnot </entry><entry> ifnot &lt;section-label&gt;  </entry><entry> Starts a conditional documentation section. The section ends with a matching \endif command. </entry><entry> Unsupported </entry>
+</row><row><entry> \image </entry><entry> image &lt;format&gt; &lt;file&gt; ["caption"] [&lt;sizeindication&gt;=&lt;size&gt;]  </entry><entry> Inserts an image into the documentation. This command is format specific, so if you want to insert an image for more than one format you'll have to repeat this command for each format. </entry><entry> Unsupported </entry>
+</row><row><entry> \implements </entry><entry> implements &lt;name&gt;  </entry><entry> This command can be used to manually indicate an inheritance relation, when the programming language does not support this concept natively (e.g. C). </entry><entry> Unsupported </entry>
+</row><row><entry> \include  </entry><entry> include &lt;file-name&gt;  </entry><entry> This command can be used to include a source file as a block of code. </entry><entry> Unsupported </entry>
+</row><row><entry> \includelineno  </entry><entry> includelineno &lt;file-name&gt;  </entry><entry> This command works the same way as \include, but will add line numbers to the included file. </entry><entry> Unsupported </entry>
+</row><row><entry> \ingroup  </entry><entry> ingroup (&lt;groupname&gt; [&lt;groupname&gt; &lt;groupname&gt;])  </entry><entry> If the \ingroup command is placed in a comment block of a class, file or namespace, then it will be added to the group or groups identified by &lt;groupname&gt;. </entry><entry> Unsupported </entry>
+</row><row><entry> \internal  </entry><entry> internal </entry><entry> This command writes the message `For internal use only' to the output and all text after an \internal command until the end of the comment block or the end of the section (whichever comes first) is marked as "internal". </entry><entry> Unsupported </entry>
+</row><row><entry> \invariant  </entry><entry> invariant { description of invariant } </entry><entry> Starts a paragraph where the invariant of an entity can be described.  </entry><entry> Unsupported </entry>
+</row><row><entry> \interface  </entry><entry> interface &lt;name&gt; [&lt;header-file&gt;] [&lt;header-name&gt;] </entry><entry> Indicates that a comment block contains documentation for an interface with name &lt;name&gt;. </entry><entry> Unsupported </entry>
+</row><row><entry> \latexonly  </entry><entry> latexonly  </entry><entry> Starts a block of text that will be verbatim included in the generated $\mbox{\LaTeX}$ documentation only. The block ends with a endlatexonly command. </entry><entry> Unsupported </entry>
+</row><row><entry> \li  </entry><entry> li { item-description }  </entry><entry> This command has one argument that continues until the first blank line or until another \li is encountered. The command can be used to generate a simple, not nested list of arguments. </entry><entry> Supported as:<codeblock>&lt;ul&gt;
+    &lt;li&gt;
+        &lt;p&gt;First item&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li&gt;
+        &lt;p&gt;Second item&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li&gt;
+        &lt;p&gt;Third item&lt;/p&gt;
+    &lt;/li&gt;
+&lt;/ul&gt;</codeblock></entry>
+</row><row><entry> \line  </entry><entry> line ( pattern )  </entry><entry> This command searches line by line through the example that was last included using \include or \dontinclude until it finds a non-blank line. </entry><entry> Unsupported </entry>
+</row><row><entry> \link  </entry><entry> link &lt;link-object&gt; </entry><entry> The \link command can be used to create a link to an object (a file, class, or member) with a user specified link-text. The link command should end with an \endlink command. </entry><entry> Unsupported </entry>
+</row><row><entry> \mainpage </entry><entry> mainpage [(title)] </entry><entry> If the \mainpage command is placed in a comment block the block is used to customize the index page (in HTML) or the first chapter (in $\mbox{\LaTeX}$). </entry><entry> Unsupported </entry>
+</row><row><entry> \manonly  </entry><entry> manonly  </entry><entry> Starts a block of text that will be verbatim included in the generated MAN documentation only. The block ends with a endmanonly command. </entry><entry> Unsupported </entry>
+</row><row><entry> \memberof </entry><entry> memberof &lt;name&gt;  </entry><entry> This command make a function a member of a class in a similar way as \relates does, only with this command the function is represented as a real member of the class. This can be useful when the programming language does not support the concept of member functions natively (e.g. C). </entry><entry> Unsupported </entry>
+</row><row><entry> \msc </entry><entry> msc  </entry><entry> Starts a text fragment which should contain a valid description of a message sequence chart. See http://www.mcternan.me.uk/mscgen/ for examples. The text fragment ends with \endmsc.  </entry><entry> Unsupported </entry>
+</row><row><entry> \n </entry><entry> n  </entry><entry> Forces a new line. Equivalent to and inspired by the printf function. </entry><entry> Unsupported </entry>
+</row><row><entry> \name </entry><entry> name (header)  </entry><entry> This command turns a comment block into a header definition of a member group. The comment block should be followed by a //@{ ... //@} block containing the members of the group. </entry><entry> Unsupported </entry>
+</row><row><entry> \namespace </entry><entry> namespace &lt;name&gt;  </entry><entry> Indicates that a comment block contains documentation for a namespace with name &lt;name&gt;. </entry><entry> Supported </entry>
+</row><row><entry> \nosubgrouping </entry><entry> nosubgrouping  </entry><entry> This command can be put in the documentation of a class. It can be used in combination with member grouping to avoid that doxygen puts a member group as a subgroup of a Public/Protected/Private/... section. </entry><entry> Unsupported </entry>
+</row><row><entry> \note </entry><entry> note {text} </entry><entry> Starts a paragraph where a note can be entered.  </entry><entry> Supported as <codeblock>&lt;note type="note"&gt;&lt;p&gt;...&lt;/p&gt;&lt;/note&gt; </codeblock></entry>
+</row><row><entry> \overload </entry><entry> overload [(function declaration)] </entry><entry> This command can be used to generate the following standard text for an overloaded member function: "This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts." If the documentation for the overloaded member function is not located in front of the function declaration or definition, the optional argument should be used to specify the correct function. </entry><entry> Unsupported </entry>
+</row><row><entry> \p  </entry><entry> p &lt;word&gt;  </entry><entry> Displays the parameter &lt;word&gt; using a typewriter font. You can use this command to refer to member function parameters in the running text. See \c </entry><entry> Supported as <codeblock>&lt;tt&gt;...&lt;/tt&gt;</codeblock> </entry>
+</row><row><entry> \package </entry><entry> package &lt;name&gt; </entry><entry> Indicates that a comment block contains documentation for a Java package with name &lt;name&gt;. </entry><entry> Unsupported </entry>
+</row><row><entry> \page </entry><entry> page &lt;name&gt; (title) </entry><entry> Indicates that a comment block contains a piece of documentation that is not directly related to one specific class, file or member. </entry><entry> Unsupported </entry>
+</row><row><entry> \par  </entry><entry> par [(paragraph title)] { paragraph }  </entry><entry> If a paragraph title is given this command starts a paragraph with a user defined heading. The heading extends until the end of the line. The paragraph following the command will be indented. </entry><entry> Supported as <codeblock>&lt;p&gt;
+    &lt;b&gt;Paragraph Title&lt;/b&gt;
+&lt;/p&gt;
+&lt;p&gt;Paragraph contents&lt;/p&gt;</codeblock></entry>
+</row><row><entry> \paragraph </entry><entry> paragraph &lt;paragraph-name&gt; (paragraph title)  </entry><entry> Creates a named paragraph with name &lt;paragraph-name&gt;. Warning! This command only works inside a subsubsection of a related page documentation block and not in other documentation blocks!&lt;/paragraph-name&gt; </entry><entry> Unsupported </entry>
+</row><row><entry> \param  </entry><entry> param &lt;parameter-name&gt; { parameter description }  </entry><entry> Starts a parameter description for a function parameter with name &lt;parameter-name&gt;. The existence of the parameter is checked and a warning is given if the documentation of this (or any other) parameter is missing or not present in the function declaration or definition.&lt;/parameter-name&gt; </entry><entry> Supported as specialisation:<codeblock>&lt;cxxParameter&gt;
+    &lt;cxxParameterType&gt;int&lt;/cxxParameterType&gt;
+    &lt;cxxParameterDeclarationName&gt;iNum&lt;/cxxParameterDeclarationName&gt;
+    &lt;apiDefNote&gt;Cakes to be consumed. &lt;/apiDefNote&gt;
+&lt;/cxxParameter&gt;</codeblock></entry>
+</row><row><entry> \post  </entry><entry> post { description of the postcondition }  </entry><entry> Starts a paragraph where the postcondition of an entity can be described. </entry><entry> Basic support only<codeblock>&lt;p&gt;text&lt;/p&gt;</codeblock></entry>
+</row><row><entry> \pre  </entry><entry> pre { description of the precondition }  </entry><entry> Starts a paragraph where the precondition of an entity can be described. </entry><entry> Basic support only <codeblock>&lt;p&gt;text&lt;/p&gt;</codeblock></entry>
+</row><row><entry> \private  </entry><entry> private  </entry><entry> Indicates that the member documented in the comment block is private, i.e., should only be accessed by other members in the same class. </entry><entry> Unsupported </entry>
+</row><row><entry> \privatesection </entry><entry> privatesection </entry><entry> For starting a section of private members, in a way similar to the "private:" class marker in C++, use \privatesection. </entry><entry> Unsupported </entry>
+</row><row><entry> \property  </entry><entry> property (qualified property name)  </entry><entry> Indicates that a comment block contains documentation for a property (either global or as a member of a class). </entry><entry> Unsupported </entry>
+</row><row><entry> \protected  </entry><entry> protected  </entry><entry> Indicates that the member documented in the comment block is protected, i.e., should only be accessed by other members in the same or derived classes. </entry><entry> Unsupported </entry>
+</row><row><entry> \protectedsection </entry><entry> protectedsection </entry><entry> For starting a section of protected members, in a way similar to the "protected:" class marker in C++, use \protectedsection </entry><entry> Unsupported </entry>
+</row><row><entry> \protocol  </entry><entry> protocol &lt;name&gt; [&lt;header-file&gt;] [&lt;header-name&gt;]  </entry><entry> Indicates that a comment block contains documentation for a protocol in Objective-C with name &lt;name&gt;. </entry><entry> Unsupported </entry>
+</row><row><entry> \public  </entry><entry> public  </entry><entry> Indicates that the member documented in the comment block is public, i.e., can be accessed by any other class or function. </entry><entry> Unsupported </entry>
+</row><row><entry> \publicsection  </entry><entry> publicsection </entry><entry> For starting a section of public members, in a way similar to the "public:" class marker in C++, use \publicsection. </entry><entry> Unsupported </entry>
+</row><row><entry> \ref  </entry><entry> ref &lt;name&gt; ["(text)"]  </entry><entry> Creates a reference to a named section, subsection, page or anchor. For HTML documentation the reference command will generate a link to the section. For a sections or subsections the title of the section will be used as the text of the link. </entry><entry> Supported for use with the <tt>@capability</tt> tag </entry>
+</row><row><entry> \relates  </entry><entry> relates &lt;name&gt;  </entry><entry> This command can be used in the documentation of a non-member function &lt;name&gt;. It puts the function inside the `related function' section of the class documentation. This command is useful for documenting non-friend functions that are nevertheless strongly coupled to a certain class. It prevents the need of having to document a file, but only works for functions. </entry><entry> Unsupported </entry>
+</row><row><entry> \relatesalso </entry><entry> relatesalso &lt;name&gt;  </entry><entry> This command can be used in the documentation of a non-member function &lt;name&gt;. It puts the function both inside the `related function' section of the class documentation as well as leaving its normal file documentation location. </entry><entry> Unsupported </entry>
+</row><row><entry> \remarks </entry><entry> remarks { remark text } </entry><entry> Starts a paragraph where one or more remarks may be entered. </entry><entry> Unsupported </entry>
+</row><row><entry> \return </entry><entry> return { description of the return value }  </entry><entry> Starts a return value description for a function. </entry><entry> Supported <codeblock>&lt;p&gt;Return text&lt;/p&gt;</codeblock></entry>
+</row><row><entry> \retval </entry><entry> retval &lt;return value&gt; { description }  </entry><entry> Starts a return value description for a function with name &lt;return value&gt;. </entry><entry> Unsupported </entry>
+</row><row><entry> \sa  </entry><entry> sa { references }  </entry><entry> Starts a paragraph where one or more cross-references to classes, functions, methods, variables, files or URL may be specified. Two names joined by either :: or # are understood as referring to a class and one of its members. One of several overloaded methods or constructors may be selected by including a parenthesized list of argument types after the method name. </entry><entry> Unsupported </entry>
+</row><row><entry> \section </entry><entry> section &lt;section-name&gt; (section title)  </entry><entry> Creates a section with name &lt;section-name&gt;. Warning! This command only works inside related page documentation and not in other documentation blocks!&lt;/section-name&gt; </entry><entry> Unsupported </entry>
+</row><row><entry> \see  </entry><entry> see { references }  </entry><entry> Equivalent to \sa. Introduced for compatibility with Javadoc. </entry><entry> Supported <codeblock>&lt;p&gt;ItemToSee&lt;/p&gt;</codeblock></entry>
+</row><row><entry> \showinitializer  </entry><entry> showinitializer  </entry><entry> See \hideinitializer. </entry><entry> Unsupported </entry>
+</row><row><entry> \since  </entry><entry> since { text }  </entry><entry> This tag can be used to specify since when (version or time) an entity is available. </entry><entry> Basic Support:<codeblock>&lt;p&gt;version 4.2, as of July 1980&lt;/p&gt;</codeblock></entry>
+</row><row><entry> \skip  </entry><entry> skip ( pattern )  </entry><entry> This command searches line by line through the example that was last included using \include or \dontinclude until it finds a line that contains the specified pattern. </entry><entry> Unsupported </entry>
+</row><row><entry> \skipline  </entry><entry> skipline ( pattern )  </entry><entry> This command searches line by line through the example that was last included using \include or \dontinclude until it finds a line that contains the specified pattern. It then writes the line to the output. </entry><entry> Unsupported </entry>
+</row><row><entry> \struct  </entry><entry> struct &lt;name&gt; [&lt;header-file&gt;] [&lt;header-name&gt;]  </entry><entry> Indicates that a comment block contains documentation for a struct with name &lt;name&gt;. </entry><entry> Supported </entry>
+</row><row><entry> \subpage  </entry><entry> subpage &lt;name&gt; ["(text)"]  </entry><entry> This command can be used to create a hierarchy of pages. Note: Each page can be the sub page of only one other page and no cyclic relations are allowed, i.e. the page hierarchy must have a tree structure. </entry><entry> Unsupported </entry>
+</row><row><entry> \subsection  </entry><entry> subsection &lt;subsection-name&gt; (subsection title)  </entry><entry> Creates a subsect$on with name &lt;subsection-name&gt;. This command only works inside a section of a related page documentation block and not in other documentation blocks!&lt;/subsection-name&gt; </entry><entry> Unsupported </entry>
+</row><row><entry> \subsubsection  </entry><entry> subsubsection &lt;subsubsection-name&gt; (subsubsection title)  </entry><entry> Creates a subsubsection with name &lt;subsubsection-name&gt;.&lt;/subsubsection-name&gt; </entry><entry> Unsupported </entry>
+</row><row><entry> \test  </entry><entry> test { paragraph describing a test case }  </entry><entry> Starts a paragraph where a test case can be described. The description will also add the test case to a separate test list. The two instances of the description will be cross-referenced. Each test case in the test list will be preceded by a header that indicates the origin of the test case. </entry><entry>Unsupported</entry>
+</row><row><entry> \throw  </entry><entry> throw &lt;exception-object&gt; { exception description }  </entry><entry> Synonymous to \exception (see section \exception). </entry><entry> Unsupported </entry>
+</row><row><entry> \todo  </entry><entry> todo { paragraph describing what is to be done }  </entry><entry> Starts a paragraph where a TODO item is described. The description will also add an item to a separate TODO list. The two instances of the description will be cross-referenced. Each item in the TODO list will be preceded by a header that indicates the origin of the item. </entry><entry> Unsupported </entry>
+</row><row><entry> \tparam  </entry><entry> tparam &lt;template-parameter-name&gt; { description }  </entry><entry> Starts a template parameters for a class or function template parameter with name &lt;template-parameter-name&gt;, followed by a description of the template parameter.&lt;/template-parameter-name&gt; </entry><entry> Unsupported </entry>
+</row><row><entry> \typedef  </entry><entry> typedef (typedef declaration)  </entry><entry> Indicates that a comment block contains documentation for a typedef (either global or as a member of a class). </entry><entry> Supported </entry>
+</row><row><entry> \union  </entry><entry> union &lt;name&gt; [&lt;header-file&gt;] [&lt;header-name&gt;]  </entry><entry> Indicates that a comment block contains documentation for a union with name &lt;name&gt;. </entry><entry> Supported </entry>
+</row><row><entry> \until  </entry><entry> until ( pattern )  </entry><entry> This command writes all lines of the example that was last included using \include or \dontinclude to the output, until it finds a line containing the specified pattern. The line containing the pattern will be written as well. </entry><entry> Unsupported </entry>
+</row><row><entry> \var  </entry><entry> var (variable declaration)  </entry><entry> Indicates that a comment block contains documentation for a variable or enum value (either global or as a member of a class). </entry><entry> Supported </entry>
+</row><row><entry> \verbatim  </entry><entry> verbatim  </entry><entry> Starts a block of text that will be verbatim included in both the HTML and the $\mbox{\LaTeX}$ documentation. The block should end with a \endverbatim block. All commands are disabled in a verbatim block. </entry><entry> Supported as <codeblock>&lt;p&gt;
+  &lt;pre&gt;
+    typedef struct
+    {
+        double x; 
+        double y; 
+        double z; 
+        char * name;
+        int    namelength;
+    } point3d;
+  &lt;/pre&gt; 
+&lt;/p&gt;</codeblock></entry>
+</row><row><entry> \verbinclude </entry><entry> verbinclude &lt;file-name&gt;  </entry><entry> This command includes the file &lt;file-name&gt; verbatim in the documentation. The command is equivalent to pasting the file in the documentation and placing \verbatim and \endverbatim commands around it.&lt;/file-name&gt; </entry><entry> Unsupported </entry>
+</row><row><entry> \version  </entry><entry> version { version number }  </entry><entry> Starts a paragraph where one or more version strings may be entered. </entry><entry> Unsupported </entry>
+</row><row><entry> \warning  </entry><entry> warning { warning message }  </entry><entry> Starts a paragraph where one or more warning messages may be entered. </entry><entry> Unsupported </entry>
+</row><row><entry> \weakgroup  </entry><entry> weakgroup &lt;name&gt; [(title)]  </entry><entry> Can be used exactly like \addtogroup, but has a lower priority when it comes to resolving conflicting grouping definitions. </entry><entry> Unsupported </entry>
+</row><row><entry> \xmlonly  </entry><entry> xmlonly  </entry><entry> Starts a block of text that will be verbatim included in the generated XML output only. The block ends with a endxmlonly command. </entry><entry> Unsupported </entry>
+</row><row><entry> \xrefitem  </entry><entry> xrefitem &lt;key&gt; "(heading)" "(list title)" {text}  </entry><entry> This command is a generalization of commands such as \todo and \bug. It can be used to create user-defined text sections which are automatically cross-referenced between the place of occurrence and a related page, which will be generated. On the related page all sections of the same type will be collected. </entry><entry> Unsupported </entry>
+</row><row><entry> \$  </entry><entry> $  </entry><entry> This command writes the $ character to the output. </entry><entry> Supported </entry>
+</row><row><entry> \@  </entry><entry> @  </entry><entry> This command writes an at-sign (@) to the HTML and $\mbox{\LaTeX}$ output. </entry><entry> Supported </entry>
+</row><row><entry> \\  </entry><entry>   </entry><entry> This command writes a backslash character (\) to the HTML and $\mbox{\LaTeX}$ output. </entry><entry> Supported </entry>
+</row><row><entry> \&amp;  </entry><entry> &amp;  </entry><entry> This command writes the &amp; character to output. </entry><entry> Supported </entry>
+</row><row><entry> \~  </entry><entry> ~[LanguageId]  </entry><entry> This command enables/disables a language specific filter. This can be used to put documentation for different language into one comment block and use the OUTPUT_LANGUAGE tag to filter out only a specific language. Use \~language_id to enable output for a specific language only and \~ to enable output for all languages (this is also the default mode). </entry><entry> Supported </entry>
+</row><row><entry> \&lt;  </entry><entry> &lt;  </entry><entry> This command writes the &lt; character to the output. </entry><entry> Supported </entry>
+</row><row><entry> \&gt;  </entry><entry> &gt;  </entry><entry> This command writes the &gt; character to the output. </entry><entry> Supported </entry>
+</row><row><entry> \#  </entry><entry> #  </entry><entry> This command writes the # character to the output. </entry><entry> Supported </entry>
+</row><row><entry> \%  </entry><entry> %  </entry><entry> This command writes the % character to the output. </entry><entry> Supported </entry>
+</row>
+</tbody>
+</tgroup>
+</table></section>
+<section id="section_39C51A3936574630923B25A5D8849560">
+	<title>HTML Commands</title>
+	<p>Most of these commands are supported as expected. Others have yet to be correctly implemented and although the content will be output it might not be excactly as expected.</p><p> See the <xref scope="external" format="html" href="http://www.doxygen.nl/htmlcmds.html">Doxygen HTML Commands manual</xref> for more information. </p><table id="table_D91AEB1DB54044369FAB9ACC3EA8D3AB">
+<tgroup cols="3">
+				<colspec colnum="1" colwidth="1.00*"/>
+				<colspec colnum="2" colwidth="1.75*"/>
+				<colspec colnum="3" colwidth="2.21*"/>
+                <thead><row>
+<entry>HTML Command</entry><entry>Description</entry><entry>Supported in DITA</entry></row>
+</thead><tbody>
+<row><entry> &lt;A HREF="..."&gt;...&lt;/A&gt;  </entry><entry> Starts a HTML hyper-link (HTML only).  </entry><entry> Supported as: <codeblock>&lt;xref href="http://www.google.com"&gt;text&lt;/xref&gt;</codeblock></entry>
+</row><row><entry> &lt;B&gt;...&lt;/B&gt;  </entry><entry> Starts a piece of text displayed in a bold font.  </entry><entry> Supported as: <codeblock>&lt;b&gt;...&lt;/b&gt;</codeblock></entry>
+</row><row><entry> &lt;BODY&gt;...&lt;/BODY&gt;  </entry><entry> Does not generate any output.  </entry><entry> Unsupported</entry>
+</row><row><entry> &lt;BR&gt;...&lt;/BR&gt;  </entry><entry> Forces a line break.  </entry><entry> Unsupported</entry>
+</row><row><entry> &lt;CENTER&gt;...&lt;/CENTER&gt;  </entry><entry> starts a section of centered text.  </entry><entry> Unsupported</entry>
+</row><row><entry> &lt;CAPTION&gt;...&lt;/CAPTION&gt;  </entry><entry> Starts a caption. Use within a table only.  See &lt;table&gt;.</entry><entry> Unsupported</entry>
+</row><row><entry> &lt;CODE&gt;...&lt;/CODE&gt;  </entry><entry> Starts a piece of text displayed in a typewriter font. Note that for C# code, this command is equivalent to \code. </entry><entry> Supported as: <codeblock>&lt;tt&gt;...&lt;/tt&gt;</codeblock></entry>
+</row><row><entry> &lt;DD&gt;...&lt;/DD&gt;  </entry><entry> Starts an item description. Used within &lt;DL&gt;</entry><entry> Supported as: <codeblock>&lt;dd&gt;Description&lt;/dd&gt;</codeblock></entry>
+</row><row><entry> &lt;DFN&gt;...&lt;/DFN&gt;  </entry><entry> Starts a piece of text displayed in a typewriter font.  </entry><entry> Supported as:<codeblock>&lt;tt&gt;...&lt;/tt&gt;</codeblock></entry>
+</row><row><entry> &lt;DIV&gt;...&lt;/DIV&gt;  </entry><entry> Starts a section with a specific style (HTML only)  </entry><entry> Supported as: <codeblock>&lt;p&gt;...&lt;/p&gt;</codeblock></entry>
+</row><row><entry> &lt;DL&gt;...&lt;/DL&gt;  </entry><entry> Starts a description list.  </entry><entry> Supported as:<codeblock>&lt;dl&gt;
+  &lt;dt&gt;Coffee&lt;/dt&gt;
+    &lt;dd&gt;black hot drink&lt;/dd&gt;
+  &lt;dt&gt;Milk&lt;/dt&gt;
+    &lt;dd&gt;white cold drink&lt;/dd&gt;
+&lt;/dl&gt;</codeblock></entry>
+</row><row><entry> &lt;DT&gt;...&lt;/DT&gt;  </entry><entry> Starts an item title.   Used within &lt;DL&gt;</entry><entry> Supported as: <codeblock>&lt;dt&gt;Milk&lt;/dt&gt;</codeblock></entry>
+</row><row><entry> &lt;EM&gt;...&lt;/EM&gt;  </entry><entry> Starts a piece of text displayed in an italic font.  </entry><entry> Supported as: <codeblock>&lt;i&gt;text&lt;/i&gt;</codeblock></entry>
+</row><row><entry> &lt;FORM&gt;...&lt;/FORM&gt;  </entry><entry> Does not generate any output.  </entry><entry> Unsupported</entry>
+</row><row><entry> &lt;HR&gt;...&lt;/HR&gt;  </entry><entry> Writes a horizontal ruler.  </entry><entry> Unsupported </entry>
+</row><row><entry> &lt;H1&gt;...&lt;/H1&gt;  </entry><entry> Starts an unnumbered section.  </entry><entry> Supported as:<codeblock>&lt;p&gt;&lt;b&gt;text&lt;/b&gt;&lt;p&gt;</codeblock></entry>
+</row><row><entry> &lt;H2&gt;...&lt;/H2&gt;  </entry><entry> Starts an unnumbered subsection.  </entry><entry> Supported as:<codeblock>&lt;p&gt;&lt;b&gt;text&lt;/b&gt;&lt;p&gt;</codeblock></entry>
+</row><row><entry> &lt;H3&gt;...&lt;/H3&gt;  </entry><entry> Starts an unnumbered subsubsection.  </entry><entry> Supported as:<codeblock>&lt;p&gt;&lt;b&gt;text&lt;/b&gt;&lt;p&gt;</codeblock> </entry>
+</row><row><entry> &lt;I&gt;...&lt;/I&gt;  </entry><entry> Starts a piece of text displayed in an italic font.  </entry><entry> Supported as: <codeblock>&lt;i&gt;text&lt;/i&gt;</codeblock></entry>
+</row><row><entry> &lt;INPUT&gt;...&lt;/INPUT&gt;  </entry><entry> Does not generate any output.  </entry><entry> Unsupported</entry>
+</row><row><entry> &lt;IMG&gt;...&lt;/IMG&gt;  </entry><entry> This command is written with attributes to the HTML output only.  </entry><entry> Unsupported</entry>
+</row><row><entry> &lt;LI&gt;...&lt;/LI&gt;  </entry><entry> Starts a new list item.  Use within the list elements &lt;ul&gt; or &lt;ol&gt;.</entry><entry> Supported as: <codeblock>&lt;li&gt;
+  &lt;p&gt;Coffee &lt;/p&gt;
+&lt;/li&gt;</codeblock></entry>
+</row><row><entry> &lt;META&gt;...&lt;/META&gt;  </entry><entry> Does not generate any output.  </entry><entry> Unsupported </entry>
+</row><row><entry> &lt;MULTICOL&gt;...&lt;/MULTICOL&gt;  </entry><entry> ignored by doxygen.  </entry><entry> Unsupported </entry>
+</row><row><entry> &lt;OL&gt;...&lt;/OL&gt;  </entry><entry> Starts a numbered item list.  </entry><entry> Supported as: <codeblock>&lt;ol&gt;
+    &lt;li&gt;
+        &lt;p&gt;Coffee &lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li&gt;
+        &lt;p&gt;Tea &lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li&gt;
+        &lt;p&gt;Milk &lt;/p&gt;
+    &lt;/li&gt;
+&lt;/ol&gt;</codeblock></entry>
+</row><row><entry> &lt;P&gt;...&lt;/P&gt;  </entry><entry> Starts a new paragraph.  </entry><entry> Supported as:<codeblock>&lt;p&gt;text&lt;/p&gt;</codeblock></entry>
+</row><row><entry> &lt;PRE&gt;...&lt;/PRE&gt;  </entry><entry> Starts a preformatted fragment.  </entry><entry> Supported as: <codeblock>&lt;p&gt;
+			&lt;pre&gt;
+Text in a pre element
+is displayed in a fixed-width
+font, and it preserves
+both      spaces and
+line breaks
+&lt;/pre&gt; &lt;/p&gt;</codeblock></entry>
+</row><row><entry> &lt;SMALL&gt;...&lt;/SMALL&gt;  </entry><entry> Starts a section of text displayed in a smaller font.  </entry><entry> Unsupported </entry>
+</row><row><entry> &lt;SPAN&gt;...&lt;/SPAN&gt;  </entry><entry> Starts an inline text fragment with a specific style (HTML only)  </entry><entry> Unsupported </entry>
+</row><row><entry> &lt;STRONG&gt;...&lt;/STRONG&gt;  </entry><entry> Starts a section of bold text.  </entry><entry> Supported as: <codeblock>&lt;b&gt;text&lt;/b&gt;</codeblock></entry>
+</row><row><entry> &lt;SUB&gt;...&lt;/SUB&gt;  </entry><entry> Starts a piece of text displayed in subscript.  </entry><entry> Supported as:<codeblock>&lt;sub&gt;text&lt;/sub&gt;</codeblock></entry>
+</row><row><entry> &lt;SUP&gt;...&lt;/SUP&gt;  </entry><entry> Starts a piece of text displayed in superscript.  </entry><entry> Supported as:<codeblock>&lt;sup&gt;text&lt;/sup&gt;</codeblock></entry>
+</row><row><entry> &lt;TABLE&gt;...&lt;/TABLE&gt;  </entry><entry> starts a table.  </entry><entry> Supported as:<codeblock>&lt;simpletable&gt;
+    &lt;strow&gt;
+        &lt;stentry&gt;
+            &lt;p&gt;row 1, cell 1 &lt;/p&gt;
+        &lt;/stentry&gt;
+        &lt;stentry&gt;
+            &lt;p&gt;row 1, cell 2  &lt;/p&gt;
+        &lt;/stentry&gt;
+    &lt;/strow&gt;
+    &lt;strow&gt;
+        &lt;stentry&gt;
+            &lt;p&gt;row 2, cell 1 &lt;/p&gt;
+        &lt;/stentry&gt;
+        &lt;stentry&gt;
+            &lt;p&gt;row 2, cell 2  &lt;/p&gt;
+        &lt;/stentry&gt;
+    &lt;/strow&gt;
+&lt;/simpletable&gt;</codeblock></entry>
+</row><row><entry> &lt;TD&gt;...&lt;/TD&gt;  </entry><entry> Starts a new table data element.  Use within a &lt;TR&gt; element.</entry><entry> Supported as:<codeblock>&lt;stentry&gt;&lt;p&gt;row 1, cell 1 &lt;/p&gt;&lt;/stentry&gt;</codeblock></entry>
+</row><row><entry> &lt;TR&gt;...&lt;/TR&gt;  </entry><entry> Starts a new table row.  Use within a &lt;table&gt; element</entry><entry> Supported as:<codeblock>&lt;strow&gt;
+    &lt;stentry&gt;
+        &lt;p&gt;row 2, cell 1 &lt;/p&gt;
+    &lt;/stentry&gt;
+    &lt;stentry&gt;
+        &lt;p&gt;row 2, cell 2  &lt;/p&gt;
+    &lt;/stentry&gt;
+&lt;/strow&gt;</codeblock></entry>
+</row><row><entry> &lt;TT&gt;...&lt;/TT&gt;  </entry><entry> Starts a piece of text displayed in a typewriter font.  </entry><entry> Supported as:<codeblock>&lt;tt&gt;text&lt;/tt&gt;</codeblock></entry>
+</row><row><entry> &lt;KBD&gt;...&lt;/KBD&gt;  </entry><entry> Starts a piece of text displayed in a typewriter font.  </entry><entry> Supported as:<codeblock>&lt;tt&gt;text&lt;/tt&gt;</codeblock></entry>
+</row><row><entry> &lt;UL&gt;...&lt;/UL&gt;  </entry><entry> Starts an unnumbered item list.  </entry><entry> Supported as:<codeblock>&lt;ul&gt;
+    &lt;li&gt;
+        &lt;p&gt;Coffee &lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li&gt;
+        &lt;p&gt;Tea &lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li&gt;
+        &lt;p&gt;Milk &lt;/p&gt;
+    &lt;/li&gt;
+&lt;/ul&gt;</codeblock></entry>
+</row><row><entry> &lt;VAR&gt;...&lt;/VAR&gt;  </entry><entry> Starts a piece of text displayed in an italic font.  </entry><entry> Supported as:<codeblock>&lt;i&gt;text&lt;/i&gt;</codeblock></entry></row>
+</tbody>
+
+
+
+</tgroup></table>
+</section>
+<section>
+<title>Symbols</title><table id="table_5720C9C0CBBD43319F05C0AE648A8F2A">
+<tgroup cols="4">
+				<colspec colnum="1" colwidth="1.69*"/>
+				<colspec colnum="1" colwidth="1.00*"/>
+				<colspec colnum="2" colwidth="6.37*"/>
+				<colspec colnum="3" colwidth="2.01*"/>				
+				<thead>
+<row><entry> HTML Command </entry><entry>Symbol</entry><entry> Description</entry><entry> Supported in DITA</entry>
+</row></thead><tbody>
+<row><entry> &amp;copy; </entry><entry>©</entry><entry> the copyright symbol  </entry><entry> Supported </entry>
+</row><row><entry> &amp;tm; </entry><entry>™</entry><entry> the trade mark symbol  </entry><entry> Supported </entry>
+</row><row><entry> &amp;reg; </entry><entry>®</entry><entry> the registered trade mark symbol  </entry><entry> Supported </entry>
+</row><row><entry> &amp;lt; </entry><entry>&lt;</entry><entry> less-than symbol  </entry><entry> Supported </entry>
+</row><row><entry> &amp;gt; </entry><entry>&gt;</entry><entry> greater-than symbol  </entry><entry> Supported </entry>
+</row><row><entry> &amp;amp; </entry><entry>&amp;</entry><entry> ampersand  </entry><entry> Supported </entry>
+</row><row><entry> &amp;apos; </entry><entry>'</entry><entry> single quotation mark (straight)  </entry><entry> Supported </entry>
+</row><row><entry> &amp;quot; </entry><entry>"</entry><entry> double quotation mark (straight)  </entry><entry> Supported </entry>
+</row><row><entry> &amp;lsquo; </entry><entry>‘</entry><entry> left single quotation mark  </entry><entry> Supported </entry>
+</row><row><entry> &amp;rsquo; </entry><entry>’</entry><entry> right single quotation mark  </entry><entry> Supported </entry>
+</row><row><entry> &amp;ldquo; </entry><entry>“</entry><entry> left double quotation mark  </entry><entry> Supported </entry>
+</row><row><entry> &amp;rdquo; </entry><entry>”</entry><entry> right double quotation mark  </entry><entry> Supported </entry>
+</row><row><entry> &amp;ndsh; </entry><entry>-
+</entry><entry> n-dash (for numeric ranges, eg. 2–8)  </entry><entry> Supported </entry>
+</row><row><entry> &amp;mdash; </entry><entry>—</entry><entry> m-dash (for parenthetical punctuation — like this)  </entry><entry> Supported </entry>
+</row><row><entry> &amp;?uml; </entry><entry>ö
+</entry><entry> where ? is one of {A,E,I,O,U,Y,a,e,i,o,u,y}, writes a character with a diaeresis accent.  </entry><entry> Supported </entry>
+</row><row><entry> &amp;?acute; </entry><entry>á</entry><entry> where ? is one of {A,E,I,O,U,Y,a,e,i,o,u,y}, writes a character with a acute accent.  </entry><entry> Supported </entry>
+</row><row><entry> &amp;?grave; </entry><entry>ò
+</entry><entry> where ? is one of {A,E,I,O,U,a,e,i,o,u,y}, writes a character with a grave accent.  </entry><entry> Supported </entry>
+</row><row><entry> &amp;?circ; </entry><entry>ô
+</entry><entry> where ? is one of {A,E,I,O,U,a,e,i,o,u,y}, writes a character with a circumflex accent.  </entry><entry> Supported </entry>
+</row><row><entry> &amp;?tilde; </entry><entry>õ
+</entry><entry> where ? is one of {A,N,O,a,n,o}, writes a character with a tilde accent.  </entry><entry> Supported </entry>
+</row><row><entry> &amp;szlig; </entry><entry>ß</entry><entry> write a sharp s (i.e. ß) to the output.  </entry><entry> Supported </entry>
+</row><row><entry> &amp;?cedil; </entry><entry>ç
+</entry><entry> where ? is one of {c,C}, writes a c-cedille.  </entry><entry> Supported </entry>
+</row><row><entry> &amp;?ring; </entry><entry>å
+</entry><entry> where ? is one of {a,A}, writes an a with a ring.  </entry><entry> Supported </entry>
+</row><row><entry> &amp;nbsp;  </entry><entry></entry><entry> a non breakable space.  </entry><entry> Supported </entry></row>
+</tbody>
+</tgroup>
+</table></section>
+
+
+</refbody></reference>

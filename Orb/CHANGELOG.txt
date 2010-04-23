@@ -1,0 +1,207 @@
+License
+=======
+Copyright (c) 2007-2010 Nokia Corporation and/or its subsidiary(-ies) All rights reserved.
+This component and the accompanying materials are made available under the terms of the License 
+"Eclipse Public License v1.0" which accompanies this distribution, 
+and is available at the URL "http://www.eclipse.org/legal/epl-v10.html".
+
+Orb V0.1.9
+==========
+
+* Added whitespace strip to text received by write(filter_orb.py)
+* Increased test coverage of component level map creator(componentlevel.py)
+* Split existing orb_filter code into seperate modules in the orb directory.
+* Refactored PackageLevelMapCreator to return a list of Mapentries instead of a PackageLevel ditamap xml object.
+* Refactored ComponentLevelMapCreator into a number of seperate classes and updated it to work with reworked PackageLevelMapCreator.
+* Fixed bug in FLM: 
+    config.dox files were being created as readonly and failing on attempts to edit. Added a chmod statement to FLM to fix.
+* Deleted code that has been replaced by filter_orb and other old and unused modules.
+* Deleted locations.xml as orb does not need to declare the "tr" for use the flm anymore. (Tested on sbs 2.12.4)
+* Removed deprecated code from FLMs and updated doxtemplate to align with new FLMs
+* Fixed FLMs to prevent command line buffer overrun with meta.xml and config.dox. (doxygen.flm, doxygen-sdk.flm)
+* Removed false error messages by stopping doxyidredirect performing lookup when the id = "test", "deprecated", "todo" or "namespace". (guidiser.py)
+* Updated TopLevelMapCreator so it no longer writes out topicrefs if the component map does not exist in the release directory.
+* Altered the regex in get_sbs_output_dir to be case insenitive as a lot of dirs weren't found due to "Group" rather than "group".
+* Added topicheads above topicrefs in toplevel ditamap. (filter_orb.py)
+* Refactored SystemDefinition code so it does less looping when looking for objects.(filter_orb.py)
+* Edited TopLevelMapCreator to remove empty headings. (filter_orb.py)
+* Fixed issue caused by refactoring where a error was always logged in get_components.(filter_orb.py)
+* Fix for TopLevelMapCreator so it creates topicrefs and has correct navtitles (filter_orb.py)
+* Added a calls to toplevelmapcreator from FilterOrb.
+* Changed ComponentMapCreator so that it doesn't write out empty maps
+* Changed SysteDefinition.get_bldinfs to accept a component id instead of a package id. (filter_orb.py)
+* Changed _postprocessing method to use python directly and modified guidiser to better support this. (filter_orb.py, guidiser.py)
+* Fixed bug in PackageLevelMapCreator._filter_duplicates: "fails when trying to remove a grandchild duplicate"
+    - Now uses a child->parent dictionary for looking up parent to remove child duplicate from.
+* Refactored configuration tests to easily support target name change (when it's implemented)
+* Changed locations.xml for sbs > 2.12
+* Fixed ids and filenames in ComponentMapCreator:
+    Added "cmp_" to ids and filenames to be inline with MapCreator
+    Added title as component long-name to component maps.
+* Adding __init__ file to orb package
+* Adding sdk filtering to component level maps
+* Make clm (component level map) creator filter out children that are not in a component.
+* Added tests to cover cases when queried with invalid information.
+* Added more debug logging statements to System definition classes.
+* Added SystemDefinition (not parser) tests to include sysdef 3 files. (filter_orb.py)
+* Changed clm (component level map) for new plm (package level map) interface
+* Adding first attempt at system definition 3 support.
+* Checking first attempt at system defintion classes
+* Reading configuration and system definition path from log file
+* Adding class to wrap log file bld inf to export header mapping
+* Moving CxxApiRef2DITA as it no longer needs to be distributed with orb.
+* Deleting ant directory as it no longer needs to be distributed as part of orb.
+* Moving utils directory to save before deleting ant.
+* Doxygen version 1.6.2-20100106_dita_0.1.50
+    Fix for [#13001] NONSHARABLE_CLASS macro isn't being handled
+    Tesed on esockserver OK.
+* Grouping echo commands into groups of 10 to overcome EOF error caused by shell character limit for commands.
+* Fixed mapfilter bugs: 
+    FilterMap was not correctly initialised with sdk_build parameter
+    "is_public" on metafile was treating paths case sensitively
+* Adding logging cmdline option and extra log msgs to mapfilter. 
+* Integrated new DTD versions
+* SDK raptor extension fix
+
+Orb V0.1.8
+==========
+
+* Doxygen version 1.6.2-20100106_dita_0.1.45
+	Fixed iSource defect Doxygen links to inherited members are to the wrong file.
+* Fixed: 
+	Indentation in DITA adds unwanted whitespace in output
+* Added an option so SBS can be run in SDK mode - doxygen-sdk
+* Fixed bug in mapfilter - maps are now filtered on filename instead of full export path.(mapfilter.py)
+* Added refinement to sdk filtering to filter out internally exported files from sdk builds.(mapfilter.py)
+* Updated mapfilter to take a new "-s", "--sdk" option, which when used causes mapfilter to filter out and non-public APIs (Non-public = APIs declared in header files not exported to epoc32/include).(mapfilter.py)
+* Doxygen version 1.6.2-20100106_dita_0.1.43
+	Added option: CLEAR_INCLUDE_CACHE
+	Added test sample for DOT
+* Made changes to the ditamap_link_converter to make it orb-independent (ditamap_link_converter.py)
+* Added ditamap_link_converter
+* Updated postprocess public ID to match 0.5.0 dtds
+* Merged changes into version 0.5.0.
+* Fixes to mapcreation:-
+	Component map creator does not create links to a target if the target is empty
+	MapCreator: TOC no longer links to to components for which no doxygen output was produced.
+* Fix in component map creator:- 
+    component maps are now *not* created for components that don't generate any doxygen dita.
+* doxygen_version_mmn=20100106_dita_0.1.41 
+    Fix to generate 0.5.0 DOCTYPE declarations.
+* Version 0.5.0 of the cxx plugin.
+* Doxygen version 1.6.2-20100106_dita_0.1.40
+	Removed flushing of include cache as this was correct but expensive.
+	#define CLEAR_G_ALLINCLUDES 0
+	Update DTDs to version 0.5.0
+	Added esock_dll generated by Doxygen version 1.6.2-20100106_dita_0.1.38
+	Doxygen version 1.6.2-20100106_dita_0.1.38
+	Fixes for removing duplicates when #including.
+	Aligned with version 0.5 of the DTDs.
+	Added -d includes to dump out the include graph.
+	Minor fix to cleare already included dictionary before preprocessing each file.
+	DTDs updated to verison 0.5.0.
+* Doxygen version 1.6.2-20100106_dita_0.1.32
+	Fixed DITA generator so that cxxInterface etc. is not written out.
+	Major fix to improve linking to #included files.
+* Updated Enumeration DTD changes (doxyidredirect.py)
+* Added config items for Doxygen version 1.6.2-20100106_dita_0.1.38
+	Reformatted macro declarations.
+* Fixed bug in map hierarchy - some component map names are the same as target map names
+* Removed transform to reference from postprocess (orb_process_cxx.bat)
+* Adding python 25 compiled exe
+* Integrated latest map creator with fix for wrongly named links to component maps in toc.
+* Fixed Map Creator bug - links to component maps now derived from bld.inf file directory instead of component id/name
+* Fixed drive letter defect when running ant, adding some validation errors to the filter script
+* Fixed bug in mapfilter.py: Now preserves xml declaration and doctype identifier in the filtered maps.
+* Fixed lib.py unit tests (weren't updated when version info was added to doctype)
+* Integrated across typo fix for cxxClass 
+* Removed broken link inserter from postprocess (orb_process_cxx.bat)
+* Doxygen version 1.6.2-20100106_dita_0.1.29
+	Removed <xref> generation from Doxygen.
+	Removed <shortdesc> support from Doxygen.
+	Added XML_DITA_OMIT_DUPLICATE_MEMBERS = YES to doxtemplate.txt
+* Fixed bug so that guidiser no longer falls over when it comes across an href that points to a file on the file system rather than a reference to topic/elementid
+* Added exception handling for invalid xml
+* Updated link inserter, fixing guidiser unit test, uncommenting link insert in post process batch
+* Added code to handle ditaarch prefix (guidiser.py)
+* Fixed "Guide not linking to apiref" bug. (orb_process_cxx.bat)
+* Added version "v0.1.0" information to ant catalog and python lib doctypes to be in line with doxygen output doctypes.
+		
+Orb V0.1.6
+==========
+
+* Removed test code
+* Updated docs with directory structure explantion
+* Changing "type" attributes to "format" attributes on topicrefs to make buildable with DITA-OT in (component_map_creator.py)
+* Integarating latest Mapcreator exe into orb. Includes fix to get toc building with DITA-OT.
+* Adding publishing-target (ditaot/mode) options. Also added usage message. (orb_process_cxx.bat)
+* Updating documentation to reflect changes to orb_proces_cxx.bat post process arguments. (converting_to_reference.txt)
+* Nesting topicrefs in topichead elements and removing navtitle from topicrefs component_map_creator.py 
+* Version 0.1 of Definition_of_PubicPlatform_v0.1.doc. 
+* Version 0.2 of Definition_of_PubicPlatform_v0.2.doc
+* Doxygen version 1.6.2-20100106_dita_0.1.15
+	Fixed bug in element prefix creator that was generating spurious element names.
+	Added addittional file extensions for Symbian like code.
+	Fixed memory leak.
+	Added extra reporting.
+* Added error checking and reporting to orb_process_cxx.bat
+* Updates to guidiser and file renamer for building orb output with ditaot
+* submitting file name correction for ditamaps in ditaot mode (filerenamer.py)
+* Integrating latest mapcreator (with support for non distributed sysdef 3 files)
+* Adding ant distribution
+* Added some code that picks up any element that has Definition in it's name and only outputs elements with Prototype in their names. (cxx.xsl)
+* Adding ...DeclarationFile to the list of elements that can be found in a ...Definition element.(cxx.xsl)
+* updating for "declerationfile" elements (cxx.xsl)
+* Updating cxx xsl to have properly formated #include information in transformed reference
+* Latest mapcreator - handles references to missing packages 
+* Add public/private labels to Reference. (cxx.xsl)
+* Adding loglevel option to filerenamer and guidiser and setting debug level as default in postprocess batch script
+* Adding a debug message to guidiser.py.
+* Making cxx.xsl xslt 1.0 compatible
+* Put all the Class Inheritance information inside a table preserving the xref elements. (cxx.xsl)
+* Updating guidiser to work with new doxygen id and href output.
+* Doxygen version 1.6.2-20100106_dita_0.1.18
+	Various fixes to run on DOT.
+* Removing link inserter from FLM and putting in placeholder for new inserter in postprocess, to be turned on when linkinserter has been updated to handle new style Doxygen IDs.
+* Version 0.1.0 of the Doxygen ID redirection. (doxyidredirect.py)
+* Integrating doxyidredirect to guidiser, adding exception handling
+* Removing domain attribute from simple tables to make dita OT compatible (cxx.xsl)
+* Doxygen version 1.6.2-20100106_dita_0.1.24
+	Has DITA_OMIT_UNLINKABLE to not omit classes with incomplete function definitions (by default it does).
+	keyref attributes now href attributes (conditionally compiled).
+
+Orb V0.1.5
+==========
+
+* Added toc creation and component level map creation (MapCreator and python/doxygen/component_map_creator.py)
+* Removed index creation python/doxygen/indexcreator.py
+* Moved guidisation and filerenaming into postprocess batch script (bin/orb_process_cxx.bat)
+
+Orb V0.1.4
+==========
+
+* Updated DoxygenDITA version to 0.1.5 
+* Added translation of cxxapiref DITA XML to DITA Reference XML
+* Added System level map generation
+* Added index map generation
+* Quiet option for Doxygen output turned off
+* Refactored documentation
+
+
+Orb V0.1.3
+==========
+
+* Output files now named in MODE import format
+* Output files now GUIDised in MODE format
+* Doxygen unit level maps filtered by project exports
+* IDs of cxxFunction->apiName elements inserted for improved linking
+
+Orb V0.1.2
+==========
+
+* Minor Changes to documentation
+
+Orb V0.1.1
+==========
+
+Orb Original Version.
