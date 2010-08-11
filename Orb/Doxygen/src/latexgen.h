@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -97,7 +97,9 @@ class LatexGenerator : public OutputGenerator
 
     void startMemberSections() {}
     void endMemberSections() {} 
-    void startMemberHeader();
+    void startHeaderSection() {}
+    void endHeaderSection() {}
+    void startMemberHeader(const char *);
     void endMemberHeader();
     void startMemberSubtitle() {}
     void endMemberSubtitle() {}

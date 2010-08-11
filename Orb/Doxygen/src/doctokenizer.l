@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -297,7 +297,7 @@ LISTITEM {BLANK}*{OPTSTARS}"-"("#")?{WS}
 ENDLIST  {BLANK}*{OPTSTARS}"."{BLANK}*\n
 ATTRIB   {ID}{WS}*("="{WS}*(("\""[^\"]*"\"")|("'"[^\']*"'")|[^ \t\r\n'"><]+))?
 URLCHAR   [a-z_A-Z0-9\!\~\,\:\;\'\$\?\@\&\%\#\.\-\+\/\=]
-URLMASK   (([a-z_A-Z][^\>\"\n]*{URLCHAR})|({URLCHAR}+))([({]{URLCHAR}*[)}])?
+URLMASK   ({URLCHAR}+([({]{URLCHAR}*[)}])?)*
 FILESCHAR [a-z_A-Z0-9\\:\\\/\-\+]
 FILEECHAR [a-z_A-Z0-9\-\+]
 HFILEMASK ("."{FILESCHAR}*{FILEECHAR}+)*
@@ -327,10 +327,10 @@ OPMASK    ({BLANK}*{OPNORM}{FUNCARG})
 OPMASKOPT ({BLANK}*{OPNORM}{FUNCARG}?)|({OPCAST}{FUNCARG})
 LNKWORD1  ("::"|"#")?{SCOPEMASK}
 CVSPEC    {BLANK}*("const"|"volatile")
-LNKWORD2  ({SCOPEPRE}*"operator"{OPMASK})|({SCOPEPRE}"operator"{OPMASKOPT})|(("::"|"#"){SCOPEPRE}*"operator"{OPMASKOPT})
+LNKWORD2  (({SCOPEPRE}*"operator"{OPMASK})|({SCOPEPRE}"operator"{OPMASKOPT})|(("::"|"#"){SCOPEPRE}*"operator"{OPMASKOPT})){CVSPEC}?
 LNKWORD3  ([0-9a-z_A-Z\-]+("/"|"\\"))*[0-9a-z_A-Z\-]+("."[0-9a-z_A-Z]+)+
 CHARWORDQ [^ \t\n\r\\@<>()\[\]:;\?{}&%$#,."]
-WORD1     "%"?{CHARWORDQ}+|"{"|"}"|("\""[^"\n]*\n?[^"\n]*"\"")
+WORD1     "%"?{CHARWORDQ}+|"{"|"}"|"'\"'"|("\""[^"\n]*\n?[^"\n]*"\"")
 WORD2     "."|","|"("|")"|"["|"]"|":"|";"|"\?"
 WORD1NQ   "%"?{CHARWORDQ}+
 WORD2NQ   "."|","|"("|")"|"["|"]"|":"|";"|"\?"
@@ -472,8 +472,8 @@ REFWORD   {LABELID}|{REFWORD2}
 <St_Para>"$"{ID}":"[^\n$]+"$" { /* RCS tag */
                          QString tagName(yytext+1);
 			 int index=tagName.find(':');
-  			 g_token->name = tagName.left(index);
-			 g_token->text = tagName.mid(index+1,tagName.length()-index-2);
+  			 g_token->name = tagName.left(index+1);
+			 g_token->text = tagName.mid(index+2,tagName.length()-index-3);
 			 return TK_RCSTAG;
   		       }
 <St_Para,St_HtmlOnly>"$("{ID}")"   { /* environment variable */

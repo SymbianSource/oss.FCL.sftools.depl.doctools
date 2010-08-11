@@ -13,7 +13,7 @@
 
 // Version to use in the DOCTYPE declaration
 // Should match regex: v(\d+)\.(\d+)\.(\d+)(\S*)
-const char *DOCTYPE_VERSION = "v0.5.0";
+const char *DOCTYPE_VERSION = "v0.6.0";
 
 DITAElementPrefix::DITAElementPrefix()
 {

@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -45,10 +45,6 @@
 
 #define MAX_ITEMS_BEFORE_MULTIPAGE_INDEX 200
 #define MAX_ITEMS_BEFORE_QUICK_INDEX 30
-
-static const char search_styleSheet[] =
-#include "search_css.h"
-;
 
 static const char search_script[]=
 #include "search_js.h"
@@ -195,13 +191,20 @@ QCString abbreviate(const char *s,const char *name)
 
 //----------------------------------------------------------------------------
 
-static void startQuickIndexList(OutputList &ol)
+static void startQuickIndexList(OutputList &ol,bool letterTabs=FALSE)
 {
   bool fancyTabs = TRUE;
   if (fancyTabs)
   {
-    ol.writeString("  <div class=\"tabs\">\n"); 
-    ol.writeString("    <ul>\n"); 
+    if (letterTabs)
+    {
+      ol.writeString("  <div class=\"tabs3\">\n"); 
+    }
+    else
+    {
+      ol.writeString("  <div class=\"tabs2\">\n"); 
+    }
+    ol.writeString("    <ul class=\"tablist\">\n"); 
   }
   else
   {
@@ -267,8 +270,10 @@ static QCString fixSpaces(const QCString &s)
 }
 
 
-void startTitle(OutputList &ol,const char *fileName)
+void startTitle(OutputList &ol,const char *fileName,Definition *def)
 {
+  ol.startHeaderSection();
+  if (def) def->writeSummaryLinks(ol);
   ol.startTitleHead(fileName);
   ol.pushGeneratorState();
   ol.disable(OutputGenerator::Man);
@@ -278,6 +283,7 @@ void endTitle(OutputList &ol,const char *fileName,const char *name)
 {
   ol.popGeneratorState();
   ol.endTitleHead(fileName,name);
+  ol.endHeaderSection();
 }
 
 void startFile(OutputList &ol,const char *name,const char *manName,
@@ -291,14 +297,14 @@ void startFile(OutputList &ol,const char *name,const char *manName,
     if (!additionalIndices)
     {
       ol.endQuickIndices();
-      ol.startContents();
+      //ol.startContents();
     }
   }
   else
   {
     if (!additionalIndices)
     {
-      ol.startContents();
+    //  ol.startContents();
     }
   }
 }
@@ -317,8 +323,21 @@ void endFile(OutputList &ol,bool)
 
 static bool classHasVisibleChildren(ClassDef *cd)
 {
-  if (cd->subClasses()==0) return FALSE;
-  BaseClassList *bcl=cd->subClasses();
+ bool vhdl=Config_getBool("OPTIMIZE_OUTPUT_VHDL");
+
+  BaseClassList *bcl;
+
+  if (vhdl) // reverse baseClass/subClass relation
+  {
+    if (cd->baseClasses()==0) return FALSE;
+    bcl=cd->baseClasses();
+  }
+  else 
+  {
+    if (cd->subClasses()==0) return FALSE;
+    bcl=cd->subClasses();
+  }
+
   BaseClassListIterator bcli(*bcl);
   for ( ; bcli.current() ; ++bcli)
   {
@@ -332,13 +351,25 @@ static bool classHasVisibleChildren(ClassDef *cd)
 
 void writeClassTree(OutputList &ol,BaseClassList *bcl,bool hideSuper,int level,FTVHelp* ftv)
 {
+  static bool vhdl=Config_getBool("OPTIMIZE_OUTPUT_VHDL");
+
   if (bcl==0) return;
   BaseClassListIterator bcli(*bcl);
   bool started=FALSE;
   for ( ; bcli.current() ; ++bcli)
   {
     ClassDef *cd=bcli.current()->classDef;
-    if (cd->isVisibleInHierarchy() && hasVisibleRoot(cd->baseClasses()))
+    bool b;
+    if (vhdl)
+    {
+      b=hasVisibleRoot(cd->subClasses());
+    }
+    else
+    {
+      b=hasVisibleRoot(cd->baseClasses());
+    }
+
+    if (cd->isVisibleInHierarchy() && b) // hasVisibleRoot(cd->baseClasses()))
     {
       if (!started)
       {
@@ -382,7 +413,14 @@ void writeClassTree(OutputList &ol,BaseClassList *bcl,bool hideSuper,int level,F
         //printf("Class %s at %p visited=%d\n",cd->name().data(),cd,cd->visited);
         bool wasVisited=cd->visited;
         cd->visited=TRUE;
-        writeClassTree(ol,cd->subClasses(),wasVisited,level+1,ftv);
+        if (vhdl)	
+        {
+          writeClassTree(ol,cd->baseClasses(),wasVisited,level+1,ftv);
+        }
+        else       
+        {
+          writeClassTree(ol,cd->subClasses(),wasVisited,level+1,ftv);
+        }
       }
       ol.endIndexListItem();
     }
@@ -441,6 +479,8 @@ void writeClassTree(BaseClassList *cl,int level)
 void writeClassTreeNode(ClassDef *cd,bool &started,int level)
 {
   //printf("writeClassTreeNode(%s) visited=%d\n",cd->name().data(),cd->visited);
+  static bool vhdl=Config_getBool("OPTIMIZE_OUTPUT_VHDL");
+
   if (cd->isVisibleInHierarchy() && !cd->visited)
   {
     if (!started)
@@ -455,7 +495,14 @@ void writeClassTreeNode(ClassDef *cd,bool &started,int level)
     }
     if (hasChildren)
     {
-      writeClassTree(cd->subClasses(),level+1);
+      if (vhdl)
+      {
+        writeClassTree(cd->baseClasses(),level+1);
+      }
+      else
+      {
+        writeClassTree(cd->subClasses(),level+1);
+      }
     }
     cd->visited=TRUE;
   }
@@ -495,6 +542,7 @@ void writeClassTree(ClassSDict *d,int level)
 
 static void writeClassTreeForList(OutputList &ol,ClassSDict *cl,bool &started,FTVHelp* ftv)
 {
+  static bool vhdl=Config_getBool("OPTIMIZE_OUTPUT_VHDL");
   ClassSDict::Iterator cli(*cl);
   for (;cli.current(); ++cli)
   {
@@ -504,7 +552,22 @@ static void writeClassTreeForList(OutputList &ol,ClassSDict *cl,bool &started,FT
     //              hasVisibleRoot(cd->baseClasses()),
     //              cd->isVisibleInHierarchy()
     //      );
-    if (!hasVisibleRoot(cd->baseClasses())) // filter on root classes
+    bool b;
+    if (vhdl)
+    {
+      if ((VhdlDocGen::VhdlClasses)cd->protection()==VhdlDocGen::PACKAGECLASS || 
+          (VhdlDocGen::VhdlClasses)cd->protection()==VhdlDocGen::PACKBODYCLASS)
+      {
+        continue;
+      }
+      b=!hasVisibleRoot(cd->subClasses());
+    }
+    else
+    {
+      b=!hasVisibleRoot(cd->baseClasses());
+    }
+
+    if (b)  //filter on root classes
     {
       if (cd->isVisibleInHierarchy()) // should it be visible
       {
@@ -543,7 +606,12 @@ static void writeClassTreeForList(OutputList &ol,ClassSDict *cl,bool &started,FT
           if (ftv)
             ftv->addContentsItem(hasChildren,cd->displayName(),0,0,0); 
         }
-        if (hasChildren) 
+        if (vhdl && hasChildren) 
+        {
+          writeClassTree(ol,cd->baseClasses(),cd->visited,1,ftv);
+          cd->visited=TRUE;
+        }
+        else if (hasChildren)
         {
           writeClassTree(ol,cd->subClasses(),cd->visited,1,ftv);
           cd->visited=TRUE;
@@ -627,6 +695,7 @@ void writeHierarchicalIndex(OutputList &ol)
   //}
   ol.parseText(title);
   endTitle(ol,0,0);
+  ol.startContents();
   ol.startTextBlock();
   Doxygen::indexList.addContentsItem(TRUE,title,0,"hierarchy",0); 
   if (Config_getBool("HAVE_DOT") && Config_getBool("GRAPHICAL_HIERARCHY"))
@@ -680,6 +749,7 @@ void writeGraphicalClassHierarchy(OutputList &ol)
   //}
   ol.parseText(title);
   endTitle(ol,0,0);
+  ol.startContents();
   ol.startTextBlock();
   Doxygen::indexList.addContentsItem(FALSE,theTranslator->trGraphicalHierarchy(),0,"inherits",0); 
   ol.startParagraph();
@@ -745,6 +815,7 @@ void writeFileIndex(OutputList &ol)
   //}
   ol.parseText(title);
   endTitle(ol,0,0);
+  ol.startContents();
   ol.startTextBlock();
   Doxygen::indexList.addContentsItem(TRUE,theTranslator->trFileList(),0,"files",0); 
   Doxygen::indexList.incContentsDepth();
@@ -930,6 +1001,7 @@ void writeNamespaceIndex(OutputList &ol)
   //}
   ol.parseText(longTitle);
   endTitle(ol,0,0);
+  ol.startContents();
   ol.startTextBlock();
   Doxygen::indexList.addContentsItem(TRUE,title,0,"namespaces",0); 
   Doxygen::indexList.incContentsDepth();
@@ -1073,6 +1145,13 @@ void writeAnnotatedClassList(OutputList &ol)
     {
       QCString type=cd->compoundTypeString();
       ol.startIndexKey();
+      static bool vhdl = Config_getBool("OPTIMIZE_OUTPUT_VHDL");
+      if (vhdl)
+      {
+        QCString prot= VhdlDocGen::getProtectionName((VhdlDocGen::VhdlClasses)cd->protection());
+        ol.docify(prot.data());
+        ol.insertMemberAlign();
+      }
       ol.writeObjectLink(0,cd->getOutputFileBase(),0,cd->displayName());
       ol.endIndexKey();
       bool hasBrief = !cd->briefDescription().isEmpty();
@@ -1203,7 +1282,7 @@ void writeAlphabeticalClassList(OutputList &ol)
     if (cd->isLinkableInProject() && cd->templateMaster()==0)
     {
       int index = getPrefixIndex(cd->className());
-      startLetter=toupper(cd->className().at(index));
+      startLetter=toupper(cd->className().at(index))&0xFF;
       // Do some sorting again, since the classes are sorted by name with 
       // prefix, which should be ignored really.
       classesByLetter[startLetter].inSort (cd);
@@ -1364,6 +1443,7 @@ void writeAlphabeticalIndex(OutputList &ol)
                              theTranslator->trCompoundIndex()
                ));
   endTitle(ol,0,0);
+  ol.startContents();
   writeAlphabeticalClassList(ol);
   endFile(ol);
   ol.popGeneratorState();
@@ -1391,6 +1471,7 @@ void writeAnnotatedIndex(OutputList &ol)
   //}
   ol.parseText(longTitle);
   endTitle(ol,0,0);
+  ol.startContents();
   ol.startTextBlock();
   Doxygen::indexList.addContentsItem(TRUE,title,0,"annotated",0); 
   Doxygen::indexList.incContentsDepth();
@@ -1765,7 +1846,7 @@ void writeQuickMemberIndex(OutputList &ol,
 {
   bool first=TRUE;
   int i;
-  startQuickIndexList(ol);
+  startQuickIndexList(ol,TRUE);
   for (i=33;i<127;i++)
   {
     char is[2];is[0]=(char)i;is[1]='\0';
@@ -2524,6 +2605,7 @@ void writeJavascriptSearchIndex()
         if (outFile.open(IO_WriteOnly))
         {
           QTextStream t(&outFile);
+          t.setEncoding(QTextStream::UnicodeUTF8);
           t << "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\""
                " \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">" << endl;
           t << "<html><head><title></title>" << endl;
@@ -2560,12 +2642,17 @@ void writeJavascriptSearchIndex()
                 << "class=\"SRSymbol\" ";
               if (!d->getReference().isEmpty())
               {
-                QCString *dest;
-                t << "doxygen=\"" << d->getReference() << ":../";
-                if ((dest=Doxygen::tagDestinationDict[d->getReference()])) t << *dest << "/";
-                t << "\" ";
-                t << "href=\"../";
-                if ((dest=Doxygen::tagDestinationDict[d->getReference()])) t << *dest << "/";
+                QCString *dest = Doxygen::tagDestinationDict[d->getReference()];
+                if (dest && *dest=='.') // relative path (see bug 593679)
+                {
+                  t << "doxygen=\"" << d->getReference() << ":../"
+                    << *dest << "/\" href=\"../" << *dest << "/";
+                }
+                else if (dest) // absolute path
+                {
+                  t << "doxygen=\"" << d->getReference() << ":"
+                    << *dest << "/\" href=\"" << *dest << "/";
+                }
               }
               else
               {
@@ -2761,6 +2848,7 @@ void writeJavascriptSearchIndex()
     if (f.open(IO_WriteOnly))
     {
       QTextStream t(&f);
+      t.setEncoding(QTextStream::UnicodeUTF8);
       t << "// Search script generated by doxygen" << endl;
       t << "// Copyright (C) 2009 by Dimitri van Heesch." << endl << endl;
       t << "// The code in this file is loosly based on main.js, part of Natural Docs," << endl;
@@ -2811,6 +2899,7 @@ void writeJavascriptSearchIndex()
     if (f.open(IO_WriteOnly))
     {
       QTextStream t(&f);
+      t.setEncoding(QTextStream::UnicodeUTF8);
       t << "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
            "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">" << endl;
       t << "<html><head><title></title>" << endl;
@@ -2828,18 +2917,6 @@ void writeJavascriptSearchIndex()
     }
   }
   Doxygen::indexList.addStyleSheetFile("search/search.js");
-}
-
-void writeSearchStyleSheet()
-{
-  QCString searchDirName = Config_getString("HTML_OUTPUT")+"/search";
-  QFile f(searchDirName+"/search.css");
-  if (f.open(IO_WriteOnly))
-  {
-    QTextStream t(&f);
-    t << search_styleSheet;
-  }
-  Doxygen::indexList.addStyleSheetFile("search/search.css");
 }
 
 void writeSearchCategories(QTextStream &t)
@@ -2876,6 +2953,7 @@ void writeExampleIndex(OutputList &ol)
   //}
   ol.parseText(title);
   endTitle(ol,0,0);
+  ol.startContents();
   ol.startTextBlock();
   Doxygen::indexList.addContentsItem(TRUE,theTranslator->trExamples(),0,"examples",0); 
   Doxygen::indexList.incContentsDepth();
@@ -2973,6 +3051,7 @@ void writePageIndex(OutputList &ol)
   //}
   ol.parseText(title);
   endTitle(ol,0,0);
+  ol.startContents();
   ol.startTextBlock();
   //Doxygen::indexList.addContentsItem(TRUE,theTranslator->trRelatedPages(),0,"pages",0); 
   //Doxygen::indexList.incContentsDepth();
@@ -3065,11 +3144,13 @@ void writeGraphInfo(OutputList &ol)
   startTitle(ol,0);
   ol.parseText(theTranslator->trLegendTitle());
   endTitle(ol,0,0);
-  bool oldStripCommentsState = Config_getBool("STRIP_CODE_COMMENTS");
+  ol.startContents();
+  bool &stripCommentsStateRef = Config_getBool("STRIP_CODE_COMMENTS");
+  bool oldStripCommentsState = stripCommentsStateRef;
   // temporarily disable the stripping of comments for our own code example!
-  Config_getBool("STRIP_CODE_COMMENTS") = FALSE;
+  stripCommentsStateRef = FALSE;
   ol.parseDoc("graph_legend",1,0,0,theTranslator->trLegendDocs(),FALSE,FALSE);
-  Config_getBool("STRIP_CODE_COMMENTS") = oldStripCommentsState;
+  stripCommentsStateRef = oldStripCommentsState;
   endFile(ol);
   ol.popGeneratorState();
 }
@@ -3173,10 +3254,7 @@ void writeGroupTreeNode(OutputList &ol, GroupDef *gd, int level, FTVHelp* ftv)
       ol.endTypewriter();
     }
     
-    //ol.writeStartAnnoItem(0,gd->getOutputFileBase(),0,gd-);
-    //parseText(ol,gd->groupTitle());
-    //ol.writeEndAnnoItem(gd->getOutputFileBase());
-
+    
     // write pages
     PageSDict::Iterator pli(*gd->pageDict);
     PageDef *pd = 0;
@@ -3325,7 +3403,9 @@ void writeGroupHierarchy(OutputList &ol, FTVHelp* ftv)
   }
   endIndexHierarchy(ol,0); 
   if (ftv)
+  {
     ol.popGeneratorState(); 
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -3434,6 +3514,7 @@ void writeGroupIndex(OutputList &ol)
   //}
   ol.parseText(title);
   endTitle(ol,0,0);
+  ol.startContents();
   ol.startTextBlock();
   Doxygen::indexList.addContentsItem(TRUE,theTranslator->trModules(),0,"modules",0); 
   Doxygen::indexList.incContentsDepth();
@@ -3443,7 +3524,9 @@ void writeGroupIndex(OutputList &ol)
   FTVHelp* ftv = 0;
   bool treeView=Config_getBool("USE_INLINE_TREES");
   if (treeView)
+  {
     ftv = new FTVHelp(false);
+  }
 
   writeGroupHierarchy(ol,ftv);
 
@@ -3478,6 +3561,7 @@ void writeDirIndex(OutputList &ol)
   //}
   ol.parseText(title);
   endTitle(ol,0,0);
+  ol.startContents();
   ol.startTextBlock();
   Doxygen::indexList.addContentsItem(TRUE,theTranslator->trDirIndex(),0,"dirs",0); 
   Doxygen::indexList.incContentsDepth();
@@ -3570,25 +3654,35 @@ void writeIndex(OutputList &ol)
     ol.writeQuickLinks(TRUE,HLI_Main);
     ol.endQuickIndices();
   }
-  ol.startContents();
-  ol.startTitleHead(0);
+  bool headerWritten=FALSE;
   if (Doxygen::mainPage && !Doxygen::mainPage->title().isEmpty())
   {
     if (Doxygen::mainPage->title().lower()!="notitle")
     {
+      ol.startHeaderSection();
+      ol.startTitleHead(0);
       ol.parseDoc(Doxygen::mainPage->docFile(),Doxygen::mainPage->docLine(),
                   Doxygen::mainPage,0,Doxygen::mainPage->title(),
                   TRUE,FALSE,0,TRUE,FALSE);
+      headerWritten = TRUE;
     }
   }
   else
   {
     if (!Config_getString("PROJECT_NAME").isEmpty())
     {
+      ol.startHeaderSection();
+      ol.startTitleHead(0);
       ol.parseText(projPrefix+theTranslator->trDocumentation());
+      headerWritten = TRUE;
     }
   }
-  ol.endTitleHead(0,0);
+  if (headerWritten)
+  {
+    ol.endTitleHead(0,0);
+    ol.endHeaderSection();
+  }
+  ol.startContents();
   // ol.newParagraph(); // FIXME:PARA
   if (!Config_getString("PROJECT_NUMBER").isEmpty())
   {
@@ -3812,6 +3906,7 @@ void writeIndex(OutputList &ol)
     Doxygen::insideMainPage=TRUE;
     ol.disable(OutputGenerator::Man);
     startFile(ol,Doxygen::mainPage->name(),0,Doxygen::mainPage->title());
+    ol.startContents();
     ol.startTextBlock();
     ol.parseDoc(defFileName,defLine,Doxygen::mainPage,0,
                 Doxygen::mainPage->documentation(),FALSE,FALSE

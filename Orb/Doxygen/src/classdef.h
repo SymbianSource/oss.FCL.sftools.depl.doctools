@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -312,6 +312,7 @@ class ClassDef : public Definition
     void writeMemberList(OutputList &ol);
     void writeDeclaration(OutputList &ol,MemberDef *md,bool inGroup);
     void writeQuickMemberLinks(OutputList &ol,MemberDef *md) const;
+    void writeSummaryLinks(OutputList &ol);
     void reclassifyMember(MemberDef *md,MemberDef::MemberType t);
     
     bool visited;

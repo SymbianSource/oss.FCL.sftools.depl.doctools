@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2007 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -27,8 +27,8 @@
 #ifndef TRANSLATOR_FA_H
 #define TRANSLATOR_FA_H
 
-#define HtmlRightToLeft     QCString("<div dir=rtl>")
-#define HtmlLeftToRight     QCString("<div dir=rtl>")
+#define HtmlRightToLeft     QCString("<div dir=\"rtl\">")
+#define HtmlLeftToRight     QCString("<div dir=\"rtl\">")
 #define HtmlDivEnd          QCString("</div>")
 
 

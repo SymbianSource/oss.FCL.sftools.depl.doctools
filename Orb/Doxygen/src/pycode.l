@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -1394,7 +1394,7 @@ static void adjustScopesAndSuites(unsigned indentLength)
 void parsePythonCode(CodeOutputInterface &od,const char *className,
                  const QCString &s,bool exBlock, const char *exName,
 		 FileDef *fd,int startLine,int endLine,bool inlineFragment,
-		 MemberDef *) 
+		 MemberDef *,bool) 
 {
 
   //printf("***parseCode()\n");

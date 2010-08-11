@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -47,6 +47,23 @@ class Image
     int width;
     int height;
     uchar *data;
+};
+
+class ColoredImage
+{
+  public:
+    ColoredImage(int width,int height,
+           const uchar *greyLevels,const uchar *alphaLevels,
+           int saturation,int hue,int gamma);
+   ~ColoredImage();
+    bool save(const char *fileName);
+    static void hsl2rgb(double h,double s,double l,
+                        double *pRed,double *pGreen,double *pBlue);
+  private:
+    int m_width;
+    int m_height;
+    uchar *m_data;
+    bool m_hasAlpha;
 };
 
 #endif

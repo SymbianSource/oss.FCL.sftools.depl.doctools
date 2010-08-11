@@ -2,8 +2,8 @@
 <!--                    HEADER                                         -->
 <!-- ================================================================= -->
 <!--  MODULE:    C++ Union DTD                                         -->
-<!--  VERSION:   0.5.0                                                 -->
-<!--  DATE:      February 2009                                          -->
+<!--  VERSION:   0.6.0                                                 -->
+<!--  DATE:      May 2010                                              -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
@@ -13,7 +13,7 @@
 <!--                                                                   -->
 <!--  Refer to this file by the following public identifier or an 
       appropriate system identifier 
-PUBLIC "-//NOKIA//DTD DITA C++ API Union Reference Type v0.5.0//EN"
+PUBLIC "-//NOKIA//DTD DITA C++ API Union Reference Type v0.6.0//EN"
       Delivered as file "cxxUnion.dtd"                                 -->
  
 <!-- ================================================================= -->
@@ -24,19 +24,20 @@ PUBLIC "-//NOKIA//DTD DITA C++ API Union Reference Type v0.5.0//EN"
 <!-- ORIGINAL CREATION DATE:                                           -->
 <!--             November 2009                                         -->
 <!--                                                                   -->
-<!-- Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies). -->
+<!-- Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies). -->
 <!-- All rights reserved.                                              -->
 <!--                                                                   -->
 <!--  Change History (latest at top):                                  -->
 <!--  +++++++++++++++++++++++++++++++                                  -->
+<!--  2010-05-14 PaulRoss: Fixed templates.                            -->
 <!--  2010-02-16 VOG: Updated.                                         -->
-<!--  2010-02-10 PaulRoss: Updated.                                   -->
+<!--  2010-02-10 PaulRoss: Updated.                                    -->
 <!--  2009-11-16 PaulRoss: Initial design.                             -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
 <!--
-Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies).
 All rights reserved.
 -->
 
@@ -50,11 +51,9 @@ All rights reserved.
 <!ENTITY % cxxUnionDerivations                  "cxxUnionDerivations">
 <!ENTITY % cxxUnionDerivation                   "cxxUnionDerivation">
 -->
-<!ENTITY % cxxUnionTemplateParamList            "cxxUnionTemplateParamList">
+<!ENTITY % cxxUnionTemplateParameters           "cxxUnionTemplateParameters">
 <!ENTITY % cxxUnionTemplateParameter            "cxxUnionTemplateParameter">
-<!ENTITY % cxxUnionTemplateParamType            "cxxUnionTemplateParamType">
-<!ENTITY % cxxUnionTemplateParamDeclarationName "cxxUnionTemplateParamDeclarationName">
-<!ENTITY % cxxUnionTemplateParamDefinitionName  "cxxUnionTemplateParamDefinitionName">
+<!ENTITY % cxxUnionTemplateParameterType        "cxxUnionTemplateParameterType">
 
 <!-- Derivation -->
 <!-- union has no inheritance  
@@ -125,7 +124,7 @@ All rights reserved.
 <!ELEMENT cxxUnionDefinition   (
                                     (%cxxUnionAccessSpecifier;)?,
                                     (%cxxUnionAbstract;)?,
-                                    (%cxxUnionTemplateParamList;)?,
+                                    (%cxxUnionTemplateParameters;)?,
                                     (%cxxUnionAPIItemLocation;)
                                )
 >
@@ -149,160 +148,32 @@ All rights reserved.
                             outputclass CDATA #IMPLIED
 >
 
-<!-- union has no inheritance  
-<!ELEMENT cxxUnionDerivations   (%cxxUnionDerivation; | %cxxStructDerivation;)+ >
-<!ATTLIST cxxUnionDerivations    %univ-atts;
-                                outputclass CDATA #IMPLIED
+<!-- Templates-->
+<!ELEMENT cxxUnionTemplateParameters   (%cxxUnionTemplateParameter;)+ >
+<!ATTLIST cxxUnionTemplateParameters    %univ-atts;
+										outputclass CDATA #IMPLIED
 >
 
-<!ELEMENT cxxUnionDerivation   (
-                                    %cxxUnionDerivationAccessSpecifier;,
-                                    (%cxxUnionDerivationVirtual;)*,
-                                    (
-                                        %cxxUnionBaseClass;
-                                        | %cxxUnionBaseStruct;
-                                        | %cxxUnionBaseUnion;
-                                     )
-                               )
->
-<!ATTLIST cxxUnionDerivation    %univ-atts;
-                                outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxUnionInherits   (
-                                %cxxUnionInheritsDetail;
-                              )
->
-
-<!ATTLIST cxxUnionInherits    %univ-atts;
-                                outputclass CDATA #IMPLIED
-                                domains CDATA "&included-domains;"
->
-
-<!ELEMENT cxxUnionInheritsDetail   (
-                                (
-                                    %cxxUnionFunctionInherited;
-                                    | %cxxUnionVariableInherited;
-                                    | %cxxUnionEnumerationInherited;
-                                    | %cxxUnionEnumeratorInherited;
-                                )+
-                              )
->
-
-<!ATTLIST cxxUnionInheritsDetail    %univ-atts;
-                                outputclass CDATA #IMPLIED
-                                domains CDATA "&included-domains;"
->
-
-<!ELEMENT cxxUnionFunctionInherited  (#PCDATA)*>
-<!ATTLIST cxxUnionFunctionInherited   href CDATA #IMPLIED
-                                      keyref CDATA #IMPLIED
-                                      type   CDATA  #IMPLIED
-                                      %univ-atts;
-                                      format        CDATA   #IMPLIED
-                                      scope (local | peer | external) #IMPLIED
-                                      outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxUnionVariableInherited  (#PCDATA)*>
-<!ATTLIST cxxUnionVariableInherited   href CDATA #IMPLIED
-                                      keyref CDATA #IMPLIED
-                                      type   CDATA  #IMPLIED
-                                      %univ-atts;
-                                      format        CDATA   #IMPLIED
-                                      scope (local | peer | external) #IMPLIED
-                                      outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxUnionEnumerationInherited  (#PCDATA)*>
-<!ATTLIST cxxUnionEnumerationInherited   href CDATA #IMPLIED
-                                          keyref CDATA #IMPLIED
-                                          type   CDATA  #IMPLIED
-                                          %univ-atts;
-                                          format        CDATA   #IMPLIED
-                                          scope (local | peer | external) #IMPLIED
-                                          outputclass CDATA #IMPLIED
->
-
-
-<!ELEMENT cxxUnionDerivationAccessSpecifier  EMPTY>
-<!ATTLIST cxxUnionDerivationAccessSpecifier  name CDATA #FIXED "access"
-                                             value (public | protected | private) "public"
-                                            %univ-atts;
-                                            outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxUnionDerivationVirtual  EMPTY>
-<!ATTLIST cxxUnionDerivationVirtual  name CDATA #FIXED "virtual"
-                                      value CDATA #FIXED "true"
-                                      %univ-atts;
-                                      outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxUnionBaseClass  (#PCDATA)*>
-<!ATTLIST cxxUnionBaseClass   href CDATA #IMPLIED
-                              keyref CDATA #IMPLIED
-                              type   CDATA  #IMPLIED
-                              %univ-atts;
-                              format        CDATA   #IMPLIED
-                              scope (local | peer | external) #IMPLIED
-                              outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxUnionBaseStruct  (#PCDATA)*>
-<!ATTLIST cxxUnionBaseStruct   href CDATA #IMPLIED
-                              keyref CDATA #IMPLIED
-                              type   CDATA  #IMPLIED
-                              %univ-atts;
-                              format        CDATA   #IMPLIED
-                              scope (local | peer | external) #IMPLIED
-                              outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxUnionBaseUnion  (#PCDATA)*>
-<!ATTLIST cxxUnionBaseUnion   href CDATA #IMPLIED
-                              keyref CDATA #IMPLIED
-                              type   CDATA  #IMPLIED
-                              %univ-atts;
-                              format        CDATA   #IMPLIED
-                              scope (local | peer | external) #IMPLIED
-                              outputclass CDATA #IMPLIED
->
--->
-
-<!ELEMENT cxxUnionTemplateParamList   (%cxxUnionTemplateParameter;)+ >
-<!ATTLIST cxxUnionTemplateParamList    %univ-atts;
-                                  outputclass CDATA #IMPLIED
->
-<!ELEMENT cxxUnionTemplateParameter   ( %cxxUnionTemplateParamType;,
-                                       (%cxxUnionTemplateParamDeclarationName;)?,
-                                       (%cxxUnionTemplateParamDefinitionName;)? 
-																			)
+<!ELEMENT cxxUnionTemplateParameter   	(%cxxUnionTemplateParameterType;,
+										(%apiDefNote;)?
+										)
 >
 <!ATTLIST cxxUnionTemplateParameter    %univ-atts;
-                                  outputclass CDATA #IMPLIED
+										outputclass CDATA #IMPLIED
 >
 
-<!ELEMENT cxxUnionTemplateParamType   (#PCDATA)*>
-<!ATTLIST cxxUnionTemplateParamType    %univ-atts;
-                                  outputclass CDATA #IMPLIED
+<!ELEMENT cxxUnionTemplateParameterType   (#PCDATA | %apiRelation;)*>
+<!ATTLIST cxxUnionTemplateParameterType    %univ-atts;
+											outputclass CDATA #IMPLIED
 >
 
-<!ELEMENT cxxUnionTemplateParamDeclarationName   (#PCDATA)*>
-<!ATTLIST cxxUnionTemplateParamDeclarationName    %univ-atts;
-                                                  outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxUnionTemplateParamDefinitionName   (#PCDATA)*>
-<!ATTLIST cxxUnionTemplateParamDefinitionName    %univ-atts;
-                                                 outputclass CDATA #IMPLIED
->
+<!-- Location -->
 <!ELEMENT cxxUnionAPIItemLocation   (
                                         %cxxUnionDeclarationFile;,
                                         %cxxUnionDeclarationFileLine;,
-                                        %cxxUnionDefinitionFile;?,
-                                        %cxxUnionDefinitionFileLineStart;?,
-                                        %cxxUnionDefinitionFileLineEnd;?
+                                        (%cxxUnionDefinitionFile;)?,
+                                        (%cxxUnionDefinitionFileLineStart;)?,
+                                        (%cxxUnionDefinitionFileLineEnd;)?
                                      )
 >
 <!ATTLIST cxxUnionAPIItemLocation    %univ-atts;
@@ -364,6 +235,7 @@ All rights reserved.
                           outputclass CDATA #IMPLIED
 >
 
+
 <!ELEMENT cxxUnionNestedClass  (#PCDATA)*>
 <!ATTLIST cxxUnionNestedClass  href CDATA #IMPLIED
                               keyref CDATA #IMPLIED
@@ -407,37 +279,15 @@ All rights reserved.
 <!ATTLIST cxxUnionAbstract   %global-atts;
     class  CDATA "- topic/state reference/state apiRef/apiQualifier apiClassifier/apiQualifier cxxUnion/cxxUnionAbstract ">
 
-<!-- Representing inheritance -->
-<!-- union has no inheritance  
-<!ATTLIST cxxUnionDerivations   %global-atts;
-    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxUnion/cxxUnionDerivations ">
-<!ATTLIST cxxUnionDerivation   %global-atts;
-    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxUnion/cxxUnionDerivation ">
-<!ATTLIST cxxUnionDerivationAccessSpecifier   %global-atts;
-    class  CDATA "- topic/state reference/state apiRef/apiQualifier apiClassifier/apiQualifier cxxUnion/cxxUnionDerivationAccessSpecifier ">
-<!ATTLIST cxxUnionDerivationVirtual   %global-atts;
-    class  CDATA "- topic/state reference/state apiRef/apiQualifier apiClassifier/apiQualifier cxxUnion/cxxUnionDerivationVirtual ">
-<!ATTLIST cxxUnionBaseClass   %global-atts;
-    class  CDATA "- topic/xref reference/xref apiRef/apiRelation apiClassifier/apiBaseClassifier cxxUnion/cxxUnionBaseClass ">
-<!ATTLIST cxxUnionBaseStruct   %global-atts;
-    class  CDATA "- topic/xref reference/xref apiRef/apiRelation apiClassifier/apiBaseClassifier cxxUnion/cxxUnionBaseStruct ">
-<!ATTLIST cxxUnionBaseUnion   %global-atts;
-    class  CDATA "- topic/xref reference/xref apiRef/apiRelation apiClassifier/apiBaseClassifier cxxUnion/cxxUnionBaseUnion ">
--->
-
 <!-- Templates -->
-<!ATTLIST cxxUnionTemplateParamList   %global-atts;
-    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxUnion/cxxUnionTemplateParamList ">
+<!ATTLIST cxxUnionTemplateParameters   %global-atts;
+    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxUnion/cxxUnionTemplateParameters ">
 <!ATTLIST cxxUnionTemplateParameter   %global-atts;
     class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxUnion/cxxUnionTemplateParameter ">
-<!ATTLIST cxxUnionTemplateParamType   %global-atts;
-    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxUnion/cxxUnionTemplateParamType ">
-<!ATTLIST cxxUnionTemplateParamDeclarationName   %global-atts;
-    class  CDATA "- topic/keyword reference/keyword apiRef/apiItemName apiClassifier/apiItemName cxxUnion/cxxUnionTemplateParamDeclarationName ">    
-<!ATTLIST cxxUnionTemplateParamDefinitionName   %global-atts;
-    class  CDATA "- topic/keyword reference/keyword apiRef/apiItemName apiClassifier/apiItemName cxxUnion/cxxUnionTemplateParamDefinitionName ">
+<!ATTLIST cxxUnionTemplateParameterType   %global-atts;
+    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxUnion/cxxUnionTemplateParameterType ">
     
-<!-- Nested records -->
+<!-- Nested members  -->
 <!ATTLIST cxxUnionNested   %global-atts;
     class  CDATA "- topic/topic reference/reference apiRef/apiRef apiClassifier/apiClassifier cxxUnion/cxxUnionNested ">
 <!ATTLIST cxxUnionNestedDetail   %global-atts;
@@ -462,16 +312,3 @@ All rights reserved.
     class  CDATA "- topic/state reference/state apiRef/apiQualifier apiClassifier/apiQualifier cxxUnion/cxxUnionDefinitionFileLineStart ">
 <!ATTLIST cxxUnionDefinitionFileLineEnd   %global-atts;
     class  CDATA "- topic/state reference/state apiRef/apiQualifier apiClassifier/apiQualifier cxxUnion/cxxUnionDefinitionFileLineEnd ">
-
-<!-- union has no inheritance  
-<!ATTLIST cxxUnionInherits   %global-atts;
-    class  CDATA "- topic/topic reference/reference apiRef/apiRef apiClassifier/apiClassifier cxxUnion/cxxUnionInherits ">  
-<!ATTLIST cxxUnionInheritsDetail   %global-atts;
-    class  CDATA "- topic/body reference/refbody apiRef/apiDetail apiClassifier/apiDetail cxxUnion/cxxUnionInheritsDetail ">    
-<!ATTLIST cxxUnionEnumerationInherited   %global-atts;
-    class  CDATA "- topic/xref reference/xref apiRef/apiRelation apiClassifier/apiRelation cxxUnion/cxxUnionEnumerationInherited ">
-<!ATTLIST cxxUnionFunctionInherited    %global-atts;
-    class  CDATA "- topic/xref reference/xref apiRef/apiRelation apiClassifier/apiRelation cxxUnion/cxxUnionFunctionInherited  ">
-<!ATTLIST cxxUnionVariableInherited   %global-atts;
-    class  CDATA "- topic/xref reference/xref apiRef/apiRelation apiClassifier/apiRelation cxxUnion/cxxUnionVariableInherited ">  
--->

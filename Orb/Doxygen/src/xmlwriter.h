@@ -85,6 +85,8 @@ private:
 	bool mustEncodeChar(char c) const;
 	bool canIndent();
 	void setLastIndent(bool theB);
+	// Debug stream flushing
+	inline void flushStream();
 private:
 	QFile mFile;
 	QTextStream *mStreamP;
@@ -210,6 +212,8 @@ public:
 	void push(const QString &aElemName, const QString &aAttr, const QString &aAttrValue);
 	/// Push element with any number of attributes
 	void push(const QString &aElementName, AttributeMap &aAttrs);
+	// Pop without checking name matches
+	void pop();
 	/// Method that will check the element name matches
 	void pop(const QString &aElementName);
 	/// Push and pop an element with no attributes
@@ -231,8 +235,6 @@ private:
 	// Private cctor and op=
 	XmlElementStack (const XmlElementStack &rhs);
 	XmlElementStack& operator=(const XmlElementStack &rhs);
-	// Used by destructor
-	void pop();
 };
 
 #endif // _XMLWRITER_H

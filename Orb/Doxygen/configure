@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: configure 715 2009-12-30 13:28:15Z dimitri $
+# $Id: configure 727 2010-04-18 13:59:11Z dimitri $
 #
 # Copyright (C) 1997-2008 by Dimitri van Heesch.
 # 
@@ -17,10 +17,10 @@
 
 doxygen_version_major=1
 doxygen_version_minor=6
-doxygen_version_revision=2
+doxygen_version_revision=3
 
 #NOTE: Setting version_mmn to "NO" will omit mmn info from the package.
-doxygen_version_mmn=20100106_dita_0.1.50
+doxygen_version_mmn=20100418_dita_0.1.63
 
 bin_dirs=`echo $PATH | sed -e "s/:/ /g"`
 

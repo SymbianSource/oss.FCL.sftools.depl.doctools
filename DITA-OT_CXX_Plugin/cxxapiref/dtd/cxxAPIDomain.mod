@@ -1,5 +1,5 @@
 <!--
-Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies).
 All rights reserved.
 
 Generated from APIdomain.script

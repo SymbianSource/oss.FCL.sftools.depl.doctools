@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -1938,6 +1938,9 @@ OPERATOR {ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP}
 <SkipCPP>.				{ 
   					  g_code->codify(yytext);
 					}
+<SkipCPP>[^\n\/\\]+			{
+  					  g_code->codify(yytext);
+  					}
 <SkipCPP>\\[\r]?\n			{ 
   					  codifyLines(yytext);
 					}
@@ -3043,6 +3046,7 @@ OPERATOR {ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP}
 					  BEGIN(g_memCallContext); 
 					}
 <*>\n({B}*"//"[!/][^\n]*\n)+		{ // remove special one-line comment
+					  if (YY_START==SkipCPP) REJECT;
   					  if (Config_getBool("STRIP_CODE_COMMENTS"))
 					  {
 					    g_yyLineNr+=((QCString)yytext).contains('\n');
@@ -3147,7 +3151,7 @@ OPERATOR {ARITHOP}|{ASSIGNOP}|{LOGICOP}|{BITOP}
 					  }
   					}
 <*>"//"[!/][^\n]*\n			{ // strip special one-line comment
-                                          if (YY_START==SkipComment || YY_START==SkipString) REJECT;
+                                          if (YY_START==SkipComment || YY_START==SkipString || YY_START==SkipCPP) REJECT;
   					  if (Config_getBool("STRIP_CODE_COMMENTS"))
 					  {
 					    char c[2]; c[0]='\n'; c[1]=0;
@@ -3339,7 +3343,7 @@ void resetCCodeParserState()
 void parseCCode(CodeOutputInterface &od,const char *className,const QCString &s, 
                   bool exBlock, const char *exName,FileDef *fd,
 		  int startLine,int endLine,bool inlineFragment,
-		  MemberDef *memberDef)
+		  MemberDef *memberDef,bool showLineNumbers)
 {
   //printf("***parseCode() exBlock=%d exName=%s fd=%p\n",exBlock,exName,fd);
   if (s.isEmpty()) return;
@@ -3374,7 +3378,7 @@ void parseCCode(CodeOutputInterface &od,const char *className,const QCString &s,
   g_exampleBlock  = exBlock; 
   g_exampleName   = exName;
   g_sourceFileDef = fd;
-  g_lineNumbers   = fd!=0;
+  g_lineNumbers   = fd!=0 && showLineNumbers;
   if (exBlock && fd==0)
   {
     // create a dummy filedef for the example

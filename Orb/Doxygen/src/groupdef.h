@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -129,6 +129,7 @@ class GroupDef : public Definition
     void startMemberDocumentation(OutputList &ol);
     void endMemberDocumentation(OutputList &ol);
     void writeAuthorSection(OutputList &ol);
+    void writeSummaryLinks(OutputList &ol);
 
     QCString title;                      // title of the group
     bool titleSet;                       // true if title is not the same as the name

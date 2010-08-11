@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -1802,6 +1802,7 @@ static void generateXMLForPage(PageDef *pd,QTextStream &ti,bool isExample)
   {
     t << "    <title>" << convertToXML(si->title) << "</title>" << endl;
   }
+  writeInnerPages(pd->getSubPages(),t);
   t << "    <detaileddescription>" << endl;
   if (isExample)
   {

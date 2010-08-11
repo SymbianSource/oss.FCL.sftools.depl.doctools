@@ -2,8 +2,8 @@
 <!--                    HEADER                                         -->
 <!-- ================================================================= -->
 <!--  MODULE:    C++ Function DTD                                      -->
-<!--  VERSION:   0.5.0                                                 -->
-<!--  DATE:      February 2009                                          -->
+<!--  VERSION:   0.6.0                                                 -->
+<!--  DATE:      May 2010                                              -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
@@ -13,7 +13,7 @@
 <!--                                                                   -->
 <!--  Refer to this file by the following public identifier or an 
       appropriate system identifier 
-PUBLIC "-//NOKIA//DTD DITA C++ API Function Reference Type v0.5.0//EN"
+PUBLIC "-//NOKIA//DTD DITA C++ API Function Reference Type v0.6.0//EN"
       Delivered as file "cxxFunction.dtd"                              -->
  
 <!-- ================================================================= -->
@@ -24,19 +24,20 @@ PUBLIC "-//NOKIA//DTD DITA C++ API Function Reference Type v0.5.0//EN"
 <!-- ORIGINAL CREATION DATE:                                           -->
 <!--             November 2009                                         -->
 <!--                                                                   -->
-<!-- Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies). -->
+<!-- Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies). -->
 <!-- All rights reserved.                                              -->
 <!--                                                                   -->
 <!--  Change History (latest at top):                                  -->
 <!--  +++++++++++++++++++++++++++++++                                  -->
+<!--  2010-05-14 PaulRoss: Fixed templates.                            -->
 <!--  2010-02-16 VOG: Updated.                                         -->
-<!--  2010-02-10 PaulRoss: Updated.                                   -->
+<!--  2010-02-10 PaulRoss: Updated.                                    -->
 <!--  2009-11-16 PaulRoss: Initial design.                             -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
 <!--
-Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies).
 All rights reserved.
 -->
 
@@ -84,11 +85,9 @@ All rights reserved.
 <!ENTITY % cxxFunctionDefinitionFileLineEnd             "cxxFunctionDefinitionFileLineEnd">
 
 <!-- Templates  -->
-<!ENTITY % cxxFunctionTemplateParamList            "cxxFunctionTemplateParamList">
-<!ENTITY % cxxFunctionTemplateParameter            "cxxFunctionTemplateParameter">
-<!ENTITY % cxxFunctionTemplateParamType            "cxxFunctionTemplateParamType">
-<!ENTITY % cxxFunctionTemplateParamDeclarationName "cxxFunctionTemplateParamDeclarationName">
-<!ENTITY % cxxFunctionTemplateParamDefinitionName  "cxxFunctionTemplateParamDefinitionName">
+<!ENTITY % cxxFunctionTemplateParameters            	"cxxFunctionTemplateParameters">
+<!ENTITY % cxxFunctionTemplateParameter            		"cxxFunctionTemplateParameter">
+<!ENTITY % cxxFunctionTemplateParameterType        		"cxxFunctionTemplateParameterType">
 
 <!-- ============ Hooks for shell DTD ============ -->
 <!ENTITY % cxxFunction-types-default  "no-topic-nesting">
@@ -134,8 +133,11 @@ All rights reserved.
                                     (%cxxFunctionNameLookup;)?,
 
                                     (%cxxFunctionReimplemented;)?,
-
+									
+									(%cxxFunctionTemplateParameters;)?,
                                     (%cxxFunctionParameters;)?,
+
+                                    (%apiDefNote;)?,
 
                                     (%cxxFunctionAPIItemLocation;)?
                                    )
@@ -189,6 +191,7 @@ All rights reserved.
                                       outputclass CDATA #IMPLIED
 >
 
+<!-- Function Parameters -->
 <!ELEMENT cxxFunctionParameters   (%cxxFunctionParameter;)* >
 <!ATTLIST cxxFunctionParameters    %univ-atts;
                                     outputclass CDATA #IMPLIED
@@ -374,34 +377,22 @@ All rights reserved.
 >
 
 <!-- Templates -->
-
-<!ELEMENT cxxFunctionTemplateParamList   (%cxxFunctionTemplateParameter;)+ >
-<!ATTLIST cxxFunctionTemplateParamList    %univ-atts;
+<!ELEMENT cxxFunctionTemplateParameters   (%cxxFunctionTemplateParameter;)+ >
+<!ATTLIST cxxFunctionTemplateParameters    %univ-atts;
                                            outputclass CDATA #IMPLIED
 >
 
-<!ELEMENT cxxFunctionTemplateParameter   ( %cxxFunctionTemplateParamType;,
-                                       (%cxxFunctionTemplateParamDeclarationName;)?,
-                                       (%cxxFunctionTemplateParamDefinitionName;)? 
+<!ELEMENT cxxFunctionTemplateParameter   	( %cxxFunctionTemplateParameterType;,
+											(%apiDefNote;)?
 																			)
 >
 <!ATTLIST cxxFunctionTemplateParameter    %univ-atts;
-                                  outputclass CDATA #IMPLIED
+											outputclass CDATA #IMPLIED
 >
 
-<!ELEMENT cxxFunctionTemplateParamType   (#PCDATA)*>
-<!ATTLIST cxxFunctionTemplateParamType    %univ-atts;
-                                  outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxFunctionTemplateParamDeclarationName   (#PCDATA)*>
-<!ATTLIST cxxFunctionTemplateParamDeclarationName    %univ-atts;
-                                                  outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxFunctionTemplateParamDefinitionName   (#PCDATA)*>
-<!ATTLIST cxxFunctionTemplateParamDefinitionName    %univ-atts;
-                                                 outputclass CDATA #IMPLIED
+<!ELEMENT cxxFunctionTemplateParameterType   (#PCDATA | %apiRelation;)*>
+<!ATTLIST cxxFunctionTemplateParameterType    %univ-atts;
+											outputclass CDATA #IMPLIED
 >
 
 <!-- ============ Class attributes for type ancestry ============ -->
@@ -484,14 +475,9 @@ All rights reserved.
     class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiOperation/apiDefItem cxxFunction/cxxFunctionParameterDeclaredType ">    
     
 <!-- Templates -->
-<!ATTLIST cxxFunctionTemplateParamList   %global-atts;
-    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiOperation/apiDefItem cxxFunction/cxxFunctionTemplateParamList ">
+<!ATTLIST cxxFunctionTemplateParameters   %global-atts;
+    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiOperation/apiDefItem cxxFunction/cxxFunctionTemplateParameters ">
 <!ATTLIST cxxFunctionTemplateParameter   %global-atts;
     class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiOperation/apiDefItem cxxFunction/cxxFunctionTemplateParameter ">
-<!ATTLIST cxxFunctionTemplateParamType   %global-atts;
-    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiOperation/apiDefItem cxxFunction/cxxFunctionTemplateParamType ">
-<!ATTLIST cxxFunctionTemplateParamDeclarationName   %global-atts;
-    class  CDATA "- topic/keyword reference/keyword apiRef/apiItemName apiOperation/apiItemName cxxFunction/cxxFunctionTemplateParamDeclarationName ">    
-<!ATTLIST cxxFunctionTemplateParamDefinitionName   %global-atts;
-    class  CDATA "- topic/keyword reference/keyword apiRef/apiItemName apiOperation/apiItemName cxxFunction/cxxFunctionTemplateParamDefinitionName ">
-    
+<!ATTLIST cxxFunctionTemplateParameterType   %global-atts;
+    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiOperation/apiDefItem cxxFunction/cxxFunctionTemplateParameterType ">

@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -379,7 +379,7 @@ void ClassDef::internalInsertMember(MemberDef *md,
                                     bool addToAllList
                                    )
 {
-  //printf("%p:insertInternalMember(%s) isHidden()=%d\n", this, md->name().data(),md->isHidden());
+  //printf("insertInternalMember(%s) isHidden()=%d\n",md->name().data(),md->isHidden());
   if (md->isHidden()) return;
 
   if (!isReference())
@@ -1379,6 +1379,42 @@ void ClassDef::writeAuthorSection(OutputList &ol)
   ol.popGeneratorState();
 }
 
+
+void ClassDef::writeSummaryLinks(OutputList &ol)
+{
+  ol.pushGeneratorState();
+  ol.disableAllBut(OutputGenerator::Html);
+  QListIterator<LayoutDocEntry> eli(
+      LayoutDocManager::instance().docEntries(LayoutDocManager::Class));
+  LayoutDocEntry *lde;
+  bool first=TRUE;
+  for (eli.toFirst();(lde=eli.current());++eli)
+  {
+    if (lde->kind()==LayoutDocEntry::ClassNestedClasses && 
+        m_impl->innerClasses  &&
+        m_impl->innerClasses->declVisible()
+       )
+    {
+      LayoutDocEntrySection *ls = (LayoutDocEntrySection*)lde;
+      writeSummaryLink(ol,"nested-classes",ls->title,first);
+    }
+    else if (lde->kind()== LayoutDocEntry::MemberDecl)
+    {
+      LayoutDocEntryMemberDecl *lmd = (LayoutDocEntryMemberDecl*)lde;
+      MemberList * ml = getMemberList(lmd->type);
+      if (ml && ml->declVisible())
+      {
+        writeSummaryLink(ol,ml->listTypeAsString(),lmd->title,first);
+      }
+    }
+  }
+  if (!first)
+  {
+    ol.writeString("  </div>\n");
+  }
+  ol.popGeneratorState();
+}
+
 // write all documentation for this class
 void ClassDef::writeDocumentation(OutputList &ol)
 {
@@ -1413,11 +1449,12 @@ void ClassDef::writeDocumentation(OutputList &ol)
     writeNavigationPath(ol);
   }
   ol.endQuickIndices();
-  ol.startContents();
-  startTitle(ol,getOutputFileBase());
+
+  startTitle(ol,getOutputFileBase(),this);
   ol.parseText(pageTitle);
   addGroupListToTitle(ol,this);
   endTitle(ol,getOutputFileBase(),name());
+  ol.startContents();
 
   {
     ol.pushGeneratorState();
@@ -1688,6 +1725,7 @@ void ClassDef::writeMemberList(OutputList &ol)
   startTitle(ol,0);
   ol.parseText(displayName()+" "+theTranslator->trMemberList());
   endTitle(ol,0,0);
+  ol.startContents();
   ol.parseText(theTranslator->trThisIsTheListOfAllMembers());
   ol.writeObjectLink(getReference(),getOutputFileBase(),0,displayName());
   ol.parseText(theTranslator->trIncludingInheritedMembers());
@@ -3248,25 +3286,6 @@ void ClassDef::addMemberToList(MemberList::ListType lt,MemberDef *md,bool isBrie
   static bool sortBriefDocs = Config_getBool("SORT_BRIEF_DOCS");
   static bool sortMemberDocs = Config_getBool("SORT_MEMBER_DOCS");
   MemberList *ml = createMemberList(lt);
-  /*
-  if (Config_getBool("PREPROCESS_INCLUDES")) {
-    // If we are preprocessing the #included files we might have seen
-    // this member  more than once so we
-    // only add a member where one did not exist before
-	MemberListIterator mli(*ml);
-	MemberDef *cmd;
-	for (mli.toFirst(); (cmd = mli.current()); ++mli) {
-		if (strcmp(md->declaration(), cmd->declaration()) == 0) {
-		//if (md->anchor() == cmd->anchor()) {
-			printf("ClassDef::addMemberToList() rejecting duplicate %d \"%s::%s\"\n", md->memberType(), name().data(), md->declaration() ? md->declaration() : "");
-			// TODO: Delete md to avoid memory leak???
-			// But some callers still use md after it has been inserted...
-			return;
-		}
-	}
-  }
-  printf("ClassDef::addMemberToList() adding %d, \"%s::%s\"\n", md->memberType(), name().data(), md->declaration() ? md->declaration() : "");
-  */
   if (( isBrief && sortBriefDocs ) ||
       (!isBrief && sortMemberDocs)
      )

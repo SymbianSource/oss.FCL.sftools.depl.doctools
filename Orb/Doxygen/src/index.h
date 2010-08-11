@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -252,7 +252,7 @@ extern int documentedHtmlFiles;
 extern int documentedPages;
 extern int documentedDirs;
 
-void startTitle(OutputList &ol,const char *fileName);
+void startTitle(OutputList &ol,const char *fileName,Definition *def=0);
 void endTitle(OutputList &ol,const char *fileName,const char *name);
 void startFile(OutputList &ol,const char *name,const char *manName,
                const char *title,HighlightedItem hli=HLI_None,
@@ -269,6 +269,5 @@ void addNamespaceMemberNameToIndex(MemberDef *md);
 // search engine
 void writeJavascriptSearchIndex();
 void writeSearchCategories(QTextStream &t);
-void writeSearchStyleSheet();
 
 #endif

@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -64,11 +64,42 @@ ClassListIterator::ClassListIterator(const ClassList &cllist) :
 {
 }
 
+bool ClassSDict::declVisible(const ClassDef::CompoundType *filter) const
+{
+  static bool hideUndocClasses = Config_getBool("HIDE_UNDOC_CLASSES");
+  static bool extractLocalClasses = Config_getBool("EXTRACT_LOCAL_CLASSES");
+  if (count()>0)
+  {
+    ClassSDict::Iterator sdi(*this);
+    ClassDef *cd=0;
+    for (sdi.toFirst();(cd=sdi.current());++sdi)
+    {
+      if (cd->name().find('@')==-1 && 
+          (filter==0 || *filter==cd->compoundType())
+         )
+      {
+        bool isLink = cd->isLinkable();
+        if (isLink || 
+             (!hideUndocClasses && 
+              (!cd->isLocal() || extractLocalClasses)
+             )
+           )
+        {
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
 void ClassSDict::writeDeclaration(OutputList &ol,const ClassDef::CompoundType *filter,
                                   const char *header,bool localNames)
 {
   static bool fortranOpt = Config_getBool("OPTIMIZE_FOR_FORTRAN");
   static bool vhdlOpt    = Config_getBool("OPTIMIZE_OUTPUT_VHDL");
+  static bool hideUndocClasses = Config_getBool("HIDE_UNDOC_CLASSES");
+  static bool extractLocalClasses = Config_getBool("EXTRACT_LOCAL_CLASSES");
   if (count()>0)
   {
     ClassSDict::Iterator sdi(*this);
@@ -82,14 +113,14 @@ void ClassSDict::writeDeclaration(OutputList &ol,const ClassDef::CompoundType *f
       {
         bool isLink = cd->isLinkable();
         if (isLink || 
-             (!Config_getBool("HIDE_UNDOC_CLASSES") && 
-              (!cd->isLocal() || Config_getBool("EXTRACT_LOCAL_CLASSES"))
+             (!hideUndocClasses && 
+              (!cd->isLocal() || extractLocalClasses)
              )
            )
         {
           if (!found)
           {
-            ol.startMemberHeader();
+            ol.startMemberHeader("nested-classes");
             if (header)
             {
               ol.parseText(header);

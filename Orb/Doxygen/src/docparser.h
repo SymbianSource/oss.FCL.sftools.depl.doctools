@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -517,7 +517,7 @@ class DocCopy : public CompAccept<DocCopy>, public DocNode
     DocCopy(DocNode *parent,const QString &link,bool copyBrief,bool copyDetails) 
       : m_parent(parent), m_link(link), 
         m_copyBrief(copyBrief), m_copyDetails(copyDetails) { }
-    Kind kind() const          { return Kind_IndexEntry; }
+    Kind kind() const          { return Kind_Copy; }
     QString link() const       { return m_link; }
     DocNode *parent() const    { return m_parent; }
     void accept(DocVisitor *v) { CompAccept<DocCopy>::accept(this,v); }

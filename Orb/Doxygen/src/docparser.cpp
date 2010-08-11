@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -535,10 +535,10 @@ static void detectNoDocumentedParams()
     }
     else if ( // see if return needs to documented 
         g_memberDef->hasDocumentedReturnType() ||
-        returnType.isEmpty() ||          // empty return type
-        returnType.find("void")!=-1  ||  // void return type
-        !g_memberDef->isConstructor() || // a constructor
-        !g_memberDef->isDestructor()     // or destructor
+        returnType.isEmpty()         || // empty return type
+        returnType.find("void")!=-1  || // void return type
+        g_memberDef->isConstructor() || // a constructor
+        g_memberDef->isDestructor()     // or destructor
        )
     {
       g_memberDef->setHasDocumentedReturnType(TRUE);
@@ -670,7 +670,24 @@ static bool findDocsForMemberOrCompound(const char *commandName,
   if (l==0) return FALSE;
 
   int funcStart=cmdArg.find('(');
-  if (funcStart==-1) funcStart=l;
+  if (funcStart==-1) 
+  {
+    funcStart=l;
+  }
+  else
+  {
+    // Check for the case of operator() and the like.
+    // beware of scenarios like operator()((foo)bar)
+    int secondParen = cmdArg.find('(', funcStart+1);
+    int leftParen   = cmdArg.find(')', funcStart+1);
+    if (leftParen!=-1 && secondParen!=-1) 
+    {
+      if (leftParen<secondParen) 
+      {
+        funcStart=secondParen;
+      }
+    }
+  }
 
   QString name=removeRedundantWhiteSpace(cmdArg.left(funcStart).latin1());
   QString args=cmdArg.right(l-funcStart);
@@ -1888,7 +1905,7 @@ bool DocXRefItem::parse()
       }
       else
       {
-        m_file   = refList->listName();
+        m_file   = convertNameToFile(refList->listName());
         m_anchor = item->listAnchor;
       }
       m_title  = refList->sectionTitle();
@@ -4932,8 +4949,11 @@ int DocPara::handleHtmlStartTag(const QString &tagName,const HtmlAttribList &tag
   DBG(("handleHtmlStartTag(%s,%d)\n",tagName.data(),tagHtmlAttribs.count()));
   int retval=RetVal_OK;
   int tagId = Mappers::htmlTagMapper->map(tagName);
-  if (g_token->emptyTag && !(tagId&XML_CmdMask) && tagId!=HTML_UNKNOWN)
+  if (g_token->emptyTag && !(tagId&XML_CmdMask) && 
+      tagId!=HTML_UNKNOWN && tagId!=HTML_IMG && tagId!=HTML_BR)
+  {
       warn_doc_error(g_fileName,doctokenizerYYlineno,"Warning: HTML tags may not use the 'empty tag' XHTML syntax.");
+  }
   switch (tagId)
   {
     case HTML_UL: 

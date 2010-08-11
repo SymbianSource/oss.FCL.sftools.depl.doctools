@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -395,6 +395,8 @@ static bool             inGroupParamFound;
 static int              braceCount;
 static bool             insidePre;
 static bool             parseMore;
+static int              g_condCount;
+static int              g_sectionLevel;
 
 static int              g_commentCount;
 
@@ -692,7 +694,6 @@ static inline void setOutput(OutputContext ctx)
         stripTrailingWhiteSpace(current->doc);
         if (current->docFile.isEmpty())
         {
-		  //printf("Setting docFile to %s\n", yyFileName.data());
           current->docFile = yyFileName;
           current->docLine = yyLineNr;
         }
@@ -1030,13 +1031,25 @@ RCSTAG    "$"{ID}":"[^\n$]+"$"
 <Comment>".,"				{ // . with comma such as "e.g.," 
   					  addOutput(yytext);
   					}
+<Comment>"...\\"[ \t]			{ // ellipsis with escaped space.
+  					  addOutput("... ");
+  					}
+<Comment>".."[\.]?/[^ \t\n] 		{ // internal ellipsis 
+  					  addOutput(yytext);
+  					}
 <Comment>(\n|\\_linebr)({B}*(\n|\\_linebr))+	{ // at least one blank line (or blank line command)
-  					  if (inContext!=OutputBrief)
+					  if (inContext==OutputXRef)
+					  {
+					    // see bug 613024, we need to put the newlines after ending the XRef section.
+					    setOutput(OutputDoc);
+  					    addOutput("\n\n");
+					  }
+					  else if (inContext!=OutputBrief)
 					  {
   					    addOutput("\n\n");
 					    setOutput(OutputDoc);
 					  }
-					  else 
+					  else // inContext==OutputBrief
 					  { // only go to the detailed description if we have
 					    // found some brief description and not just whitespace
 					    endBrief(FALSE);
@@ -1692,6 +1705,48 @@ RCSTAG    "$"{ID}":"[^\n$]+"$"
   					  if (*yytext=='\n') yyLineNr++;
 					  addOutput('\n');
   					}
+<SkipInternal>[@\\]"if"/[ \t]		{
+                                          g_condCount++;
+  					}
+<SkipInternal>[@\\]"ifnot"/[ \t]	{
+                                          g_condCount++;
+  					}
+<SkipInternal>[@\\]/"endif"		{
+                                          g_condCount--;
+					  if (g_condCount<0) // handle conditional section around of \internal, see bug607743  
+					  {
+					    unput('\\');
+					    BEGIN(Comment);
+					  }
+  					}
+<SkipInternal>[@\\]/"section"[ \t]	{
+  					  if (g_sectionLevel>0)
+					  {
+					    unput('\\');
+					    BEGIN(Comment);
+					  }
+  					}
+<SkipInternal>[@\\]/"subsection"[ \t]	{
+  					  if (g_sectionLevel>1)
+					  {
+					    unput('\\');
+					    BEGIN(Comment);
+					  }
+  					}
+<SkipInternal>[@\\]/"subsubsection"[ \t]	{
+  					  if (g_sectionLevel>2)
+					  {
+					    unput('\\');
+					    BEGIN(Comment);
+					  }
+  					}
+<SkipInternal>[@\\]/"paragraph"[ \t]	{
+  					  if (g_sectionLevel>3)
+					  {
+					    unput('\\');
+					    BEGIN(Comment);
+					  }
+  					}
 <SkipInternal>[^ \\@\n]+		{ // skip non-special characters
   					}
 <SkipInternal>.				{ // any other character
@@ -2135,6 +2190,10 @@ static bool handleSection(const QCString &s)
   setOutput(OutputDoc);
   addOutput("@"+s+" ");
   BEGIN(SectionLabel);
+  if      (s=="section")       g_sectionLevel=1;
+  else if (s=="subsection")    g_sectionLevel=2;
+  else if (s=="subsubsection") g_sectionLevel=3;
+  else if (s=="paragraph")     g_sectionLevel=4;
   return FALSE;
 }
 
@@ -2284,6 +2343,7 @@ static bool handleInternal(const QCString &)
     { 
       current->doc.resize(0);
     }
+    g_condCount=0;
     BEGIN( SkipInternal );
   }
   else
@@ -2388,7 +2448,7 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
 {
   //printf("parseCommentBlock() isBrief=%d isAutoBriefOn=%d lineNr=%d\n",
   //    isBrief,isAutoBriefOn,lineNr);
-  //printf("parseCommentBlock() lineNr=%d file=%s\n", lineNr, fileName.data());
+
   initParser();
   guards.setAutoDelete(TRUE);
   guards.clear();
@@ -2410,6 +2470,8 @@ bool parseCommentBlock(/* in */     ParserInterface *parser,
   outputXRef.resize(0);
   setOutput( isBrief || isAutoBriefOn ? OutputBrief : OutputDoc );
   briefEndsAtDot = isAutoBriefOn;
+  g_condCount    = 0;
+  g_sectionLevel = 0;
 
   if (!current->inbodyDocs.isEmpty() && isInbody) // separate in body fragments
   {

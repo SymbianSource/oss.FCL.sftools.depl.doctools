@@ -45,7 +45,7 @@ import unittest
 #import xml
 from cStringIO import StringIO
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 """
 Nokia XHTML conversion:
@@ -62,10 +62,10 @@ CMD_PREFIX_TEMP     = "-Ddita.temp.dir="
 CMD_PREFIX_NERVOUS  = "echo"
 #CMD_PREFIX_XSL      = "/xsl:plugins/cxxapiref/xsl/dita2xhtml.nokia.xsl "
 
-DIR_DOT_COMPONENT   = 'dot_comp'
-DIR_DOT_SOURCE      = 'dot_src'
-DIR_TOC_TMP         = 'dot_toc_tmp'
-DIR_DOT_TOC         = 'dot_toc'
+BUILD_DIR           = 'build'
+DIR_DOT_COMPONENT   = os.path.join(BUILD_DIR, 'dot_comp')
+DIR_TOC_TMP         = os.path.join(BUILD_DIR, 'dot_toc_tmp')
+DIR_DOT_TOC         = os.path.join(BUILD_DIR, 'dot_toc')
 
 
 def invokeDot(theDitaMapPath, theDirOut, argList, isNervous):
@@ -143,7 +143,7 @@ def copyDirs(theResults, theOutDir):
 
 def execute(inToc, outDir, argList, numJobs=0, nervous=False):
     inDir = os.path.dirname(inToc)
-    outDirCmpDot = os.path.join(outDir, DIR_DOT_COMPONENT)
+    outDirCmpDot = os.path.join(os.path.dirname(outDir), DIR_DOT_COMPONENT)
     if not os.path.exists(outDirCmpDot):
         os.makedirs(outDirCmpDot)
     if numJobs >= 1:
@@ -161,7 +161,7 @@ def execute(inToc, outDir, argList, numJobs=0, nervous=False):
         for t in genCompMapNames(inToc)
     ]
     myResults = [r.get() for r in [myPool.apply_async(invokeDot, t) for t in myTaskS]]
-    copyDirs(myResults, os.path.join(outDir, DIR_DOT_SOURCE))
+    copyDirs(myResults, outDir)
     return myResults
 
 class DitamapLinkConverterError(Exception):
@@ -208,7 +208,7 @@ class DitamapLinkConverter():
         if root is not None:
             with open(filepath, 'w') as f:
                 f.write("""<?xml version="1.0" encoding="UTF-8"?>"""+'\n')
-                f.write("""<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.5.0//EN" "dtd/cxxAPIMap.dtd" >"""+'\n')
+                f.write("""<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.6.0//EN" "dtd/cxxAPIMap.dtd" >"""+'\n')
                 f.write(etree.tostring(root))        
                 f.close()
     
@@ -231,19 +231,33 @@ class DitamapLinkConverter():
 
 def publish_toc(toc_path, out_dir, argList, nervous):
     toc_name = os.path.basename(toc_path)
-    tmp_out =  os.path.join(out_dir, DIR_TOC_TMP)
+    tmp_out =  os.path.join(os.path.dirname(out_dir), DIR_TOC_TMP)
     dlc = DitamapLinkConverter(toc_path, tmp_out)
     dlc.convert()
     toc_to_publish = os.path.join(tmp_out, toc_name)
-    out = os.path.join(out_dir, DIR_DOT_TOC)
+    out = os.path.join(os.path.dirname(out_dir), DIR_DOT_TOC)
     invokeDot(toc_to_publish, out, argList, nervous)
-    final_destination = os.path.join(out_dir, DIR_DOT_SOURCE)
+    final_destination = out_dir
     if not os.path.exists(final_destination):
         os.makedirs(final_destination)
-    try:
-        shutil.copy(os.path.join(out, 'index.html'), final_destination)
-    except IOError, err:
-        logging.error('publish_toc(): %s' % str(err))
+    for item in os.listdir(out):
+        item_path = os.path.join(out, item)
+        try:                                                                               
+            if os.path.isdir(item_path):
+                if os.path.exists(os.path.join(final_destination, item)):           # The published toc's META-INF files etc.
+                    shutil.rmtree(os.path.join(final_destination, item))            # will be the final ones in the publication,                
+                    shutil.copytree(item_path, os.path.join(final_destination, item)) # any existing ones will be overwritten                                                
+            else:
+                shutil.copy(item_path, final_destination)
+            logging.info("Copied %s to %s" % (item_path, final_destination))            
+        except IOError, err:
+            logging.error("Couldn't copy %s to %s, error was '%s'" % (item_path, final_destination, str(err)))
+            
+def clean(out_dir):
+    if os.path.exists(out_dir):        
+        shutil.rmtree(out_dir)
+    if os.path.exists(os.path.join(os.path.dirname(out_dir), BUILD_DIR)):
+        shutil.rmtree(os.path.join(os.path.dirname(out_dir), BUILD_DIR))                      
     
 def main():
     usage = "usage: %prog [options] <DITA map> <output directory> -Doptions without the -D"
@@ -277,6 +291,7 @@ def main():
     # Dump out timestamp
     print 'Start time: %s' % time.ctime()
     execTime = time.clock()
+    clean(args[1])
     myResults = execute(args[0], args[1], args[2:], options.jobs, options.nervous)
     publish_toc(args[0], args[1], args[2:], options.nervous)
     print 'Number of DITA maps processed: %d' % len(myResults)
@@ -354,7 +369,7 @@ class TestDitamapLinkConverter(unittest.TestCase):
         self.assertRaises(DitamapLinkConverterError, dlc.convert)
            
 cmap = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.5.0//EN" "dtd/cxxAPIMap.dtd" >
+<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.6.0//EN" "dtd/cxxAPIMap.dtd" >
 <cxxAPIMap id="GUID-0D9E5D45-5A07-302C-BEB3-2D0252214F2E" title="wlmplatform">
     <cxxStructRef href="GUID-AE25CF37-B862-306B-B7B3-4A1226B83DA2.xml" navtitle="_SChannels" />
     <cxxFileRef href="GUID-E1984316-685F-394E-B71A-9816E1495C1F.xml" navtitle="wlanerrorcodes.h" />
@@ -363,7 +378,7 @@ cmap = """<?xml version="1.0" encoding="UTF-8"?>
 """
                         # 
 converted_cmap = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.5.0//EN" "dtd/cxxAPIMap.dtd" >
+<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.6.0//EN" "dtd/cxxAPIMap.dtd" >
 <cxxAPIMap id="GUID-0D9E5D45-5A07-302C-BEB3-2D0252214F2E" title="wlmplatform">
     <cxxStructRef format="html" href="GUID-AE25CF37-B862-306B-B7B3-4A1226B83DA2.html" navtitle="_SChannels" scope="peer" />
     <cxxFileRef format="html" href="GUID-E1984316-685F-394E-B71A-9816E1495C1F.html" navtitle="wlanerrorcodes.h" scope="peer" />

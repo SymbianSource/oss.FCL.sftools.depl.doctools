@@ -257,19 +257,37 @@ void DITAGeneratorBase::remapXrefs(DocNode *root) const
 /****************************************************
  * Section: DITAGeneratorBase - Common functionality.
  ****************************************************/
+/** Writes a documentation block from a comment block. Commonly this gets called twice,
+firstly for extracting paramater, template paramaeter and return value documentation and
+secondly to write out the other documentation in an <apiDesc> directly.
+
+@param t The XML stream to write to (note if pMap is null nothing will be written).
+@param fileName The source code file name where the comment block is.
+@param lineNr The line in the source code where the comment block starts.
+@param scope The parent Definition.
+@param md The MemberDef that this comment block refers to.
+@param text WTF?
+@param pMap A DocBlockContentsType, in non-null nothing will be written to the XML stream but this
+map will be populated with paramter names, template parameters and theier descriptions and a
+return value description.
+*/
 void DITAGeneratorBase::writeXMLDocBlock(XmlStream &t,
 					  const QCString &fileName,
 					  int lineNr,
 					  Definition *scope,
 					  MemberDef * md,
 					  const QCString &text,
-					  ParamDescriptionMap *pMap) const
+					  DocBlockContentsType *docBlockMaps) const
 {
 	QCString stext = text.stripWhiteSpace();
 	if (stext.isEmpty()) {
 		return;
 	}
-	if (pMap) {
+	if (docBlockMaps) {
+		// Flush output
+		docBlockMaps->paramMap.clear();
+		docBlockMaps->tparamMap.clear();
+		docBlockMaps->returnDoc = "";
 		t.outputSuspend();
 	}
 	// convert the documentation string into an abstract syntax tree
@@ -280,10 +298,11 @@ void DITAGeneratorBase::writeXMLDocBlock(XmlStream &t,
 	// create a code generator
 	XMLDITACodeGenerator *xmlCodeGen = new XMLDITACodeGenerator(t);
 	// create a parse tree visitor for XML
-	XmlDitaDocVisitor *visitor = new XmlDitaDocVisitor(t, *xmlCodeGen);
+	XmlDitaDocVisitor *visitor = new XmlDitaDocVisitor(t, *xmlCodeGen, docBlockMaps);
 	// visit all nodes
 	root->accept(visitor);
-	if (pMap) {
+	if (docBlockMaps) {
+#if 0
 		// Load map with result
 		pMap->clear();
 		QDictIterator<QString> it = visitor->queryIterator();
@@ -296,6 +315,7 @@ void DITAGeneratorBase::writeXMLDocBlock(XmlStream &t,
 			pMap->insert(it.currentKey(), visitor->query(it.currentKey()));
 			++it;
 		}
+#endif
 		// Resume output on the stream
 		t.outputResume();
 	}
@@ -518,39 +538,57 @@ void DITAGeneratorBase::writeInnerClasses(const NamespaceDef *npc, const ClassSD
 }
 */
 
+void DITAGeneratorBase::writeTemplateArgumentList(QString &elemPrefix,
+												ArgumentList *al,
+												XmlStream &xt,
+												Definition *scope,
+												FileDef *fileScope,
+												const DocBlockContentsType& paramMaps) const
+{
+	if (al) {
+		XmlElement tparamElement(xt, elemPrefix+"TemplateParameters");
+		ArgumentListIterator ali(*al);
+		Argument *a;
+#if DITA_DUMP_DOC_BLOCK_CONTENTS
+		DumpDocBlockContents(paramMaps);
+#endif
+		for (ali.toFirst();(a=ali.current());++ali) {
+			XmlElement tplElem(xt, elemPrefix + "TemplateParameter");
+			// In an ArgumentList the type always seems to be empty
+			if (!a->type.isEmpty()) {
+				XmlElement tplElemType(xt, elemPrefix + "TemplateParameter" + "Type");
+				linkifyTextDITA(TextGeneratorXMLDITALinker(xt), scope, fileScope, a->type);
+			}
+			// Now try and find if there is some documentation from a @tparam command
+			// See: ISO/IEC 14882:2003(E) 14.1 Template parameters [temp.param]
+			// First we remove "typename" or "class" from the prefix of a->type
+			// then search for that name in the comment block
+			// This does not work with template<class K, class V, template<class T> class C = myarray>
+			QString tName = a->type.stripWhiteSpace();
+			if (tName.find("typename") != -1) {
+				tName = tName.remove(0, 8).stripWhiteSpace();
+			} else if (tName.find("class") != -1) {
+				tName = tName.remove(0, 5).stripWhiteSpace();
+			}
+#if DITA_DUMP_DOC_BLOCK_CONTENTS
+			printf("writeTemplateArgumentList(ClassDef*): Looking for: \"%s\"\n", tName.data());
+#endif
+			if (paramMaps.tparamMap.contains(tName)) {
+				writeXMLElementAndText(xt, "apiDefNote", paramMaps.tparamMap[tName]);
+			}
+		}
+	}
+}
+
 void DITAGeneratorBase::writeTemplateArgumentList(ClassDef *cd,
 												ArgumentList *al,
 												XmlStream &xt,
 												Definition *scope,
-												FileDef *fileScope)
+												FileDef *fileScope,
+												const DocBlockContentsType& paramMaps) const
 {
 	if (al) {
-		XmlElement tplElem(xt, g_elemPrefix.elemPrefix(cd, true) + "TemplateParamList");
-		ArgumentListIterator ali(*al);
-		Argument *a;
-		for (ali.toFirst();(a=ali.current());++ali) {
-			XmlElement tplElem(xt, g_elemPrefix.elemPrefix(cd, true) + "TemplateParameter");
-			// In an ArgumentList the type always seems to be empty
-			if (!a->type.isEmpty()) {
-				//XmlElement(xt, "type");
-				linkifyTextDITA(TextGeneratorXMLDITALinker(xt), scope, fileScope, a->type);
-			}
-			// TODO: Fix this element
-			/*
-			if (!a->name.isEmpty()) {
-				writeXMLElementAndText(xt, "declname", a->name);
-				//writeXMLElementAndText(xt, "defname", a->name);
-			}
-			*/
-			// TODO: Fix this element
-			/*
-			if (!a->defval.isEmpty()) {
-				XmlElement(xt, "defval");
-				xt << a->defval;
-				//linkifyTextDITA(TextGeneratorXMLDITALinker(xt), scope, fileScope, a->defval);
-			}
-			*/
-		}
+		writeTemplateArgumentList(g_elemPrefix.elemPrefix(cd, true), al, xt, scope, fileScope, paramMaps);
 	}
 }
 
@@ -558,37 +596,49 @@ void DITAGeneratorBase::writeTemplateArgumentList(MemberDef *md,
 												ArgumentList *al,
 												XmlStream &xt,
 												Definition *scope,
-												FileDef *fileScope)
+												FileDef *fileScope,
+												const DocBlockContentsType& paramMaps) const
 {
 	if (al) {
-		XmlElement tplElem(xt, g_elemPrefix.elemPrefix(md, true) + "TemplateParamList");
+		writeTemplateArgumentList(g_elemPrefix.elemPrefix(md, true), al, xt, scope, fileScope, paramMaps);
+	}
+}
+#if 0
+	if (al) {
+		XmlElement tparamElement(xt, g_elemPrefix.elemPrefix(md, true)+"TemplateParameters");
 		ArgumentListIterator ali(*al);
 		Argument *a;
+#if DITA_DUMP_DOC_BLOCK_CONTENTS
+		DumpDocBlockContents(paramMaps);
+#endif
 		for (ali.toFirst(); (a = ali.current()); ++ali) {
 			XmlElement tplElem(xt, g_elemPrefix.elemPrefix(md, true) + "TemplateParameter");
 			// In an ArgumentList the type always seems to be empty
 			if (!a->type.isEmpty()) {
-				//XmlElement(xt, "type");
+				XmlElement tplElemType(xt, g_elemPrefix.elemPrefix(md, true) + "TemplateParameter" + "Type");
 				linkifyTextDITA(TextGeneratorXMLDITALinker(xt), scope, fileScope, a->type);
 			}
-			// TODO: Fix this element
-			/*
-			if (!a->name.isEmpty()) {
-				writeXMLElementAndText(xt, "declname", a->name);
-				//writeXMLElementAndText(xt, "defname", a->name);
+			// Now try and find if there is some documentation from a @tparam command
+			// See: ISO/IEC 14882:2003(E) 14.1 Template parameters [temp.param]
+			// First we remove "typename" or "class" from the prefix of a->type
+			// then search for that name in the comment block.
+			// This does not work with template<class K, class V, template<class T> class C = myarray>
+			QString tName = a->type.stripWhiteSpace();
+			if (tName.find("typename") != -1) {
+				tName = tName.remove(0, 8).stripWhiteSpace();
+			} else if (tName.find("class") != -1) {
+				tName = tName.remove(0, 5).stripWhiteSpace();
 			}
-			*/
-			// TODO: Fix this element
-			/*
-			if (!a->defval.isEmpty()) {
-				XmlElement(xt, "defval");
-				xt << a->defval;
-				//linkifyTextDITA(TextGeneratorXMLDITALinker(xt), scope, fileScope, a->defval);
+#if DITA_DUMP_DOC_BLOCK_CONTENTS
+			printf("writeTemplateArgumentList(MemberDef*): Looking for: \"%s\"\n", tName.data());
+#endif
+			if (paramMaps.tparamMap.contains(tName)) {
+				writeXMLElementAndText(xt, "apiDefNote", paramMaps.tparamMap[tName]);
 			}
-			*/
 		}
 	}
 }
+#endif
 
 void DITAGeneratorBase::generateXMLForBriefDescription(Definition *d, MemberDef *md, XmlStream &xs) const
 {
@@ -674,12 +724,11 @@ void DITAGeneratorBase::stripQualifiers(QCString &typeStr)
 	}
 }
 
-void DITAGeneratorBase::writeMemberTemplateLists(MemberDef *md, XmlStream &xt)
+void DITAGeneratorBase::writeMemberTemplateLists(MemberDef *md, XmlStream &xt, const DocBlockContentsType& paramMaps) const
 {
 	LockingPtr<ArgumentList> templMd = md->templateArguments();
 	if (templMd!=0) {
-		// TODO Fix once DTDs supports templates.
-		//writeTemplateArgumentList(md, templMd.pointer(), xt, md->getClassDef(), md->getFileDef());
+		writeTemplateArgumentList(md, templMd.pointer(), xt, md->getClassDef(), md->getFileDef(), paramMaps);
 	}
 }
 
@@ -748,16 +797,20 @@ void DITAGeneratorBase::writeFunctionProperties(const MemberDef *md, XmlStream &
 	}
 }
 
-/** Writes out parameters for functions and function-like macros. */
-void DITAGeneratorBase::writeMacroAndFunctionParameters(MemberDef *md, Definition *def, XmlStream &xt) const
+/** Writes out parameters for function-like macros. */
+void DITAGeneratorBase::writeMacroParameters(MemberDef *md, Definition *def, XmlStream &xt) const
 {
+	ASSERT(md->memberType() == MemberDef::Define);
 	QString pName = "Parameter";
 	QString dName = "DeclarationName";
 	XmlElement paramElement(xt, g_elemPrefix.elemPrefix(md, true)+pName+"s");
 	// Grab function parameter descriptions
-	ParamDescriptionMap paramMap;
-	writeXMLDocBlock(xt, md->docFile(), md->docLine(), def, md, md->documentation(), &paramMap);
-	if (md->memberType() == MemberDef::Define && md->argsString()) {
+	DocBlockContentsType paramMaps;
+	writeXMLDocBlock(xt, md->docFile(), md->docLine(), def, md, md->documentation(), &paramMaps);
+#if DITA_DUMP_DOC_BLOCK_CONTENTS
+	DumpDocBlockContents(paramMaps);
+#endif
+	if (md->argsString()) {
 		// Function-like macros
 		if (md->argumentList()->count() == 0) {
 			// special case for "foo()" to disguish it from "foo".
@@ -772,68 +825,8 @@ void DITAGeneratorBase::writeMacroAndFunctionParameters(MemberDef *md, Definitio
 				// declaration name is: a->name
 				// definition name is: defArg->name
 				QString paramDescription;
-				if (paramMap.contains(a->type)) {
-					paramDescription = paramMap[a->type];
-				} else {
-					// NOP as paramDescription is empty
-				}
-				writeXMLElementAndText(xt, "apiDefNote", paramDescription);
-			}
-		}
-	} else {
-		// Functions
-		LockingPtr<ArgumentList> declAl = md->declArgumentList();
-		LockingPtr<ArgumentList> defAl = md->argumentList();
-		if (declAl != 0 && declAl->count()>0) {
-			ArgumentListIterator declAli(*declAl);
-			ArgumentListIterator defAli(*defAl);
-			Argument *a;
-			for (declAli.toFirst();(a = declAli.current());++declAli) {
-				Argument *defArg = defAli.current();
-				XmlElement paramElement(xt, g_elemPrefix.elemPrefix(md, true)+pName);
-#if DITA_EMIT_FOR_UNSUPPORTED_LANGS
-				// 'attributes' - IDL only
-				if (!a->attrib.isEmpty()) {
-					writeXMLElementAndText(xt, "attributes", a->attrib);
-				}
-#endif
-				if (!a->type.isEmpty()) {
-					XmlElement typeElem(xt, g_elemPrefix.elemPrefix(md, true)+pName+"DeclaredType");
-					linkifyTextDITA(TextGeneratorXMLDITALinker(xt), def, md->getBodyDef(), a->type);
-				}
-				// TODO: Type decomposition to fundemental type, classes arrays etc?
-				// Declaration name
-				if (!a->name.isEmpty()) {
-					writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+pName+dName, a->name);
-				}
-				if (defArg && !defArg->name.isEmpty() && defArg->name!=a->name) {
-					writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+pName+"DefinitionName", defArg->name);
-				}
-				// 'array specifier' - Fortran only?
-				// No, C: void fvla(int m, int C[m][m]);
-				// Has a->array() == "[m][m]"
-				if (!a->array.isEmpty()) {
-					// TODO fix once DTDs support cxxFunctionParameterArray
-					//writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+pName+"Array", a->array);
-				}
-				if (!a->defval.isEmpty()) {
-					XmlElement defvalElem(xt, g_elemPrefix.elemPrefix(md, true)+pName+"DefaultValue");
-					linkifyTextDITA(TextGeneratorXMLDITALinker(xt), def, md->getBodyDef(), a->defval);
-				}
-				if (defArg && defArg->hasDocumentation()) {
-					generateXMLForBriefDescription(md->getOuterScope(), md, xt);
-				}
-				if (defArg) {
-					++defAli;
-				}
-				// Write out the apiDefNote from the paramMap
-				// declaration name is: a->name
-				// definition name is: defArg->name
-				QString paramDescription;
-				if (paramMap.contains(a->name)) {
-					paramDescription = paramMap[a->name];
-				} else if (defArg && paramMap.contains(defArg->name)) {
-					paramDescription = paramMap[defArg->name];
+				if (paramMaps.paramMap.contains(a->type)) {
+					paramDescription = paramMaps.paramMap[a->type];
 				} else {
 					// NOP as paramDescription is empty
 				}
@@ -841,6 +834,84 @@ void DITAGeneratorBase::writeMacroAndFunctionParameters(MemberDef *md, Definitio
 			}
 		}
 	}
+}
+
+/** Writes out template pattern and parameters for functions. */
+void DITAGeneratorBase::writeFunctionTemplateAndParameters(MemberDef *md, Definition *def, XmlStream &xt) const
+{
+	// Grab function parameter descriptions
+	DocBlockContentsType paramMaps;
+	writeXMLDocBlock(xt, md->docFile(), md->docLine(), def, md, md->documentation(), &paramMaps);
+#if DITA_DUMP_DOC_BLOCK_CONTENTS
+	DumpDocBlockContents(paramMaps);
+#endif
+	// Functions
+	// First template parameters and documentation
+	writeMemberTemplateLists(md, xt, paramMaps);
+	// Now parameters
+	QString pName = "Parameter";
+	QString dName = "DeclarationName";
+	// Now parameters
+	LockingPtr<ArgumentList> declAl = md->declArgumentList();
+	LockingPtr<ArgumentList> defAl = md->argumentList();
+	if (declAl != 0 && declAl->count() > 0) {
+		XmlElement elemParameters(xt, g_elemPrefix.elemPrefix(md, true)+pName+"s");
+		ArgumentListIterator declAli(*declAl);
+		ArgumentListIterator defAli(*defAl);
+		Argument *a;
+		for (declAli.toFirst();(a = declAli.current());++declAli) {
+			Argument *defArg = defAli.current();
+			XmlElement paramElement(xt, g_elemPrefix.elemPrefix(md, true) + pName);
+#if DITA_EMIT_FOR_UNSUPPORTED_LANGS
+			// 'attributes' - IDL only
+			if (!a->attrib.isEmpty()) {
+				writeXMLElementAndText(xt, "attributes", a->attrib);
+			}
+#endif
+			if (!a->type.isEmpty()) {
+				XmlElement typeElem(xt, g_elemPrefix.elemPrefix(md, true)+pName+"DeclaredType");
+				linkifyTextDITA(TextGeneratorXMLDITALinker(xt), def, md->getBodyDef(), a->type);
+			}
+			// Declaration name
+			if (!a->name.isEmpty()) {
+				writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+pName+dName, a->name);
+			}
+			if (defArg && !defArg->name.isEmpty() && defArg->name!=a->name) {
+				writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+pName+"DefinitionName", defArg->name);
+			}
+			// 'array specifier' - Fortran only?
+			// No, C: void fvla(int m, int C[m][m]);
+			// Has a->array() == "[m][m]"
+			if (!a->array.isEmpty()) {
+				// TODO fix once DTDs support cxxFunctionParameterArray
+				//writeXMLElementAndText(xt, g_elemPrefix.elemPrefix(md, true)+pName+"Array", a->array);
+			}
+			if (!a->defval.isEmpty()) {
+				XmlElement defvalElem(xt, g_elemPrefix.elemPrefix(md, true)+pName+"DefaultValue");
+				linkifyTextDITA(TextGeneratorXMLDITALinker(xt), def, md->getBodyDef(), a->defval);
+			}
+			if (defArg && defArg->hasDocumentation()) {
+				generateXMLForBriefDescription(md->getOuterScope(), md, xt);
+			}
+			if (defArg) {
+				++defAli;
+			}
+			// Write out the apiDefNote from the paramMap
+			// declaration name is: a->name
+			// definition name is: defArg->name
+			QString paramDescription;
+			if (paramMaps.paramMap.contains(a->name)) {
+				paramDescription = paramMaps.paramMap[a->name];
+			} else if (defArg && paramMaps.paramMap.contains(defArg->name)) {
+				paramDescription = paramMaps.paramMap[defArg->name];
+			} else {
+				// NOP as paramDescription is empty
+			}
+			writeXMLElementAndText(xt, "apiDefNote", paramDescription);
+		}
+	}
+	// Finally add the documentaion from @return
+	writeXMLElementAndText(xt, "apiDefNote", paramMaps.returnDoc);
 }
 
 /** Write DITA for member variables that are bit-fields */
@@ -875,7 +946,7 @@ void DITAGeneratorBase::writeMemberEnumerator(const MemberDef *md, XmlStream &xt
 		// Element is cxxEnumerators not cxxEnumerations
 		XmlElement enumeratorListElem(xt, g_elemPrefix.elemPrefix(md, false)+"Enumerators");
 		for (emli.toFirst(); (emd = emli.current()); ++emli) {
-			if (!eliminateDupeIds || m_memberIdMap.find(id(emd)) == m_memberIdMap.end()) {
+			if (!eliminateDupeIds || m_memberIdMap.find(idForDuplicateMember(emd)) == m_memberIdMap.end()) {
 				XmlElement enemElem(
 					xt,
 					g_elemPrefix.elemPrefix(emd, true),
@@ -915,7 +986,7 @@ void DITAGeneratorBase::writeMemberEnumerator(const MemberDef *md, XmlStream &xt
 				// </cxxEnumeratorDetail>
 			}
 			if (eliminateDupeIds) {
-				m_memberIdMap.insert(id(emd), true);
+				m_memberIdMap.insert(idForDuplicateMember(emd), true);
 			}
 		}
 	}
@@ -936,7 +1007,7 @@ void DITAGeneratorBase::generateXMLForMember(MemberDef *md, XmlStream &xt, Defin
 	}
 	// Locals to eliminate duplicate IDs
 	bool eliminateDupeIds = Config_getBool("XML_DITA_OMIT_DUPLICATE_MEMBERS");
-	if (eliminateDupeIds && m_memberIdMap.find(id(md)) != m_memberIdMap.end()) {
+	if (eliminateDupeIds && m_memberIdMap.find(idForDuplicateMember(md)) != m_memberIdMap.end()) {
 		return;
 	}
 	bool isFunc=FALSE;
@@ -977,9 +1048,9 @@ void DITAGeneratorBase::generateXMLForMember(MemberDef *md, XmlStream &xt, Defin
 			}
 			// Type information
 			if (md->memberType() != MemberDef::Define && md->memberType() != MemberDef::Enumeration) {
-				if (md->memberType() != MemberDef::Typedef) {
-					writeMemberTemplateLists(md, xt);
-				}
+				//if (md->memberType() != MemberDef::Typedef) {
+				//	writeMemberTemplateLists(md, xt);
+				//}
 				QCString typeStr = md->typeString();
 				stripQualifiers(typeStr);
 				{
@@ -1029,9 +1100,13 @@ void DITAGeneratorBase::generateXMLForMember(MemberDef *md, XmlStream &xt, Defin
 					writeReferenceTo(xt, rmd, "Reimplemented");
 				}
 			}
-			// Function and macro parameters
-			if (isFunc || (md->memberType() == MemberDef::Define)) {
-				writeMacroAndFunctionParameters(md, def, xt);
+			// Macro paramters
+			if (md->memberType() == MemberDef::Define) {
+				writeMacroParameters(md, def, xt);
+			}
+			// Function template pattern, and parameters
+			if (isFunc) {
+				writeFunctionTemplateAndParameters(md, def, xt);
 			}
 			// Enumerators
 			if (md->memberType() == MemberDef::Enumeration) {
@@ -1064,7 +1139,7 @@ void DITAGeneratorBase::generateXMLForMember(MemberDef *md, XmlStream &xt, Defin
 	}
 	// Record that we have written this ID
 	if (eliminateDupeIds) {
-		m_memberIdMap.insert(id(md), true);
+		m_memberIdMap.insert(idForDuplicateMember(md), true);
 	}
 }
 
@@ -1208,6 +1283,17 @@ QString DITAGeneratorBase::id(const PageDef *pd) const
 	return retId;
 #else
 	return pd->qualifiedName();
+#endif
+}
+
+QString DITAGeneratorBase::idForDuplicateMember(const MemberDef *md) const
+{
+#if USE_DOXYGEN_ID_AS_DUPLICATE_TEST
+	QString retId = md->getOutputFileBase();
+	retId.append("_1" + md->anchor());
+	return retId;
+#else
+	return nameLookup(md);
 #endif
 }
 
@@ -1408,8 +1494,7 @@ void DITAClassGenerator::generateXMLForClass(ClassDef *cd)
 				generateXMLForBaseDerivedClasses(xt, bcli);
 			}
 			// Class template information
-			// TODO: Fix template parameter lists
-			//writeTemplateList(cd, xt);
+			writeTemplateList(cd, xt);
 			// File location
 			writeFileLocation(cd, xt, g_elemPrefix.elemPrefix(cd, true), true);
 		}
@@ -1541,8 +1626,15 @@ MemberNameLookupMap DITAClassGenerator::membersInFormalDeclOrder(ClassDef *cd,
 
 void DITAClassGenerator::writeTemplateList(ClassDef *cd, XmlStream &xt)
 {
-	// TODO: Fix once templates are working DTD
-	//writeTemplateArgumentList(cd, cd->templateArguments(), xt, cd, 0);
+	if (cd->templateArguments()) {
+		// If a template class then parse the doc block for template parameters
+		DocBlockContentsType paramMaps;
+		writeXMLDocBlock(xt, cd->docFile(), cd->docLine(), cd, 0, cd->documentation(), &paramMaps);
+#if DITA_DUMP_DOC_BLOCK_CONTENTS
+		DumpDocBlockContents(paramMaps);
+#endif
+		writeTemplateArgumentList(cd, cd->templateArguments(), xt, cd, 0, paramMaps);
+	}
 }
 /**************************
  * End: class/struct/union

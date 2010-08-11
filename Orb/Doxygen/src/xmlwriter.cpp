@@ -137,28 +137,6 @@ void XmlStream::startElement(const QString& aElemName, const AttributeMap& aAttr
 		AttributeMapIter it = aAttrs.begin();
 		while (it != aAttrs.end()){
 			QString attrVal = encodeText(it.data());
-#ifdef DITA_OT_BUG_ATTRIBUTE_VALUE_HACK
-			// DITA Open Toolkit error, it fails to re-encode files properly
-			// Replace "&lt;" with "&amp;lt;"
-			// Replace "&gt;" with "&amp;gt;"
-			int fIdx = 0;
-			QString toFind;
-			QString toReplace;
-			toFind = "&lt;";
-			toReplace = "&amp;lt;";
-			fIdx = attrVal.find(toFind, 0);
-			while (fIdx != -1) {
-				attrVal.replace(fIdx, toFind.length(), toReplace);
-				fIdx = attrVal.find(toFind, 0);
-			}
-			toFind = "&gt;";
-			toReplace = "&amp;gt;";
-			fIdx = attrVal.find(toFind, 0);
-			while (fIdx != -1) {
-				attrVal.replace(fIdx, toFind.length(), toReplace);
-				fIdx = attrVal.find(toFind, 0);
-			}
-#endif
 			*mStreamP << " " << it.key() << "=\"" << attrVal << "\"";
 			++it;
 		}
@@ -168,6 +146,7 @@ void XmlStream::startElement(const QString& aElemName, const AttributeMap& aAttr
 		mElemStack.push(&aElemName);
 		mCanIndentList.append(new bool(true));
 	}
+	flushStream();
 }
 
 void XmlStream::characters(const QString& aText)
@@ -183,12 +162,7 @@ void XmlStream::characters(const QString& aText)
 		//mCanIndent = false;
 		setLastIndent(false);
 	}
-#ifdef DITA_TRACE
-#ifdef DITA_TRACE_TO_XML
-	// Useful for assertion crashes where otherwise the buffer would be lost
-	flush(*mStreamP);
-#endif
-#endif
+	flushStream();
 }
 
 void XmlStream::characters(char c)
@@ -208,12 +182,7 @@ void XmlStream::characters(char c)
 	// Don't indent mixed content
 	//mCanIndent = false;
 	setLastIndent(false);
-#ifdef DITA_TRACE
-#ifdef DITA_TRACE_TO_XML
-	// Useful for assertion crashes where otherwise the buffer would be lost
-	flush(*mStreamP);
-#endif
-#endif
+	flushStream();
 }
 
 XmlStream& XmlStream::operator<<(const QCString& s)
@@ -253,6 +222,7 @@ XmlStream& XmlStream::writeUnicode(const QCString& s)
 	// Don't indent mixed content
 	//mCanIndent = false;
 	setLastIndent(false);
+	flushStream();
 	return *this;
 }
 
@@ -263,6 +233,7 @@ void XmlStream::processingInstruction(const QString& aText)
 		*mStreamP << "<?" << aText << "?>";
 	}
 	//mCanIndent = true;
+	flushStream();
 }
 
 void XmlStream::comment(const QString& aText)
@@ -272,6 +243,7 @@ void XmlStream::comment(const QString& aText)
 		*mStreamP << "<!-- " << aText << " -->";
 	}
 	//mCanIndent = true;
+	flushStream();
 }
 
 void XmlStream::endElement(const QString& aElemName)
@@ -288,6 +260,7 @@ void XmlStream::endElement(const QString& aElemName)
 		}
 	}
 	mCanIndentList.removeLast();
+	flushStream();
 }
 
 void XmlStream::closeElementDeclIfOpen()
@@ -298,6 +271,7 @@ void XmlStream::closeElementDeclIfOpen()
 			mInElement = false;
 		}
 	}
+	flushStream();
 }
 
 void XmlStream::indent(unsigned int aInitVal)
@@ -308,6 +282,7 @@ void XmlStream::indent(unsigned int aInitVal)
 			*mStreamP << XML_INDENT;
 		}
 	}
+	flushStream();
 }
 
 /** Returns 1 if the character is in the legal unicode range
@@ -404,6 +379,20 @@ void XmlStream::setLastIndent(bool theB)
 {
 	mCanIndentList.removeLast();
 	mCanIndentList.append(new bool(theB));
+}
+
+/// Flush the stream for debugg/trace
+void XmlStream::flushStream()
+{
+#ifdef DITA_TRACE
+#ifdef DITA_TRACE_TO_XML
+	// Useful for assertion crashes where otherwise the buffer would be lost
+	if (mStreamP) {
+		// Call QT's global function (!)
+		flush(*mStreamP);
+	}
+#endif
+#endif
 }
 
 /// Suspend output
@@ -531,7 +520,9 @@ void XmlElementStack::pop(const QString &aElementName)
 {
 	XmlElement *pElem = mElemStack.pop();
 	if (pElem->getElemName() != aElementName) {
-		err(pElem->getElemName() + " is not equal to " + aElementName +"\n");
+		QString errStr("XmlElementStack::pop(\"" + aElementName + "\") is not equal to \"" + pElem->getElemName() +"\"\n");
+		mStream.comment(errStr);
+		err(errStr);
 	}
 	ASSERT(pElem->getElemName() == aElementName);
 	delete pElem;

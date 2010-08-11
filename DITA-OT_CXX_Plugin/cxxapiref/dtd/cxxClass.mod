@@ -2,8 +2,8 @@
 <!--                    HEADER                                         -->
 <!-- ================================================================= -->
 <!--  MODULE:    C++ Class DTD                                        -->
-<!--  VERSION:   0.5.0                                                 -->
-<!--  DATE:      February 2009                                          -->
+<!--  VERSION:   0.6.0                                                 -->
+<!--  DATE:      May 2010                                              -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
@@ -13,7 +13,7 @@
 <!--                                                                   -->
 <!--  Refer to this file by the following public identifier or an 
       appropriate system identifier 
-PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.5.0//EN"
+PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.6.0//EN"
       Delivered as file "cxxClass.dtd"                                 -->
  
 <!-- ================================================================= -->
@@ -24,11 +24,12 @@ PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.5.0//EN"
 <!-- ORIGINAL CREATION DATE:                                           -->
 <!--             November 2009                                         -->
 <!--                                                                   -->
-<!-- Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies). -->
+<!-- Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies). -->
 <!-- All rights reserved.                                              -->
 <!--                                                                   -->
 <!--  Change History (latest at top):                                  -->
 <!--  +++++++++++++++++++++++++++++++                                  -->
+<!--  2010-05-14 PaulRoss: Fixed templates.                            -->
 <!--  2010-02-16 VOG: Updated.                                         -->
 <!--  2010-02-10 PaulRoss: Updated.                                    -->
 <!--  2009-11-16 PaulRoss: Initial design.                             -->
@@ -36,7 +37,7 @@ PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.5.0//EN"
 <!-- ================================================================= -->
 
 <!--
-Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies).
 All rights reserved.
 -->
 
@@ -53,11 +54,9 @@ All rights reserved.
 <!ENTITY % cxxStructDerivation                  "cxxStructDerivation">
 
 <!-- Templates -->
-<!ENTITY % cxxClassTemplateParamList            "cxxClassTemplateParamList">
+<!ENTITY % cxxClassTemplateParameters           "cxxClassTemplateParameters">
 <!ENTITY % cxxClassTemplateParameter            "cxxClassTemplateParameter">
-<!ENTITY % cxxClassTemplateParamType            "cxxClassTemplateParamType">
-<!ENTITY % cxxClassTemplateParamDeclarationName "cxxClassTemplateParamDeclarationName">
-<!ENTITY % cxxClassTemplateParamDefinitionName  "cxxClassTemplateParamDefinitionName">
+<!ENTITY % cxxClassTemplateParameterType        "cxxClassTemplateParameterType">
 
 <!-- Derivation -->
 <!ENTITY % cxxClassDerivationAccessSpecifier    "cxxClassDerivationAccessSpecifier">
@@ -130,7 +129,7 @@ All rights reserved.
                                     (%cxxClassAccessSpecifier;)?,
                                     (%cxxClassAbstract;)?,
                                     (%cxxClassDerivations;)?,
-                                    (%cxxClassTemplateParamList;)?,
+                                    (%cxxClassTemplateParameters;)?,
                                     (%cxxClassAPIItemLocation;)
                                )
 >
@@ -283,43 +282,31 @@ All rights reserved.
 >
 
 <!-- Templates-->
-
-<!ELEMENT cxxClassTemplateParamList   (%cxxClassTemplateParameter;)+ >
-<!ATTLIST cxxClassTemplateParamList    %univ-atts;
-                                  outputclass CDATA #IMPLIED
+<!ELEMENT cxxClassTemplateParameters   (%cxxClassTemplateParameter;)+ >
+<!ATTLIST cxxClassTemplateParameters    %univ-atts;
+										outputclass CDATA #IMPLIED
 >
 
-<!ELEMENT cxxClassTemplateParameter   ( %cxxClassTemplateParamType;,
-                                       (%cxxClassTemplateParamDeclarationName;)?,
-                                       (%cxxClassTemplateParamDefinitionName;)? 
-																			)
+<!ELEMENT cxxClassTemplateParameter   	(%cxxClassTemplateParameterType;,
+										(%apiDefNote;)?
+										)
 >
 <!ATTLIST cxxClassTemplateParameter    %univ-atts;
-                                  outputclass CDATA #IMPLIED
+										outputclass CDATA #IMPLIED
 >
 
-<!ELEMENT cxxClassTemplateParamType   (#PCDATA)*>
-<!ATTLIST cxxClassTemplateParamType    %univ-atts;
-                                  outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxClassTemplateParamDeclarationName   (#PCDATA)*>
-<!ATTLIST cxxClassTemplateParamDeclarationName    %univ-atts;
-                                                  outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxClassTemplateParamDefinitionName   (#PCDATA)*>
-<!ATTLIST cxxClassTemplateParamDefinitionName    %univ-atts;
-                                                 outputclass CDATA #IMPLIED
+<!ELEMENT cxxClassTemplateParameterType   (#PCDATA | %apiRelation;)*>
+<!ATTLIST cxxClassTemplateParameterType    %univ-atts;
+											outputclass CDATA #IMPLIED
 >
 
 <!-- Location -->
 <!ELEMENT cxxClassAPIItemLocation   (
                                         %cxxClassDeclarationFile;,
                                         %cxxClassDeclarationFileLine;,
-                                        %cxxClassDefinitionFile;?,
-                                        %cxxClassDefinitionFileLineStart;?,
-                                        %cxxClassDefinitionFileLineEnd;?
+                                        (%cxxClassDefinitionFile;)?,
+                                        (%cxxClassDefinitionFileLineStart;)?,
+                                        (%cxxClassDefinitionFileLineEnd;)?
                                      )
 >
 <!ATTLIST cxxClassAPIItemLocation    %univ-atts;
@@ -443,16 +430,12 @@ All rights reserved.
     class  CDATA "- topic/xref reference/xref apiRef/apiRelation apiClassifier/apiBaseClassifier cxxClass/cxxClassBaseUnion ">
 
 <!-- Templates -->
-<!ATTLIST cxxClassTemplateParamList   %global-atts;
-    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxClass/cxxClassTemplateParamList ">
+<!ATTLIST cxxClassTemplateParameters   %global-atts;
+    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxClass/cxxClassTemplateParameters ">
 <!ATTLIST cxxClassTemplateParameter   %global-atts;
     class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxClass/cxxClassTemplateParameter ">
-<!ATTLIST cxxClassTemplateParamType   %global-atts;
-    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxClass/cxxClassTemplateParamType ">
-<!ATTLIST cxxClassTemplateParamDeclarationName   %global-atts;
-    class  CDATA "- topic/keyword reference/keyword apiRef/apiItemName apiClassifier/apiItemName cxxClass/cxxClassTemplateParamDeclarationName ">    
-<!ATTLIST cxxClassTemplateParamDefinitionName   %global-atts;
-    class  CDATA "- topic/keyword reference/keyword apiRef/apiItemName apiClassifier/apiItemName cxxClass/cxxClassTemplateParamDefinitionName ">
+<!ATTLIST cxxClassTemplateParameterType   %global-atts;
+    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxClass/cxxClassTemplateParameterType ">
     
 <!-- Nested members  -->
 <!ATTLIST cxxClassNested   %global-atts;

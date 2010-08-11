@@ -17,9 +17,18 @@ import re
 import sys
 from optparse import OptionParser
 from cStringIO import StringIO
-from xml.etree import ElementTree as etree
+try:
+    from xml.etree import cElementTree as etree
+except ImportError:
+    from xml.etree import ElementTree as etree
+
 
 nmtoken_regex = re.compile("[^a-zA-Z0-9_\.]")
+# Version to use in the DOCTYPE declaration
+# Should match regex: v(\d+)\.(\d+)\.(\d+)(\S*)
+# See Doxygen ditaelementprefix.cpp
+#const char *DOCTYPE_VERSION = "v0.6.0";
+doctype_version = "v0.6.0"
 
 def scan(dir):
     for root, _, files in os.walk(dir):
@@ -51,17 +60,17 @@ def doctype_identifier(doctype):
         return """<!DOCTYPE bookmap PUBLIC "-//OASIS//DTD DITA BookMap//EN" "bookmap.dtd">""" 
     # cxxapiref DITA specialisation Doctype Identifiers
     elif doctype == "cxxUnion":
-        return """<!DOCTYPE cxxUnion PUBLIC "-//NOKIA//DTD DITA C++ API Union Reference Type v0.5.0//EN" "dtd/cxxUnion.dtd">"""   
+        return """<!DOCTYPE cxxUnion PUBLIC "-//NOKIA//DTD DITA C++ API Union Reference Type %s//EN" "dtd/cxxUnion.dtd">""" % doctype_version
     elif doctype == "cxxStruct":
-        return """<!DOCTYPE cxxStruct PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.5.0//EN" "dtd/cxxStruct.dtd">"""
+        return """<!DOCTYPE cxxStruct PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type %s//EN" "dtd/cxxStruct.dtd">""" % doctype_version
     elif doctype == "cxxPackage":
-        return """<!DOCTYPE cxxPackage PUBLIC "-//NOKIA//DTD DITA cxx API Package Reference Type v0.5.0//EN" "dtd/cxxPackage.dtd">"""
+        return """<!DOCTYPE cxxPackage PUBLIC "-//NOKIA//DTD DITA cxx API Package Reference Type %s//EN" "dtd/cxxPackage.dtd">""" % doctype_version
     elif doctype == "cxxFile":
-        return """<!DOCTYPE cxxFile PUBLIC "-//NOKIA//DTD DITA C++ API File Reference Type v0.5.0//EN" "dtd/cxxFile.dtd">"""
+        return """<!DOCTYPE cxxFile PUBLIC "-//NOKIA//DTD DITA C++ API File Reference Type %s//EN" "dtd/cxxFile.dtd">""" % doctype_version
     elif doctype == "cxxClass":
-        return """<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.5.0//EN" "dtd/cxxClass.dtd">"""
+        return """<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type %s//EN" "dtd/cxxClass.dtd">""" % doctype_version
     elif doctype == "cxxAPIMap":
-        return """<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.5.0//EN" "dtd/cxxAPIMap.dtd" >"""
+        return """<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type %s//EN" "dtd/cxxAPIMap.dtd" >""" % doctype_version
     else:
         raise Exception('Unknown Doctype \"%s\"' % doctype)
 
@@ -83,7 +92,8 @@ class XmlParser(object):
     def parse(self, xmlfile):
         try:
             root = etree.parse(xmlfile).getroot()
-        except xml.parsers.expat.ExpatError, e:
+        except Exception, e:
+        #except xml.parsers.expat.ExpatError, e:
             sys.stderr.write("ERROR: %s could not be parse: %s\n" % (xmlfile, str(e)))
             return ""
         if 'id' not in root.attrib:
@@ -93,7 +103,7 @@ class XmlParser(object):
 def main(func, version):
     usage = "usage: %prog <Path to the XML content>"
     parser = OptionParser(usage, version='%prog ' + version)
-    (options, args) = parser.parse_args()
+    (_, args) = parser.parse_args()
     if len(args) < 1:
         parser.print_help()
         parser.error("Please supply the path to the XML content")
@@ -135,22 +145,22 @@ class Testdoctype_identifier(unittest.TestCase):
         self.assertEquals(doctype_identifier("bookmap"), """<!DOCTYPE bookmap PUBLIC "-//OASIS//DTD DITA BookMap//EN" "bookmap.dtd">""")
 
     def test_i_can_return_a_cxxUnion_doctype_identifier(self):        
-        self.assertEquals(doctype_identifier("cxxUnion"), """<!DOCTYPE cxxUnion PUBLIC "-//NOKIA//DTD DITA C++ API Union Reference Type v0.5.0//EN" "dtd/cxxUnion.dtd">""")
+        self.assertEquals(doctype_identifier("cxxUnion"), """<!DOCTYPE cxxUnion PUBLIC "-//NOKIA//DTD DITA C++ API Union Reference Type %s//EN" "dtd/cxxUnion.dtd">""" % doctype_version)
     
     def test_i_can_return_a_cxxStruct_doctype_identifier(self):        
-        self.assertEquals(doctype_identifier("cxxStruct"), """<!DOCTYPE cxxStruct PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.5.0//EN" "dtd/cxxStruct.dtd">""")
+        self.assertEquals(doctype_identifier("cxxStruct"), """<!DOCTYPE cxxStruct PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type %s//EN" "dtd/cxxStruct.dtd">""" % doctype_version)
         
     def test_i_can_return_a_cxxPackage_doctype_identifier(self):        
-        self.assertEquals(doctype_identifier("cxxPackage"), """<!DOCTYPE cxxPackage PUBLIC "-//NOKIA//DTD DITA cxx API Package Reference Type v0.5.0//EN" "dtd/cxxPackage.dtd">""")
+        self.assertEquals(doctype_identifier("cxxPackage"), """<!DOCTYPE cxxPackage PUBLIC "-//NOKIA//DTD DITA cxx API Package Reference Type %s//EN" "dtd/cxxPackage.dtd">""" % doctype_version)
         
     def test_i_can_return_a_cxxFile_doctype_identifier(self):        
-        self.assertEquals(doctype_identifier("cxxFile"), """<!DOCTYPE cxxFile PUBLIC "-//NOKIA//DTD DITA C++ API File Reference Type v0.5.0//EN" "dtd/cxxFile.dtd">""")
+        self.assertEquals(doctype_identifier("cxxFile"), """<!DOCTYPE cxxFile PUBLIC "-//NOKIA//DTD DITA C++ API File Reference Type %s//EN" "dtd/cxxFile.dtd">""" % doctype_version)
         
     def test_i_can_return_a_cxxClass_doctype_identifier(self):        
-        self.assertEquals(doctype_identifier("cxxClass"), """<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.5.0//EN" "dtd/cxxClass.dtd">""")
+        self.assertEquals(doctype_identifier("cxxClass"), """<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type %s//EN" "dtd/cxxClass.dtd">""" % doctype_version)
         
     def test_i_can_return_a_cxxAPIMap_doctype_identifier(self):        
-        self.assertEquals(doctype_identifier("cxxAPIMap"), """<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.5.0//EN" "dtd/cxxAPIMap.dtd" >""")
+        self.assertEquals(doctype_identifier("cxxAPIMap"), """<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type %s//EN" "dtd/cxxAPIMap.dtd" >""" % doctype_version)
         
                 
 class Testget_valid_nmtoken(unittest.TestCase):
@@ -189,17 +199,17 @@ class TestXmlParser(unittest.TestCase):
         self.assertTrue(id == "class_c_active_scheduler")
         
 brokencxxclass = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.5.0//EN" "dtd/cxxClass.dtd" >
+<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type %s//EN" "dtd/cxxClass.dtd" >
 <cxxClass>
     <apiName>CActiveScheduler</apiName>
     <shortdesc/>
 </cxxClass>
-"""
+""" % doctype_version
 
 cxxclass = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.5.0//EN" "dtd/cxxClass.dtd" >
+<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type %s//EN" "dtd/cxxClass.dtd" >
 <cxxClass id="class_c_active_scheduler">
     <apiName>CActiveScheduler</apiName>
     <shortdesc/>
 </cxxClass>
-"""
+""" % doctype_version

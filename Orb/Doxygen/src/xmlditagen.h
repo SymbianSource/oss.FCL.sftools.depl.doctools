@@ -13,18 +13,17 @@
 #ifndef XMLDITAGEN_H
 #define XMLDITAGEN_H
 #include "xmldita.h"
+#include "xmlditaparammap.h"
 
 void generateXMLDITA();
 
-// Used for sorting members by declaration source code line.
-// Implemented by DITAClassGenerator and DITAFileGenerator
+/// Used for sorting members by declaration source code line.
+/// Implemented by DITAClassGenerator and DITAFileGenerator
 typedef QMap<int, MemberDef*> SrcDeclMemberMap;
-// Used for sorting members by nameLookup().
-// Implemented by DITAClassGenerator and DITAFileGenerator
+/// Used for sorting members by nameLookup().
+/// Implemented by DITAClassGenerator and DITAFileGenerator
 typedef QMap<QString, MemberDef*> MemberNameLookupMap;
-// Used for extracting parameter descriptions
-typedef QMap<QString, QString> ParamDescriptionMap;
-// Used for removing duplicate member IDs, actually we treat this map as a set
+/// Used for removing duplicate member IDs, actually we treat this map as a set
 typedef QMap<QString, bool> MemberIdMap;
 
 class DITAGeneratorBase
@@ -37,7 +36,8 @@ public:
 						  Definition *scope,
 						  MemberDef * md,
 						  const QCString &text,
-						  ParamDescriptionMap *pMap) const;
+						  DocBlockContentsType *docBlockMaps) const;
+						  //ParamDescriptionMap *pMap) const;
 	void writeXMLElementAndText(XmlStream& t, QString e, AttributeMap& a, QString text) const;
 	void writeXMLElementAndText(XmlStream& t, QString e, QString text) const;
 	QString accessSpecifier(Protection p, bool assertOnPackage=false) const;
@@ -51,16 +51,24 @@ public:
 							const char *kind,
 							const char *header=0,
 							const char *documentation=0);
+	void writeTemplateArgumentList(QString &elemPrefix,
+									ArgumentList *al,
+									XmlStream &xt,
+									Definition *scope,
+									FileDef *fileScope,
+									const DocBlockContentsType& paramMaps) const;
 	void writeTemplateArgumentList(ClassDef *cd,
 									ArgumentList *al,
 									XmlStream &xt,
 									Definition *scope,
-									FileDef *fileScope);
+									FileDef *fileScope,
+									const DocBlockContentsType& paramMaps) const;
 	void writeTemplateArgumentList(MemberDef *md,
 									ArgumentList *al,
 									XmlStream &xt,
 									Definition *scope,
-									FileDef *fileScope);
+									FileDef *fileScope,
+									const DocBlockContentsType& paramMaps) const;
 	void generateXMLForBriefDescription(Definition *d, MemberDef *md, XmlStream &xs) const;
 	void generateXMLForDetailedDescription(Definition *d, MemberDef *md, XmlStream &xs) const;
 	void generateXMLForDefFileName(const Definition *d, XmlStream &xt, bool incLine=true);
@@ -84,6 +92,8 @@ protected:
 	QString id(const Definition *d) const;
 	QString id(const MemberDef *d) const;
 	QString id(const PageDef *d) const;
+	// This returns the ID that is used for duplicate member detection
+	QString idForDuplicateMember(const MemberDef *md) const;
 	
 	AttributeMap getMapAttributes(const Definition *d) const;
 	//AttributeMap getMapAttributes(const MemberDef *d) const;
@@ -108,10 +118,11 @@ protected:
 private:
 	void writeMemberScs(const MemberDef *md, XmlStream &xt) const;
 	void writeFunctionProperties(const MemberDef *md, XmlStream &xt) const;
-	void writeMacroAndFunctionParameters(MemberDef *md, Definition *def, XmlStream &xt) const;
+	void writeMacroParameters(MemberDef *md, Definition *def, XmlStream &xt) const;
+	void writeFunctionTemplateAndParameters(MemberDef *md, Definition *def, XmlStream &xt) const;
 	void writeMemberBitField(const MemberDef *md, XmlStream &xt) const;
 	void writeMemberEnumerator(const MemberDef *md, XmlStream &xt);
-	void writeMemberTemplateLists(MemberDef *md, XmlStream &xt);
+	void writeMemberTemplateLists(MemberDef *md, XmlStream &xt, const DocBlockContentsType& paramMaps) const;
 protected:
 	void writeVirtualElement(XmlStream &xs, QString p, Specifier v) const;
 private:

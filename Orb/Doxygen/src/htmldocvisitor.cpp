@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -80,6 +80,8 @@ static bool mustBeOutsideParagraph(DocNode *n)
           /* <h?> */
         case DocNode::Kind_Section:
         case DocNode::Kind_HtmlHeader:
+          /* \internal */
+        case DocNode::Kind_Internal:
           /* <div> */
         case DocNode::Kind_Verbatim:
         case DocNode::Kind_Include:
@@ -87,6 +89,11 @@ static bool mustBeOutsideParagraph(DocNode *n)
         case DocNode::Kind_SecRefList:
           /* <hr> */
         case DocNode::Kind_HorRuler:
+          /* CopyDoc gets paragraph markers from the wrapping DocPara node,
+           * but needs to insert them for all documentation being copied to
+           * preserve formatting.
+           */
+        case DocNode::Kind_Copy:
           return TRUE;
         case DocNode::Kind_StyleChange:
           return ((DocStyleChange*)n)->style()==DocStyleChange::Preformatted ||
@@ -705,6 +712,7 @@ void HtmlDocVisitor::visitPre(DocPara *p)
     switch (p->parent()->kind()) 
     {
       case DocNode::Kind_Section:
+      case DocNode::Kind_Internal:
       case DocNode::Kind_HtmlListItem:
       case DocNode::Kind_HtmlDescData:
       case DocNode::Kind_HtmlCell:
@@ -712,6 +720,7 @@ void HtmlDocVisitor::visitPre(DocPara *p)
       case DocNode::Kind_AutoListItem:
       case DocNode::Kind_SimpleSect:
       case DocNode::Kind_XRefItem:
+      case DocNode::Kind_Copy:
         needsTag = TRUE;
         break;
       case DocNode::Kind_Root:
@@ -784,6 +793,7 @@ void HtmlDocVisitor::visitPost(DocPara *p)
     switch (p->parent()->kind()) 
     {
       case DocNode::Kind_Section:
+      case DocNode::Kind_Internal:
       case DocNode::Kind_HtmlListItem:
       case DocNode::Kind_HtmlDescData:
       case DocNode::Kind_HtmlCell:
@@ -791,6 +801,7 @@ void HtmlDocVisitor::visitPost(DocPara *p)
       case DocNode::Kind_AutoListItem:
       case DocNode::Kind_SimpleSect:
       case DocNode::Kind_XRefItem:
+      case DocNode::Kind_Copy:
         needsTag = TRUE;
         break;
       case DocNode::Kind_Root:
@@ -1033,25 +1044,18 @@ void HtmlDocVisitor::visitPost(DocHtmlDescData *)
 void HtmlDocVisitor::visitPre(DocHtmlTable *t)
 {
   if (m_hide) return;
-  //bool hasBorder      = FALSE;
-  //bool hasCellSpacing = FALSE;
-  //bool hasCellPadding = FALSE;
 
   forceEndParagraph(t);
 
-  //HtmlAttribListIterator li(t->attribs());
-  //HtmlAttrib *att;
-  //for (li.toFirst();(att=li.current());++li)
-  //{
-  // if      (att->name=="border")      hasBorder=TRUE;
-  //  else if (att->name=="cellspacing") hasCellSpacing=TRUE;
-  //  else if (att->name=="cellpadding") hasCellPadding=TRUE;
-  //}
-  m_t << "<table class=\"doxtable\"" << htmlAttribsToString(t->attribs());
-  //if (!hasBorder)      m_t << " border=\"1\"";
-  //if (!hasCellSpacing) m_t << " cellspacing=\"3\"";
-  //if (!hasCellPadding) m_t << " cellpadding=\"3\"";
-  m_t << ">\n";
+  QString attrs = htmlAttribsToString(t->attribs());
+  if (attrs.isEmpty())
+  {
+    m_t << "<table class=\"doxtable\">\n";
+  }
+  else
+  {
+    m_t << "<table " << htmlAttribsToString(t->attribs()) << ">\n";
+  }
 }
 
 void HtmlDocVisitor::visitPost(DocHtmlTable *t) 
@@ -1113,17 +1117,17 @@ void HtmlDocVisitor::visitPost(DocHtmlCaption *)
   m_t << "</caption>\n";
 }
 
-void HtmlDocVisitor::visitPre(DocInternal *)
+void HtmlDocVisitor::visitPre(DocInternal *i)
 {
   if (m_hide) return;
+  forceEndParagraph(i);
   m_t << "<p><b>" << theTranslator->trForInternalUseOnly() << "</b></p>" << endl;
-  m_t << "<p>" << endl;
 }
 
-void HtmlDocVisitor::visitPost(DocInternal *) 
+void HtmlDocVisitor::visitPost(DocInternal *i) 
 {
   if (m_hide) return;
-  m_t << "</p>" << endl;
+  forceStartParagraph(i);
 }
 
 void HtmlDocVisitor::visitPre(DocHRef *href)
@@ -1564,7 +1568,7 @@ void HtmlDocVisitor::writeDotFile(const QString &fileName,const QString &relPath
   m_t << "<img src=\"" << relPath << baseName << "." 
     << Config_getEnum("DOT_IMAGE_FORMAT") << "\" alt=\""
     << baseName << "\" border=\"0\" usemap=\"#" << mapName << "\">" << endl;
-  QString imap = getDotImageMapFromFile(fileName,outDir,relPath.data(),context);
+  QString imap = getDotImageMapFromFile(baseName,outDir,relPath.data(),context);
   m_t << "<map name=\"" << mapName << "\" id=\"" << mapName << "\">" << imap << "</map>" << endl;
 }
 

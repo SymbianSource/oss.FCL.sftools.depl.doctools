@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -325,7 +325,9 @@ class OutputGenerator : public BaseOutputDocInterface
     virtual void endGroupHeader() = 0;
     virtual void startMemberSections() = 0;
     virtual void endMemberSections() = 0;
-    virtual void startMemberHeader() = 0;
+    virtual void startHeaderSection() = 0;
+    virtual void endHeaderSection() = 0;
+    virtual void startMemberHeader(const char *anchor) = 0;
     virtual void endMemberHeader() = 0;
     virtual void startMemberSubtitle() = 0;
     virtual void endMemberSubtitle() = 0;

@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -245,9 +245,7 @@ void Definition::addToMap(const char *name,Definition *d)
 
 void Definition::removeFromMap(Definition *d)
 {
-  QCString symbolName = d->symbolName();
-  int index=computeQualifiedIndex(symbolName);
-  if (index!=-1) symbolName=symbolName.mid(index+2);
+  QString symbolName = d->m_symbolName;
   if (!symbolName.isEmpty()) 
   {
     //printf("******* removing symbol `%s' (%p)\n",symbolName.data(),d);
@@ -451,7 +449,7 @@ void Definition::_setBriefDescription(const char *b,const char *briefFile,int br
   {
     switch(brief.at(bl-1))
     {
-      case '.': case '!': case '?': break;
+      case '.': case '!': case '?': case '>': case ':': break;
       default: 
         if (uni_isupper(brief.at(0))) brief+='.'; 
         break;
@@ -841,7 +839,8 @@ void Definition::writeInlineCode(OutputList &ol,const char *scopeName)
                        actualStart,      // startLine
                        actualEnd,        // endLine
                        TRUE,             // inlineFragment
-                       thisMd            // memberDef
+                       thisMd,           // memberDef
+                       FALSE             // show line numbers
                       );
       ol.endCodeFragment();
       ol.endParagraph();
@@ -856,9 +855,11 @@ void Definition::writeInlineCode(OutputList &ol,const char *scopeName)
 void Definition::_writeSourceRefList(OutputList &ol,const char *scopeName,
     const QCString &text,MemberSDict *members,bool /*funcOnly*/)
 {
-static bool latexSourceCode = Config_getBool("LATEX_SOURCE_CODE"); 
- ol.pushGeneratorState();
-  if (/*Config_getBool("SOURCE_BROWSER") &&*/ members)
+  static bool latexSourceCode = Config_getBool("LATEX_SOURCE_CODE"); 
+  static bool sourceBrowser   = Config_getBool("SOURCE_BROWSER");
+  static bool refLinkSource   = Config_getBool("REFERENCES_LINK_SOURCE");
+  ol.pushGeneratorState();
+  if (members)
   {
     ol.startParagraph();
     ol.parseText(text);
@@ -895,22 +896,29 @@ static bool latexSourceCode = Config_getBool("LATEX_SOURCE_CODE");
             (md->isFunction() || md->isSlot() || 
              md->isPrototype() || md->isSignal()
             )
-           ) name+="()";
+           ) 
+        {
+          name+="()";
+        }
         //Definition *d = md->getOutputFileBase();
         //if (d==Doxygen::globalScope) d=md->getBodyDef();
-        if (!(md->isLinkable() && !Config_getBool("REFERENCES_LINK_SOURCE")) && md->getStartBodyLine()!=-1 && md->getBodyDef()) 
+        if (sourceBrowser &&
+            !(md->isLinkable() && !refLinkSource) && 
+            md->getStartBodyLine()!=-1 && 
+            md->getBodyDef()
+           )
         {
           //printf("md->getBodyDef()=%p global=%p\n",md->getBodyDef(),Doxygen::globalScope); 
           // for HTML write a real link
           ol.pushGeneratorState();
           //ol.disableAllBut(OutputGenerator::Html);
-           
-         ol.disable(OutputGenerator::RTF); 
-         ol.disable(OutputGenerator::Man); 
-         if (!latexSourceCode)
-         {
-          ol.disable(OutputGenerator::Latex);
-        }
+
+          ol.disable(OutputGenerator::RTF); 
+          ol.disable(OutputGenerator::Man); 
+          if (!latexSourceCode)
+          {
+            ol.disable(OutputGenerator::Latex);
+          }
           QCString lineStr,anchorStr;
           anchorStr.sprintf("l%05d",md->getStartBodyLine());
           //printf("Write object link to %s\n",md->getBodyDef()->getSourceFileBase().data());
@@ -919,11 +927,11 @@ static bool latexSourceCode = Config_getBool("LATEX_SOURCE_CODE");
 
           // for the other output formats just mention the name
           ol.pushGeneratorState();
-           ol.disable(OutputGenerator::Html);
-           if (latexSourceCode)
+          ol.disable(OutputGenerator::Html);
+          if (latexSourceCode)
           {
             ol.disable(OutputGenerator::Latex);
-           }
+          }
           ol.docify(name);
           ol.popGeneratorState();
         }
@@ -937,20 +945,20 @@ static bool latexSourceCode = Config_getBool("LATEX_SOURCE_CODE");
           if (!latexSourceCode)
           {
             ol.disable(OutputGenerator::Latex);
-           }
-     
+          }
+
           ol.writeObjectLink(md->getReference(),
-                             md->getOutputFileBase(),
-                             md->anchor(),name);
+              md->getOutputFileBase(),
+              md->anchor(),name);
           ol.popGeneratorState();
 
           // for the other output formats just mention the name
           ol.pushGeneratorState();
           ol.disable(OutputGenerator::Html);
-           if (latexSourceCode)
-           {
+          if (latexSourceCode)
+          {
             ol.disable(OutputGenerator::Latex);
-           }
+          }
           ol.docify(name);
           ol.popGeneratorState();
         }
@@ -1148,6 +1156,7 @@ void Definition::makePartOfGroup(GroupDef *gd)
 
 void Definition::setRefItems(const QList<ListItemInfo> *sli)
 {
+  //printf("%s::setRefItems()\n",name().data());
   if (sli)
   {
     makeResident();
@@ -1168,6 +1177,7 @@ void Definition::setRefItems(const QList<ListItemInfo> *sli)
 
 void Definition::mergeRefItems(Definition *d)
 {
+  //printf("%s::mergeRefItems()\n",name().data());
   LockingPtr< QList<ListItemInfo> > xrefList = d->xrefListItems();
   if (xrefList!=0)
   {
@@ -1228,33 +1238,45 @@ QCString Definition::convertNameToFile(const char *name,bool allowDots) const
   }
 }
 
+QCString Definition::pathFragment() const
+{
+  makeResident();
+  QCString result;
+  if (m_impl->outerScope && m_impl->outerScope!=Doxygen::globalScope)
+  {
+    result = m_impl->outerScope->pathFragment();
+  }
+  if (isLinkable())
+  {
+    if (!result.isEmpty()) result+="/";
+    if (definitionType()==Definition::TypeGroup && ((const GroupDef*)this)->groupTitle())
+    {
+      result+=((const GroupDef*)this)->groupTitle();
+    }
+    else if (definitionType()==Definition::TypePage && !((const PageDef*)this)->title().isEmpty())
+    {
+      result+=((const PageDef*)this)->title();
+    }
+    else
+    {
+      result+=m_impl->localName;
+    }
+  }
+  else
+  {
+    result+=m_impl->localName;
+  }
+  return result;
+}
+
 void Definition::writePathFragment(OutputList &ol) const
 {
   makeResident();
   if (m_impl->outerScope && m_impl->outerScope!=Doxygen::globalScope)
   {
     m_impl->outerScope->writePathFragment(ol);
-    if (m_impl->outerScope->definitionType()==Definition::TypeClass ||
-        m_impl->outerScope->definitionType()==Definition::TypeNamespace)
-    {
-      if (Config_getBool("OPTIMIZE_OUTPUT_JAVA") ||
-          Config_getBool("OPTIMIZE_OUTPUT_VHDL")
-         )
-      {
-        ol.writeString(".");
-      }
-      else
-      {
-        ol.writeString("::");
-      }
-    }
-    else
-    {
-      ol.writeString("&nbsp;");
-      ol.writeString("&raquo;");
-      ol.writeString("&nbsp;");
-    }
   }
+  ol.writeString("      <li>");
   if (isLinkable())
   {
     if (definitionType()==Definition::TypeGroup && ((const GroupDef*)this)->groupTitle())
@@ -1276,6 +1298,7 @@ void Definition::writePathFragment(OutputList &ol) const
     ol.docify(m_impl->localName);
     ol.endBold();
   }
+  ol.writeString("      </li>\n");
 }
 
 void Definition::writeNavigationPath(OutputList &ol) const
@@ -1283,9 +1306,11 @@ void Definition::writeNavigationPath(OutputList &ol) const
   ol.pushGeneratorState();
   ol.disableAllBut(OutputGenerator::Html);
 
-  ol.writeString("  <div class=\"navpath\">");
+  ol.writeString("  <div class=\"navpath\">\n");
+  ol.writeString("    <ul>\n");
   writePathFragment(ol);
-  ol.writeString("\n  </div>\n");
+  ol.writeString("    </ul>\n");
+  ol.writeString("  </div>\n");
 
   ol.popGeneratorState();
 }

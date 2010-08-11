@@ -3,7 +3,7 @@
  * 
  *
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -35,7 +35,7 @@
 #include "pagedef.h"
 #include "portable.h"
 #include "dirdef.h"
-
+#include "vhdldocgen.h"
 #include <qdir.h>
 #include <qfile.h>
 #include <qtextstream.h>
@@ -268,11 +268,12 @@ static void setDotFontPath(const char *path)
   ASSERT(g_dotFontPath.isEmpty());
   g_dotFontPath = portable_getenv("DOTFONTPATH");
   QCString newFontPath = Config_getString("DOT_FONTPATH");
-  if (!newFontPath.isEmpty() && path)
+  QCString spath = path;
+  if (!newFontPath.isEmpty() && !spath.isEmpty())
   {
-    newFontPath.prepend(path+portable_pathListSeparator());
+    newFontPath.prepend(spath+portable_pathListSeparator());
   }
-  else if (newFontPath.isEmpty() && path)
+  else if (newFontPath.isEmpty() && !spath.isEmpty())
   {
     newFontPath=path;
   }
@@ -286,7 +287,14 @@ static void setDotFontPath(const char *path)
 
 static void unsetDotFontPath()
 {
-  portable_setenv("DOTFONTPATH",g_dotFontPath);
+  if (g_dotFontPath.isEmpty())
+  {
+    portable_unsetenv("DOTFONTPATH");
+  }
+  else
+  {
+    portable_setenv("DOTFONTPATH",g_dotFontPath);
+  }
   g_dotFontPath="";
 }
 
@@ -718,9 +726,18 @@ void DotNode::writeBox(QTextStream &t,
   }
   else 
   {
-    if (!Config_getBool("DOT_TRANSPARENT"))
+    static bool dotTransparent = Config_getBool("DOT_TRANSPARENT");
+    static bool vhdlOpt = Config_getBool("OPTIMIZE_OUTPUT_VHDL");
+    if (!dotTransparent)
     {
-      t << ",color=\"" << labCol << "\", fillcolor=\"white\", style=\"filled\"";
+      ClassDef* ccd=this->m_classDef;
+
+      t << ",color=\"" << labCol << "\", fillcolor=\"";
+      if (ccd && vhdlOpt && (VhdlDocGen::VhdlClasses)ccd->protection()==VhdlDocGen::ARCHITECTURECLASS)
+        t << "khaki";	
+      else
+        t << "white";
+      t << "\", style=\"filled\"";
     }
     else
     {
@@ -916,131 +933,6 @@ void DotNode::writeXML(QTextStream &t,bool isClassGraph)
   t << "      </node>" << endl;
 }
 
-void DotNode::writeXML(XmlStream &xt, bool isClassGraph)
-{
-	QString idNumber;
-	idNumber.setNum(m_number);
-	XmlElement nodeElem(xt, "node", "id", idNumber);
-	{
-		XmlElement nodeLabel(xt, "label");
-		xt << m_label;
-	}
-	if (!m_url.isEmpty()) {
-		QCString url(m_url);
-		char *refPtr = url.data();
-		char *urlPtr = strchr(url.data(),'$');
-		if (urlPtr) {
-			*urlPtr++='\0';
-			AttributeMap linkAttrs;
-			linkAttrs["refid"] = convertToXML(urlPtr);
-			if (*refPtr!='\0') {
-				linkAttrs["external"] = convertToXML(refPtr);
-			}
-			XmlElement(xt, "link", linkAttrs);
-		}
-	}
-	if (m_children) {
-		QListIterator<DotNode> nli(*m_children);
-		QListIterator<EdgeInfo> eli(*m_edgeInfo);
-		DotNode *childNode;
-		EdgeInfo *edgeInfo;
-		for (;(childNode=nli.current());++nli,++eli) {
-			edgeInfo=eli.current();
-			AttributeMap childAttrs;
-			QString childIdNumber;
-			childIdNumber.setNum(childNode->m_number);
-			childAttrs["refid"] = childIdNumber; 
-			if (isClassGraph) {
-				switch(edgeInfo->m_color) {
-					case EdgeInfo::Blue:    childAttrs["relation"] = "public-inheritance"; break;
-					case EdgeInfo::Green:   childAttrs["relation"] = "protected-inheritance"; break;
-					case EdgeInfo::Red:     childAttrs["relation"] = "private-inheritance"; break;
-					case EdgeInfo::Purple:  childAttrs["relation"] = "usage"; break;
-					case EdgeInfo::Orange:  childAttrs["relation"] = "template-instance"; break;
-					case EdgeInfo::Grey:    ASSERT(0); break;
-				}
-			} else {
-				// include graph
-				childAttrs["relation"] = "include"; 
-			}
-			XmlElement childnodeElem(xt, "childnode", childAttrs);
-			if (!edgeInfo->m_label.isEmpty()) {
-				int p=0;
-				int ni;
-				while ((ni=edgeInfo->m_label.find('\n',p))!=-1) {
-					XmlElement edgelabelElem(xt, "edgelabel");
-					xt << edgeInfo->m_label.mid(p,ni-p);
-					p=ni+1;
-				}
-				XmlElement edgelabelElem(xt, "edgelabel");
-				xt << edgeInfo->m_label.right(edgeInfo->m_label.length()-p);
-			}
-		} 
-	}
-}
-
-void DotNode::writeXMLDITA(XmlStream &xt, bool isClassGraph)
-{
-	QString idNumber;
-	idNumber.setNum(m_number);
-	XmlElement nodeElem(xt, "node", "id", idNumber);
-	{
-		XmlElement nodeLabel(xt, "label");
-		xt << m_label;
-	}
-	if (!m_url.isEmpty()) {
-		QCString url(m_url);
-		char *refPtr = url.data();
-		char *urlPtr = strchr(url.data(),'$');
-		if (urlPtr) {
-			*urlPtr++='\0';
-			AttributeMap linkAttrs;
-			linkAttrs["refid"] = convertToXML(urlPtr);
-			if (*refPtr!='\0') {
-				linkAttrs["external"] = convertToXML(refPtr);
-			}
-			XmlElement(xt, "link", linkAttrs);
-		}
-	}
-	if (m_children) {
-		QListIterator<DotNode> nli(*m_children);
-		QListIterator<EdgeInfo> eli(*m_edgeInfo);
-		DotNode *childNode;
-		EdgeInfo *edgeInfo;
-		for (;(childNode=nli.current());++nli,++eli) {
-			edgeInfo=eli.current();
-			AttributeMap childAttrs;
-			QString childIdNumber;
-			childIdNumber.setNum(childNode->m_number);
-			childAttrs["refid"] = childIdNumber; 
-			if (isClassGraph) {
-				switch(edgeInfo->m_color) {
-					case EdgeInfo::Blue:    childAttrs["relation"] = "public-inheritance"; break;
-					case EdgeInfo::Green:   childAttrs["relation"] = "protected-inheritance"; break;
-					case EdgeInfo::Red:     childAttrs["relation"] = "private-inheritance"; break;
-					case EdgeInfo::Purple:  childAttrs["relation"] = "usage"; break;
-					case EdgeInfo::Orange:  childAttrs["relation"] = "template-instance"; break;
-					case EdgeInfo::Grey:    ASSERT(0); break;
-				}
-			} else {
-				// include graph
-				childAttrs["relation"] = "include"; 
-			}
-			XmlElement childnodeElem(xt, "childnode", childAttrs);
-			if (!edgeInfo->m_label.isEmpty()) {
-				int p=0;
-				int ni;
-				while ((ni=edgeInfo->m_label.find('\n',p))!=-1) {
-					XmlElement edgelabelElem(xt, "edgelabel");
-					xt << edgeInfo->m_label.mid(p,ni-p);
-					p=ni+1;
-				}
-				XmlElement edgelabelElem(xt, "edgelabel");
-				xt << edgeInfo->m_label.right(edgeInfo->m_label.length()-p);
-			}
-		} 
-	}
-}
 
 void DotNode::writeDEF(QTextStream &t)
 {
@@ -2157,26 +2049,6 @@ void DotClassGraph::writeXML(QTextStream &t)
   }
 }
 
-void DotClassGraph::writeXML(XmlStream &t)
-{
-  QDictIterator<DotNode> dni(*m_usedNodes);
-  DotNode *node;
-  for (;(node=dni.current());++dni)
-  {
-    node->writeXML(t,TRUE);
-  }
-}
-
-void DotClassGraph::writeXMLDITA(XmlStream &t)
-{
-  QDictIterator<DotNode> dni(*m_usedNodes);
-  DotNode *node;
-  for (;(node=dni.current());++dni)
-  {
-    node->writeXMLDITA(t,TRUE);
-  }
-}
-
 void DotClassGraph::writeDEF(QTextStream &t)
 {
   QDictIterator<DotNode> dni(*m_usedNodes);
@@ -2486,16 +2358,6 @@ void DotInclDepGraph::writeXML(QTextStream &t)
   for (;(node=dni.current());++dni)
   {
     node->writeXML(t,FALSE);
-  }
-}
-
-void DotInclDepGraph::writeXML(XmlStream &xt)
-{
-  QDictIterator<DotNode> dni(*m_usedNodes);
-  DotNode *node;
-  for (;(node=dni.current());++dni)
-  {
-    node->writeXML(xt,FALSE);
   }
 }
 
@@ -2976,7 +2838,7 @@ void writeDotGraphFromFile(const char *inFile,const char *outDir,
   {
     err("Error: Output dir %s does not exist!\n",outDir); exit(1);
   }
-  setDotFontPath(0);
+  setDotFontPath("");
 
   QCString imgExt = Config_getEnum("DOT_IMAGE_FORMAT");
   QCString imgName = (QCString)outFile+"."+imgExt;
@@ -3030,9 +2892,10 @@ QString getDotImageMapFromFile(const QString& inFile, const QString& outDir,
   }
   setDotFontPath(d.absPath());
 
+  QCString absInFile  = QCString(d.absPath())+"/"+inFile.data();
   QCString absOutFile = QCString(d.absPath())+"/"+outFile.data();
 
-  DotRunner dotRun(inFile);
+  DotRunner dotRun(absInFile);
   dotRun.addJob(MAP_CMD,absOutFile);
   if (!dotRun.run())
   {

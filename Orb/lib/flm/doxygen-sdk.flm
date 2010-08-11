@@ -40,7 +40,7 @@ $(OUTPUTPATH)/$(DOXY_FILE).done: $(OUTPUTPATH)/$(DOXY_FILE)
 	$(call startrule,rundoxygen) \
 	$(SBS_DOXYGEN) $(OUTPUTPATH)/$(DOXY_FILE) &&  \
 	$(GNUTOUCH) $(OUTPUTPATH)/$(DOXY_FILE).done && \
-	$(GNUCP) -r -u $(OUTPUTPATH)/dox/dita $(EPOCROOT)/epoc32/release/doxygen \
+	$(SBS_PYTHON) "$(SBS_HOME)/python/orb/comp_copy.py" $(OUTPUTPATH)/dox/dita $(EPOCROOT)/epoc32/release/doxygen/dita \
 	$(call endrule,rundoxygen)
 
 #Generate the doxygen configuration file from a template

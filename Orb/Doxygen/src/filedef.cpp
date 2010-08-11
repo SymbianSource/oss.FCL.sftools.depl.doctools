@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -93,6 +93,7 @@ FileDef::FileDef(const char *p,const char *nm,
     docname.prepend(stripFromPath(path.copy()));
   }
   m_isJava          = name().right(5)==".java";
+  m_isCSharp        = name().right(5)==".cs";
   memberGroupSDict = 0;
   acquireFileVersion();
   m_subGrouping=Config_getBool("SUBGROUPING");
@@ -456,6 +457,41 @@ void FileDef::writeAuthorSection(OutputList &ol)
   ol.popGeneratorState();
 }
 
+void FileDef::writeSummaryLinks(OutputList &ol)
+{
+  ol.pushGeneratorState();
+  ol.disableAllBut(OutputGenerator::Html);
+  QListIterator<LayoutDocEntry> eli(
+      LayoutDocManager::instance().docEntries(LayoutDocManager::File));
+  LayoutDocEntry *lde;
+  bool first=TRUE;
+  for (eli.toFirst();(lde=eli.current());++eli)
+  {
+    if ((lde->kind()==LayoutDocEntry::FileClasses && classSDict && classSDict->declVisible()) || 
+        (lde->kind()==LayoutDocEntry::FileNamespaces && namespaceSDict && namespaceSDict->declVisible())
+       )
+    {
+      LayoutDocEntrySection *ls = (LayoutDocEntrySection*)lde;
+      QCString label = lde->kind()==LayoutDocEntry::FileClasses ? "nested-classes" : "namespaces";
+      writeSummaryLink(ol,label,ls->title,first);
+    }
+    else if (lde->kind()==LayoutDocEntry::MemberDecl)
+    {
+      LayoutDocEntryMemberDecl *lmd = (LayoutDocEntryMemberDecl*)lde;
+      MemberList * ml = getMemberList(lmd->type);
+      if (ml && ml->declVisible())
+      {
+        writeSummaryLink(ol,ml->listTypeAsString(),lmd->title,first);
+      }
+    }
+  }
+  if (!first)
+  {
+    ol.writeString("  </div>\n");
+  }
+  ol.popGeneratorState();
+}
+
 /*! Write the documentation page for this file to the file of output
     generators \a ol. 
 */
@@ -484,9 +520,8 @@ void FileDef::writeDocumentation(OutputList &ol)
     startFile(ol,getOutputFileBase(),name(),pageTitle,HLI_FileVisible,TRUE);
     getDirDef()->writeNavigationPath(ol);
     ol.endQuickIndices();
-    ol.startContents();
     QCString pageTitleShort=theTranslator->trFileReference(name());
-    startTitle(ol,getOutputFileBase());
+    startTitle(ol,getOutputFileBase(),this);
     ol.pushGeneratorState();
       ol.disableAllBut(OutputGenerator::Html);
       ol.parseText(pageTitleShort); // Html only
@@ -500,11 +535,14 @@ void FileDef::writeDocumentation(OutputList &ol)
   else
   {
     startFile(ol,getOutputFileBase(),name(),pageTitle,HLI_FileVisible);
-    startTitle(ol,getOutputFileBase());
+    startTitle(ol,getOutputFileBase(),this);
     ol.parseText(pageTitle);
     addGroupListToTitle(ol,this);
     endTitle(ol,getOutputFileBase(),title);
   }
+
+  ol.startContents();
+
   if (!fileVersion.isEmpty())
   {
     ol.disableAllBut(OutputGenerator::Html);
@@ -725,7 +763,6 @@ void FileDef::writeSource(OutputList &ol)
     startFile(ol,getSourceFileBase(),0,pageTitle,HLI_FileVisible,TRUE);
     getDirDef()->writeNavigationPath(ol);
     ol.endQuickIndices();
-    ol.startContents();
     startTitle(ol,getOutputFileBase());
     ol.parseText(name());
     endTitle(ol,getOutputFileBase(),title);
@@ -737,6 +774,8 @@ void FileDef::writeSource(OutputList &ol)
     ol.parseText(title);
     endTitle(ol,getSourceFileBase(),0);
   }
+
+  ol.startContents();
 
   if (isLinkable())
   {
@@ -755,6 +794,7 @@ void FileDef::writeSource(OutputList &ol)
             FALSE,0,this
            );
   ol.endCodeFragment();
+  ol.endContents();
   endFile(ol);
   ol.enableAll();
 }
@@ -1549,4 +1589,24 @@ bool FileDef::isLinkableInProject() const
   static bool showFiles = Config_getBool("SHOW_FILES");
   return hasDocumentation() && !isReference() && showFiles;
 }
+
+bool FileDef::includes(FileDef *incFile,QDict<FileDef> *includedFiles) const
+{
+  if (incFile==this) return TRUE;
+  //printf("%s::includes(%s)\n",name().data(),incFile->name().data());
+  includedFiles->insert(absFilePath(),this);
+  if (includeList)
+  {
+    QListIterator<IncludeInfo> ili(*includeList);
+    IncludeInfo *ii;
+    for (;(ii=ili.current());++ili)
+    {
+      if (ii->fileDef && 
+          includedFiles->find(ii->fileDef->absFilePath())==0 &&
+          ii->fileDef->includes(incFile,includedFiles)) return TRUE;
+    }
+  }
+  return FALSE;
+}
+
 

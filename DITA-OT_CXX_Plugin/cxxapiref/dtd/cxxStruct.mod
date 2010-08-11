@@ -2,8 +2,8 @@
 <!--                    HEADER                                         -->
 <!-- ================================================================= -->
 <!--  MODULE:    C++ Struct DTD                                        -->
-<!--  VERSION:   0.5.0                                                 -->
-<!--  DATE:      February 2009                                          -->
+<!--  VERSION:   0.6.0                                                 -->
+<!--  DATE:      May 2010                                              -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
@@ -13,7 +13,7 @@
 <!--                                                                   -->
 <!--  Refer to this file by the following public identifier or an 
       appropriate system identifier 
-PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.5.0//EN"
+PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.6.0//EN"
       Delivered as file "cxxStruct.dtd"                                   -->
  
 <!-- ================================================================= -->
@@ -24,19 +24,20 @@ PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.5.0//EN"
 <!-- ORIGINAL CREATION DATE:                                           -->
 <!--             November 2009                                         -->
 <!--                                                                   -->
-<!-- Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies). -->
+<!-- Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies). -->
 <!-- All rights reserved.                                              -->
 <!--                                                                   -->
 <!--  Change History (latest at top):                                  -->
 <!--  +++++++++++++++++++++++++++++++                                  -->
+<!--  2010-05-14 PaulRoss: Fixed templates.                            -->
 <!--  2010-02-16 VOG: Updated.                                         -->
-<!--  2010-02-10 PaulRoss: Updated.                                   -->
+<!--  2010-02-10 PaulRoss: Updated.                                    -->
 <!--  2009-11-16 PaulRoss: Initial design.                             -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
 <!--
-Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies).
 All rights reserved.
 -->
 
@@ -47,16 +48,15 @@ All rights reserved.
 
 <!ENTITY % cxxStructAbstract                     "cxxStructAbstract">
 <!ENTITY % cxxStructAccessSpecifier              "cxxStructAccessSpecifier">
+
 <!ENTITY % cxxStructDerivations                  "cxxStructDerivations">
 <!ENTITY % cxxStructDerivation                   "cxxStructDerivation">
 <!ENTITY % cxxClassDerivation                    "cxxClassDerivation">
 
 <!-- Templates -->
-<!ENTITY % cxxStructTemplateParamList            "cxxStructTemplateParamList">
+<!ENTITY % cxxStructTemplateParameters           "cxxStructTemplateParameters">
 <!ENTITY % cxxStructTemplateParameter            "cxxStructTemplateParameter">
-<!ENTITY % cxxStructTemplateParamType            "cxxStructTemplateParamType">
-<!ENTITY % cxxStructTemplateParamDeclarationName "cxxStructTemplateParamDeclarationName">
-<!ENTITY % cxxStructTemplateParamDefinitionName  "cxxStructTemplateParamDefinitionName">
+<!ENTITY % cxxStructTemplateParameterType        "cxxStructTemplateParameterType">
 
 <!-- Derivation -->
 <!ENTITY % cxxStructDerivationAccessSpecifier    "cxxStructDerivationAccessSpecifier">
@@ -94,6 +94,7 @@ All rights reserved.
 
 <!ENTITY % cxxStructNested-types-default "no-topic-nesting">
 <!ENTITY % cxxStructNested-info-types  "%cxxStructNested-types-default;">
+
 <!ENTITY included-domains "">
 
 <!-- ============ Topic specializations ============ -->
@@ -128,7 +129,7 @@ All rights reserved.
                                     (%cxxStructAccessSpecifier;)?,
                                     (%cxxStructAbstract;)?,
                                     (%cxxStructDerivations;)?,
-                                    (%cxxStructTemplateParamList;)?,
+                                    (%cxxStructTemplateParameters;)?,
                                     (%cxxStructAPIItemLocation;)
                                )
 >
@@ -281,43 +282,31 @@ All rights reserved.
 >
 
 <!-- Templates-->
-
-<!ELEMENT cxxStructTemplateParamList   (%cxxStructTemplateParameter;)+ >
-<!ATTLIST cxxStructTemplateParamList    %univ-atts;
-                                  outputclass CDATA #IMPLIED
+<!ELEMENT cxxStructTemplateParameters   (%cxxStructTemplateParameter;)+ >
+<!ATTLIST cxxStructTemplateParameters    %univ-atts;
+										outputclass CDATA #IMPLIED
 >
 
-<!ELEMENT cxxStructTemplateParameter   ( %cxxStructTemplateParamType;,
-                                       (%cxxStructTemplateParamDeclarationName;)?,
-                                       (%cxxStructTemplateParamDefinitionName;)? 
-																			)
+<!ELEMENT cxxStructTemplateParameter   	(%cxxStructTemplateParameterType;,
+										(%apiDefNote;)?
+										)
 >
 <!ATTLIST cxxStructTemplateParameter    %univ-atts;
                                   outputclass CDATA #IMPLIED
 >
 
-<!ELEMENT cxxStructTemplateParamType   (#PCDATA)*>
-<!ATTLIST cxxStructTemplateParamType    %univ-atts;
-                                  outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxStructTemplateParamDeclarationName   (#PCDATA)*>
-<!ATTLIST cxxStructTemplateParamDeclarationName    %univ-atts;
-                                                  outputclass CDATA #IMPLIED
->
-
-<!ELEMENT cxxStructTemplateParamDefinitionName   (#PCDATA)*>
-<!ATTLIST cxxStructTemplateParamDefinitionName    %univ-atts;
-                                                 outputclass CDATA #IMPLIED
+<!ELEMENT cxxStructTemplateParameterType   (#PCDATA | %apiRelation;)*>
+<!ATTLIST cxxStructTemplateParameterType    %univ-atts;
+											outputclass CDATA #IMPLIED
 >
 
 <!-- Location -->
 <!ELEMENT cxxStructAPIItemLocation   (
                                         %cxxStructDeclarationFile;,
                                         %cxxStructDeclarationFileLine;,
-                                        %cxxStructDefinitionFile;?,
-                                        %cxxStructDefinitionFileLineStart;?,
-                                        %cxxStructDefinitionFileLineEnd;?
+                                        (%cxxStructDefinitionFile;)?,
+                                        (%cxxStructDefinitionFileLineStart;)?,
+                                        (%cxxStructDefinitionFileLineEnd;)?
                                      )
 >
 <!ATTLIST cxxStructAPIItemLocation    %univ-atts;
@@ -441,16 +430,12 @@ All rights reserved.
     class  CDATA "- topic/xref reference/xref apiRef/apiRelation apiClassifier/apiBaseClassifier cxxStruct/cxxStructBaseUnion ">
 
 <!-- Templates -->
-<!ATTLIST cxxStructTemplateParamList   %global-atts;
-    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxStruct/cxxStructTemplateParamList ">
+<!ATTLIST cxxStructTemplateParameters   %global-atts;
+    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxStruct/cxxStructTemplateParameters ">
 <!ATTLIST cxxStructTemplateParameter   %global-atts;
     class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxStruct/cxxStructTemplateParameter ">
-<!ATTLIST cxxStructTemplateParamType   %global-atts;
-    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxStruct/cxxStructTemplateParamType ">
-<!ATTLIST cxxStructTemplateParamDeclarationName   %global-atts;
-    class  CDATA "- topic/keyword reference/keyword apiRef/apiItemName apiClassifier/apiItemName cxxStruct/cxxStructTemplateParamDeclarationName ">    
-<!ATTLIST cxxStructTemplateParamDefinitionName   %global-atts;
-    class  CDATA "- topic/keyword reference/keyword apiRef/apiItemName apiClassifier/apiItemName cxxStruct/cxxStructTemplateParamDefinitionName ">
+<!ATTLIST cxxStructTemplateParameterType   %global-atts;
+    class  CDATA "- topic/ph reference/ph apiRef/apiDefItem apiClassifier/apiDefItem cxxStruct/cxxStructTemplateParameterType ">
     
 <!-- Nested members  -->
 <!ATTLIST cxxStructNested   %global-atts;

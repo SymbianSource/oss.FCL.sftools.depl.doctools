@@ -5,6 +5,62 @@ This component and the accompanying materials are made available under the terms
 "Eclipse Public License v1.0" which accompanies this distribution, 
 and is available at the URL "http://www.eclipse.org/legal/epl-v10.html".
 
+Orb V0.2.0
+==========
+
+* Fixed defect 1/2 'Links to Example code zip and html files broken in eclipse jar' - examples directory is now lowercase in final jar (build/build.xml build/common.xml)
+* Fixed defect 2/2 'Links to Example code zip and html files broken in eclipse jar' - html files now copied over (build.xml)
+* Removed open c and open c++ parent section from the toc unless either one is present (build.xml)
+* Removed xslt logging about missing package definitions to prevent exception halting the build
+* Removed sysdef v2 if it has been generated already
+* Added logging for downgrade_sysdef target.
+* Added missing copyright messages to the plugin.
+* Removed unused variable (guidiser.py)
+* Increaded test coverage for guidiser.py
+* Fixed defect "Doxygen config XML_DITA_OMIT_DUPLICATE_MEMBERS not always removing duplicates"
+* Fixed defect "cxx...TemplateParameterType wrong declaration in DTDs"
+* Removed hard coded guids from build file.
+* Added map sorting, doc strings and the ability to read an environment variable to set the logging level
+* Removed quotes from sdl.name and apiref.toc.label properties
+* Removed xalan zip, tasks and properties
+* Replaced sysdefdowngrade with ant xslt task.
+* Added check of sbs exec task return code. Fails if return code is not zero or one.
+* Added result messages for exec tasks. (build/common.xml)
+* Updated Orb to use version 0.6.0 of the DTDs.
+* Added better cleanup code to build.xml
+* Fixed WhatLogParser so it works if it is passed a line which ends with one or more empty lines (filter_orb.py)
+* Added comment headers to major targets and macros for readability (build.xml)
+* Added 'Non top level targets' comment (build.xml)
+* Tidyed up comments and order of target definitions in build.xml
+* Added debug statement to print what is passed to the filter (filter_orb.py)
+* Fixed defect using cElementree in guidiser.py
+* Removed long unique id from Bundle-Version and Bundle-Name. (build.xml)
+* Fixed path defect in sbs exec Added archiving of build and release dir prior to build (build.xml and common.xml)
+* Added fix to remove GNUTR error (lib/flm/doxygen.xml)
+* Added run python "smart copy" line to flm and removed dumb copy. (doxygen.flm doxygen-sdk.flm)
+* Added comparative copy script (comp_copy.py)
+* Added new DOT build of the doc (Doxygen/dits/plugins/cxxapiref now contains xml and html documentation for each of the cxx specialisation elements).
+* Stoped catching parsers.ExpatError as it was causing problems when running tests (doxyidredirect.py lib.py)
+* Corrected path to nokia ditaot plugin (build.xml)
+* Doxygen cxxapiref plugin
+  Fixed version number and date to be 0.6.0 and May 2010.
+* Added a small sample of C++ source code, Doxygen output and DOT output.(cxx sample)
+* Added cxx plugin xsds
+* Documented all cxx specialisation elements. This is in both xml for building and html built using the DITA Open Toolkit.
+* Fixed bug in run_mpdot: was looking for ditaot home in the wrong place. (build.xml)
+* Re-added install of mpdot (from new /mpdot location) (build.xml)
+* cxx map sorting now only done when cxxapiref.preprocess.sort.process property is explicity set
+* Added a call to setup the baseline to the main task (build.xml)
+* Doxygen
+  Added Doxygen binary Doxygen version 1.6.3-20100418_dita_0.1.60
+* Added updating of label in sdl toc.xml (build.xml)
+* Added automated modification of manifest and plugin.xml (build.xml)
+* Added eclipsehelp generation for mpdot macro nad integrating into main build script. (build.xml common.xml)
+* Can now use transtype=eclipsehelp to generate a single eclipsehelp directory. (common.xml)
+* added generic dita macro and calling it from build for guide transform (build.xml common.xml properties.txt)
+* Added verion 0.1 of the Orb Architecture document.
+* Doxygen version 1.6.3-20100418_dita_0.1.52
+
 Orb V0.1.9
 ==========
 

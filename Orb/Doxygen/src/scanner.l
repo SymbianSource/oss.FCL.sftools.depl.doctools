@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -145,7 +145,7 @@ static bool  	        insideTryBlock=FALSE;
 static bool             insideCode;
 static bool             needsSemi;
 
-static int              depthIf;
+//static int              depthIf;
 static int  	        initBracketCount;
 static QCString         memberGroupRelates;
 static QCString         memberGroupInside;
@@ -566,7 +566,6 @@ ID        "$"?[a-z_A-Z\x80-\xFF][a-z_A-Z0-9\x80-\xFF]*
 SCOPEID   {ID}({ID}*{BN}*"::"{BN}*)*({ID}?)
 SCOPENAME "$"?(({ID}?{BN}*"::"{BN}*)*)(((~|!){BN}*)?{ID})
 TSCOPE    {ID}("<"[a-z_A-Z0-9 \t\*\&,]*">")?
-FTSCOPE   {ID}("<"[a-z_A-Z0-9\*\&,]*">")?
 CSSCOPENAME (({ID}?{BN}*"."{BN}*)*)((~{BN}*)?{ID})
 PRE       [pP][rR][eE]
 CODE      [cC][oO][dD][eE]
@@ -1603,7 +1602,7 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 					    current->tArgLists->setAutoDelete(TRUE);
 					  }
 					  ArgumentList *al = new ArgumentList;
-					  current->spec |= (yytext[0]=='g') ? Entry::Generic : Entry::Template;
+					  //current->spec |= (yytext[0]=='g') ? Entry::Generic : Entry::Template;
 					  current->tArgLists->append(al);
 					  currentArgumentList = al;
 					  templateStr="<";
@@ -1832,7 +1831,7 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 <QtPropType>{B}+			{
   				          current->type+=yytext;
   					}
-<QtPropType>({FTSCOPE}"::")*{FTSCOPE}	{
+<QtPropType>({TSCOPE}"::")*{TSCOPE}	{
   					  current->type+=yytext;
                                           BEGIN(QtPropName);
   					}
@@ -2001,8 +2000,9 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
   					  BEGIN( SkipCurly );
 					}
 <TryFunctionBlock>.
-<TryFunctionBlockEnd>"catch"		{ BEGIN(TryFunctionBlock); }
-<TryFunctionBlockEnd>\n			{ unput(*yytext); // added to fix bug id 601138
+<TryFunctionBlockEnd>{BN}*"catch"	{ lineCount(); BEGIN(TryFunctionBlock); // {BN}* added to fix bug 611193
+					}
+<TryFunctionBlockEnd>\n			{ unput(*yytext); // rule added to fix bug id 601138
   					  BEGIN( FindMembers );
 					}
 <TryFunctionBlockEnd>.			{ unput(*yytext);
@@ -2311,7 +2311,7 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 					  else
 					  {
                                             lastStringContext=YY_START;
-  					    current->initializer+=*yytext; 
+  					    current->initializer=yytext; 
   					    pCopyQuotedGString=&current->initializer;
 					    BEGIN(CopyGString);
 					  }
@@ -2668,7 +2668,6 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
   					  current->bitfields+=*yytext;
   					}
 <FindMembers>[;,]			{ 
-					  //printf("scanner.l: <FindMembers>[;,] name=%s, endBodyLine=%d\n", current->name.data(), current->endBodyLine);
   					  QCString oldType = current->type.copy();
 					  if (current->bodyLine==-1)
 					  {
@@ -2695,7 +2694,6 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 					    current->section = Entry::VARIABLE_SEC ;
 					    current->fileName = yyFileName;
 					    current->startLine = yyLineNr;
-						//printf("scanner.l: <FindMembers>[;,] file=%s line=%d\n", current->fileName.data(), current->startLine);
 					    current_root->addSubEntry( current ) ;
 					    needNewCurrent=TRUE;
 					  }
@@ -3199,7 +3197,8 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 					    }
 					  }
 					  //printf("msName=%s current->name=%s\n",msName.data(),current->name.data());
-					  if (!msName.isEmpty() && msName!=current->name) // skip typedef T {} T;
+					  if (!msName.isEmpty() 
+					      /*&& msName!=current->name*/) // skip typedef T {} T;, removed due to bug608493
 					  {
 					    static bool typedefHidesStruct = Config_getBool("TYPEDEF_HIDES_STRUCT");
 					    // case 1: typedef struct _S { ... } S_t; 
@@ -4032,7 +4031,7 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 					                // was: current->args.simplifyWhiteSpace();
 					  current->fileName = yyFileName;
 					  current->startLine = yyLineNr;
-					  static QRegExp re("([^)]*\\[*&][^)]*)"); // (...*...)
+					  static QRegExp re("([^)]*[*&][^)]*)"); // (...*...)
 					  if (*yytext!=';' || (current_root->section&Entry::COMPOUND_MASK) )
 					  {
 					    int tempArg=current->name.find('<');
@@ -4042,6 +4041,10 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 						(current->type.find(re,0)!=-1 || current->type.left(8)=="typedef "))
 					    {
 					      //printf("Scanner.l: found in class variable: `%s' `%s' `%s'\n", current->type.data(),current->name.data(),current->args.data());
+					      if (isTypedef && current->type.left(8)!="typedef ")
+					      {
+						current->type.prepend("typedef ");
+					      }
 					      current->section = Entry::VARIABLE_SEC ;
 					    }
 					    else	      
@@ -4057,6 +4060,10 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 					    if (!current->type.isEmpty() && 
 						(current->type.find(re,0)!=-1 || current->type.left(8)=="typedef "))
 					    {
+					      if (isTypedef && current->type.left(8)!="typedef ")
+					      {
+						current->type.prepend("typedef ");
+					      }
 					      //printf("Scanner.l: found function variable!\n");
 					      current->section = Entry::VARIABLE_SEC;
 					    }
@@ -4323,6 +4330,10 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
   					  yyLineNr++;
   					}
 <SkipString,SkipPHPString>.		{ }
+<CompoundName>":"			{ // for "class : public base {} var;" construct, see bug 608359
+  					  unput(':');
+					  BEGIN(ClassVar);
+  					}
 <Bases,CompoundName>";"			{ 
 					  current->section = Entry::EMPTY_SEC ;
 					  current->type.resize(0) ;
@@ -4361,7 +4372,8 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 					    current->tArgLists->setAutoDelete(TRUE);
 					  }
 					  ArgumentList *al = new ArgumentList;
-					  current->spec |= Entry::Template;
+					  // check bug 612858 before enabling the next line
+					  //current->spec |= Entry::Template;
 					  current->tArgLists->append(al);
 					  currentArgumentList = al;
 					  templateStr="<";
@@ -4839,6 +4851,10 @@ TYPEDEFPREFIX (("typedef"{BN}+)?)((("volatile"|"const"){BN}+)?)
 <SkipRound>")"				{ if (--roundCount<=0)
 					    BEGIN ( lastSkipRoundContext );
 					}
+<SkipRound>\"				{
+  					  lastStringContext=SkipRound;
+					  BEGIN(SkipString);
+  					}
 <Bases>","|(">"({BN}*"{")?)|({BN}+"implements"{BN}*)	{ lineCount();
                                           if (insideProtocolList)
 					  {
@@ -5488,7 +5504,7 @@ static void parseCompounds(Entry *rt)
       //  ce->name.data(),ce->program.data());
       // init scanner state
       padCount=0;
-      depthIf = 0;
+      //depthIf = 0;
       inputString = ce->program;
       inputPosition = 0;
       scanYYrestart( scanYYin ) ;
@@ -5570,10 +5586,10 @@ static void parseCompounds(Entry *rt)
       ce->program.resize(0);
 
 
-      if (depthIf>0)
-      {
-	warn(yyFileName,yyLineNr,"Documentation block ended in the middle of a conditional section!");
-      }
+      //if (depthIf>0)
+      //{
+      //	warn(yyFileName,yyLineNr,"Documentation block ended in the middle of a conditional section!");
+      //}
     }
     parseCompounds(ce);
   }
@@ -5591,7 +5607,7 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
   g_inputFromFile = FALSE;
 
   //anonCount     = 0;  // don't reset per file
-  depthIf       = 0;
+  //depthIf       = 0;
   protection    = Public;
   mtype         = Method;
   gstat         = FALSE;
@@ -5641,10 +5657,10 @@ static void parseMain(const char *fileName,const char *fileBuf,Entry *rt)
     //forceEndGroup();
     groupLeaveFile(yyFileName,yyLineNr);
 
-    if (depthIf>0)
-    {
-      warn(yyFileName,yyLineNr,"Documentation block ended in the middle of a conditional section!");
-    }
+    //if (depthIf>0)
+    //{
+    //  warn(yyFileName,yyLineNr,"Documentation block ended in the middle of a conditional section!");
+    //}
 
     rt->program.resize(0);
     delete current; current=0;
@@ -5743,11 +5759,13 @@ void CLanguageScanner::parseCode(CodeOutputInterface & codeOutIntf,
                    int startLine,
                    int endLine,
                    bool inlineFragment,
-		   MemberDef *memberDef
+		   MemberDef *memberDef,
+		   bool showLineNumbers
                   )
 {
   ::parseCCode(codeOutIntf,scopeName,input,isExampleBlock,exampleName,
-               fileDef,startLine,endLine,inlineFragment,memberDef);
+               fileDef,startLine,endLine,inlineFragment,memberDef,
+	       showLineNumbers);
 }
 
 bool CLanguageScanner::needsPreprocessing(const QCString &extension)

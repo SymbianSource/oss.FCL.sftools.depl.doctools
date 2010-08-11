@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -1193,11 +1193,11 @@ void Config::check()
   {
     dotImageFormat = "png";
   }
-  else if (dotImageFormat!="gif" && dotImageFormat!="png" && dotImageFormat!="jpg")
-  {
-    config_err("Invalid value for DOT_IMAGE_FORMAT: `%s'. Using the default.\n",dotImageFormat.data());
-    dotImageFormat = "png";
-  }
+  //else if (dotImageFormat!="gif" && dotImageFormat!="png" && dotImageFormat!="jpg")
+  //{
+  //  config_err("Invalid value for DOT_IMAGE_FORMAT: `%s'. Using the default.\n",dotImageFormat.data());
+  //  dotImageFormat = "png";
+  //}
   
   
   // check dot path
@@ -1362,26 +1362,17 @@ void Config::check()
   // check QHP creation requirements
   if (Config_getBool("GENERATE_QHP"))
   {
-    bool qhp=TRUE;
-    if (!Config_getBool("GENERATE_HTML"))
-    {
-      config_err("Error: GENERATE_QHP=YES requires GENERATE_HTML=YES. Disabling QHP output.\n");
-      qhp=FALSE;
-    }
-
     if (Config_getString("QHP_NAMESPACE").isEmpty())
     {
-      config_err("Error: GENERATE_QHP=YES requires QHP_NAMESPACE to be set. Disabling QHP output.\n");
-      qhp=FALSE;
+      config_err("Error: GENERATE_QHP=YES requires QHP_NAMESPACE to be set. Using 'org.doxygen.doc' as default!.\n");
+      Config_getString("QHP_NAMESPACE")="org.doxygen.doc";
     }
 
     if (Config_getString("QHP_VIRTUAL_FOLDER").isEmpty())
     {
-      config_err("Error: GENERATE_QHP=YES requires QHP_VIRTUAL_FOLDER to be set. Disabling QHP output.\n");
-      qhp=FALSE;
+      config_err("Error: GENERATE_QHP=YES requires QHP_VIRTUAL_FOLDER to be set. Using 'doc' as default!\n");
+      Config_getString("QHP_VIRTUAL_FOLDER")="doc";
     }
-
-    Config_getBool("GENERATE_QHP")=qhp;
   }
 
   if (Config_getBool("OPTIMIZE_OUTPUT_JAVA") && Config_getBool("INLINE_INFO"))
@@ -1395,6 +1386,35 @@ void Config::check()
   if (depth==0)
   {
     depth=1000;
+  }
+
+  int &hue = Config_getInt("HTML_COLORSTYLE_HUE");
+  if (hue<0)
+  {
+    hue=0;
+  }
+  else if (hue>=360)
+  {
+    hue=hue%360;
+  }
+
+  int &sat = Config_getInt("HTML_COLORSTYLE_SAT");
+  if (sat<0)
+  {
+    sat=0;
+  }
+  else if (sat>255)
+  {
+    sat=255;
+  }
+  int &gamma = Config_getInt("HTML_COLORSTYLE_GAMMA");
+  if (gamma<40)
+  {
+    gamma=40;
+  }
+  else if (gamma>240)
+  {
+    gamma=240;
   }
 
   

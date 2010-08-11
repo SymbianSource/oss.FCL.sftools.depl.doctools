@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -1595,9 +1595,9 @@ nextChar:
       ADD_CHAR(' ');
     }
     else if (i>0 && 
-        ((isId(s.at(i)) && s.at(i-1)==')') || 
-         (s.at(i)=='\''  && s.at(i-1)==' ')
-        )
+         ((isId(s.at(i)) && s.at(i-1)==')') || 
+          (s.at(i)=='\''  && s.at(i-1)==' ')
+         )
         )
     {
       ADD_CHAR(' ');
@@ -2076,6 +2076,7 @@ QCString getFileFilter(const char* name)
   return "";
 }
 
+#if 0
 QCString recodeString(const QCString &str,const char *fromEncoding,const char *toEncoding)
 {
   QCString inputEncoding  = fromEncoding;
@@ -2112,6 +2113,7 @@ QCString recodeString(const QCString &str,const char *fromEncoding,const char *t
   portable_iconv_close(cd);
   return output;
 }
+#endif
 
 
 QCString transcodeCharacterStringToUTF8(const QCString &input)
@@ -2253,6 +2255,16 @@ QCString fileToString(const char *name,bool filter)
 
 QCString dateToString(bool includeTime)
 {
+  QDateTime current = QDateTime::currentDateTime();
+  return theTranslator->trDateTime(current.date().year(),
+                                   current.date().month(),
+                                   current.date().day(),
+                                   current.date().dayOfWeek(),
+                                   current.time().hour(),
+                                   current.time().minute(),
+                                   current.time().second(),
+                                   includeTime);
+#if 0
   if (includeTime)
   {
     return convertToQCString(QDateTime::currentDateTime().toString());
@@ -2267,6 +2279,7 @@ QCString dateToString(bool includeTime)
         d.year());
     return result;
   }
+#endif
 }
 
 QCString yearToString()
@@ -3570,23 +3583,21 @@ static void findMembersWithSpecificName(MemberName *mn,
                                         bool checkCV,
                                         QList<MemberDef> &members)
 {
-  //printf("\n  findMembersWithSpecificName() - start\n");
-  //printf("  findMembersWithSpecificName() Function with global scope name `%s' args=`%s'\n",mn->memberName(),args);
+  //printf("  Function with global scope name `%s' args=`%s'\n",
+  //       mn->memberName(),args);
   MemberListIterator mli(*mn);
   MemberDef *md;
   for (mli.toFirst();(md=mli.current());++mli)
   {
     FileDef  *fd=md->getFileDef();
     GroupDef *gd=md->getGroupDef();
-    //printf("  findMembersWithSpecificName() md->name()=`%s' md->args=`%s' fd=%p gd=%p file=%s\n",
-	//	md->name().data(),args,fd,gd,fd?fd->absFilePath().data():"");
-	//if (gd) printf("  findMembersWithSpecificName() group isLinkable()=%d\n", gd->isLinkable());
-	//if (fd) printf("  findMembersWithSpecificName() file  isLinkable()=%d\n", fd->isLinkable());
-	//if (md) printf("  findMembersWithSpecificName() memb  isLinkable()=%d\n", md->isLinkable());
+    //printf("  md->name()=`%s' md->args=`%s' fd=%p gd=%p current=%p\n",
+    //    md->name().data(),args,fd,gd,currentFile);
     if (
         ((gd && gd->isLinkable()) || (fd && fd->isLinkable())) && 
         md->getNamespaceDef()==0 && md->isLinkable() &&
-        (!checkStatics || !md->isStatic() || currentFile==0 || fd==currentFile) // statics must appear in the same file
+        (!checkStatics || (!md->isStatic() && !md->isDefine()) || 
+         currentFile==0 || fd==currentFile) // statics must appear in the same file
        )
     {
       //printf("  findMembersWithSpecificName() fd=%p gd=%p args=`%s'\n",fd,gd,args);
@@ -3686,7 +3697,7 @@ bool getDefs(const QCString &scName,const QCString &memberName,
   //printf("getDefs(): mName=%s mn=%p\n",mName.data(),mn);
   if (!forceEmptyScope && mn && !(scopeName.isEmpty() && mScope.isEmpty()))
   {
-    //printf("getDefs(): >member name found\n");
+    //printf("  >member name '%s' found\n",mName.data());
     int scopeOffset=scopeName.length();
     do
     {
@@ -3697,13 +3708,14 @@ bool getDefs(const QCString &scName,const QCString &memberName,
       }
       else if (!mScope.isEmpty())
       {
-        className=mScope.copy();
+        className=mScope;
       }
       //printf("getDefs(): Trying class scope %s\n",className.data());
 
-      ClassDef *fcd=0;
+      ClassDef *fcd=getResolvedClass(Doxygen::globalScope,0,className);
+      //printf("Trying class scope %s: %p\n",className.data(),fcd);
       // todo: fill in correct fileScope!
-      if ((fcd=getResolvedClass(Doxygen::globalScope,0,className)) &&  // is it a documented class
+      if (fcd &&  // is it a documented class
           fcd->isLinkable() 
          )
       {
@@ -3961,44 +3973,6 @@ bool getDefs(const QCString &scName,const QCString &memberName,
         // search again without strict static checking
         findMembersWithSpecificName(mn,args,FALSE,currentFile,checkCV,members);
       }
-
-#if 0
-      //printf("  Function with global scope name `%s' args=`%s'\n",memberName.data(),args);
-      MemberListIterator mli(*mn);
-      for (mli.toFirst();(md=mli.current());++mli)
-      {
-        fd=md->getFileDef();
-        gd=md->getGroupDef();
-        //printf("  md->name()=`%s' md->args=`%s' fd=%p gd=%p\n",
-        //    md->name().data(),args,fd,gd);
-        if (
-            ((gd && gd->isLinkable()) || (fd && fd->isLinkable())) && 
-            md->getNamespaceDef()==0 && md->isLinkable() &&
-            (!md->isStatic() || fd==currentFile) // statics must appear in the same file
-           )
-        {
-          //printf("    fd=%p gd=%p args=`%s'\n",fd,gd,args);
-          bool match=TRUE;
-          ArgumentList *argList=0;
-          if (args && !md->isDefine() && strcmp(args,"()")!=0)
-          {
-            argList=new ArgumentList;
-            LockingPtr<ArgumentList> mdAl = md->argumentList();
-            stringToArgumentList(args,argList);
-            match=matchArguments2(
-                md->getOuterScope(),fd,mdAl.pointer(),
-                Doxygen::globalScope,fd,argList,
-                checkCV); 
-            delete argList; argList=0;
-          }
-          if (match) 
-          {
-            //printf("Found match!\n");
-            members.append(md);
-          }
-        }
-      }
-#endif
       if (members.count()!=1 && args && !strcmp(args,"()"))
       {
         // no exact match found, but if args="()" an arbitrary 
@@ -4774,7 +4748,7 @@ bool hasVisibleRoot(BaseClassList *bcl)
 
 //----------------------------------------------------------------------
 
-QCString escapeCharsInString(const char *name,bool allowDots)
+QCString escapeCharsInString(const char *name,bool allowDots,bool allowUnderscore)
 {
   static bool caseSenseNames = Config_getBool("CASE_SENSE_NAMES");
   QCString result;
@@ -4784,7 +4758,7 @@ QCString escapeCharsInString(const char *name,bool allowDots)
   {
     switch(c)
     {
-      case '_': result+="__"; break;
+      case '_': if (allowUnderscore) result+="_"; else result+="__"; break;
       case '-': result+="-";  break;
       case ':': result+="_1"; break;
       case '/': result+="_2"; break;
@@ -4838,7 +4812,7 @@ QCString escapeCharsInString(const char *name,bool allowDots)
  *  given its name, which could be a class name with template 
  *  arguments, so special characters need to be escaped.
  */
-QCString convertNameToFile(const char *name,bool allowDots)
+QCString convertNameToFile(const char *name,bool allowDots,bool allowUnderscore)
 {
   static bool shortNames = Config_getBool("SHORT_NAMES");
   static bool createSubdirs = Config_getBool("CREATE_SUBDIRS");
@@ -4864,7 +4838,7 @@ QCString convertNameToFile(const char *name,bool allowDots)
   }
   else // long names
   {
-    result=escapeCharsInString(name,allowDots);
+    result=escapeCharsInString(name,allowDots,allowUnderscore);
     int resultLen = result.length();
     if (resultLen>=128) // prevent names that cannot be created!
     {
@@ -5852,7 +5826,7 @@ void addRefItem(const QList<ListItemInfo> *sli,
     const char *key, 
     const char *prefix, const char *name,const char *title,const char *args)
 {
-  //printf("addRefItem(sli=%p,prefix=%s,name=%s,title=%s,args=%s)\n",sli,prefix,name,title,args);
+  //printf("addRefItem(sli=%p,key=%s,prefix=%s,name=%s,title=%s,args=%s)\n",sli,key,prefix,name,title,args);
   if (sli)
   {
     QListIterator<ListItemInfo> slii(*sli);
@@ -5881,28 +5855,6 @@ void addRefItem(const QList<ListItemInfo> *sli,
 
         refList->insertIntoList(key,item);
 
-#if 0
-
-        //printf("anchor=%s written=%d\n",item->listAnchor.data(),item->written);
-        //if (item->written) return;
-
-        QCString doc;
-        doc =  "\\anchor ";
-        doc += item->listAnchor;
-        doc += " <dl><dt>";
-        doc += prefix;
-        doc += " \\_internalref ";
-        doc += name;
-        doc += " \"";
-        doc += title;
-        doc += "\"";
-        if (args) doc += args;
-        doc += "</dt>\n<dd>";
-        doc += item->text;
-        doc += "</dd></dl>\n";
-        addRelatedPage(refList->listName(),refList->pageTitle(),doc,0,refList->listName(),1,0,0,0);
-        //item->written=TRUE;
-#endif
       }
     }
   }
@@ -6370,7 +6322,7 @@ bool findAndRemoveWord(QCString &s,const QCString &word)
   {
     if (s.mid(i,l)==word) 
     {
-      if (i>0 && isspace(s.at(i-1))) 
+      if (i>0 && isspace((uchar)s.at(i-1))) 
         i--,l++;
       else if (i+l<(int)s.length() && isspace(s.at(i+l))) 
         l++;
@@ -6868,7 +6820,7 @@ void stackTrace()
 #endif
 }
 
-static int transcodeCharacterBuffer(BufStr &srcBuf,int size,
+static int transcodeCharacterBuffer(const char *fileName,BufStr &srcBuf,int size,
            const char *inputEncoding,const char *outputEncoding)
 {
   if (inputEncoding==0 || outputEncoding==0) return size;
@@ -6897,8 +6849,8 @@ static int transcodeCharacterBuffer(BufStr &srcBuf,int size,
   }
   else
   {
-    err("Error: failed to translate characters from %s to %s: check INPUT_ENCODING\n",
-        inputEncoding,outputEncoding);
+    err("%s: Error: failed to translate characters from %s to %s: check INPUT_ENCODING\n",
+        fileName,inputEncoding,outputEncoding);
     exit(1);
   }
   portable_iconv_close(cd);
@@ -6961,7 +6913,7 @@ bool readInputFile(const char *fileName,BufStr &inBuf)
       )
      ) // UCS-2 encoded file
   {
-    transcodeCharacterBuffer(inBuf,inBuf.curPos(),
+    transcodeCharacterBuffer(fileName,inBuf,inBuf.curPos(),
         "UCS-2","UTF-8");
   }
   else if (inBuf.size()>=3 &&
@@ -6976,7 +6928,7 @@ bool readInputFile(const char *fileName,BufStr &inBuf)
   else // transcode according to the INPUT_ENCODING setting
   {
     // do character transcoding if needed.
-    transcodeCharacterBuffer(inBuf,inBuf.curPos(),
+    transcodeCharacterBuffer(fileName,inBuf,inBuf.curPos(),
         Config_getString("INPUT_ENCODING"),"UTF-8");
   }
 
@@ -7010,4 +6962,59 @@ QCString filterTitle(const QCString &title)
   tf+=title.right(title.length()-p);
   return tf;
 }
+
+//----------------------------------------------------------------------------
+// returns TRUE if the name of the file represented by `fi' matches
+// one of the file patterns in the `patList' list.
+
+bool patternMatch(const QFileInfo &fi,const QStrList *patList)
+{
+  bool found=FALSE;
+  if (patList)
+  { 
+    QStrListIterator it(*patList);
+    QCString pattern;
+    for (it.toFirst();(pattern=it.current());++it)
+    {
+      if (!pattern.isEmpty() && !found)
+      {
+        int i=pattern.find('=');
+        if (i!=-1) pattern=pattern.left(i); // strip of the extension specific filter name
+
+#if defined(_WIN32) || defined(__MACOSX__) // Windows or MacOSX
+        QRegExp re(pattern,FALSE,TRUE); // case insensitive match 
+#else                // unix
+        QRegExp re(pattern,TRUE,TRUE);  // case sensitive match
+#endif
+        found = found || re.match(fi.fileName())!=-1 || 
+                         re.match(fi.filePath())!=-1 ||
+                         re.match(fi.absFilePath())!=-1;
+        //printf("Matching `%s' against pattern `%s' found=%d\n",
+        //    fi->fileName().data(),pattern.data(),found);
+      }
+    }
+  }
+  return found;
+}
+
+void writeSummaryLink(OutputList &ol,const char *label,const char *title,
+                      bool &first)
+{
+  if (first)
+  {
+    ol.writeString("  <div class=\"summary\">\n");
+    first=FALSE;
+  }
+  else
+  {
+    ol.writeString(" &#124;\n");
+  }
+  ol.writeString("<a href=\"#");
+  ol.writeString(label);
+  ol.writeString("\">");
+  ol.writeString(title);
+  ol.writeString("</a>");
+}
+
+
 

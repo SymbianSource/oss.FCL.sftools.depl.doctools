@@ -71,9 +71,9 @@ void PageDef::writeDocumentation(OutputList &ol)
 {
   //outputList->disable(OutputGenerator::Man);
   QCString pageName;
-  pageName=escapeCharsInString(name(),FALSE);
+  pageName=escapeCharsInString(name(),FALSE,TRUE);
 
-  startFile(ol,pageName,pageName,title(),HLI_Pages,TRUE);
+  startFile(ol,getOutputFileBase(),pageName,title(),HLI_Pages,TRUE);
 
   ol.pushGeneratorState();
   //1.{ 
@@ -96,7 +96,6 @@ void PageDef::writeDocumentation(OutputList &ol)
   }
 
   ol.endQuickIndices();
-  ol.startContents();
 
   // save old generator state and write title only to Man generator
   ol.pushGeneratorState();
@@ -114,15 +113,18 @@ void PageDef::writeDocumentation(OutputList &ol)
   ol.disable(OutputGenerator::RTF);
   SectionInfo *si=0;
   if (!title().isEmpty() && !name().isEmpty() &&
-      (si=Doxygen::sectionDict.find(pageName))!=0)
+      (si=Doxygen::sectionDict.find(name()))!=0)
   {
-    ol.startSection(si->label,si->title,si->type);
+    //ol.startSection(si->label,si->title,si->type);
+    startTitle(ol,getOutputFileBase(),this);
     ol.parseDoc(docFile(),docLine(),this,0,si->title,TRUE,FALSE,0,TRUE,FALSE);
     //stringToSearchIndex(getOutputFileBase(),
     //                    theTranslator->trPage(TRUE,TRUE)+" "+si->title,
     //                    si->title);
-    ol.endSection(si->label,si->type);
+    //ol.endSection(si->label,si->type);
+    endTitle(ol,getOutputFileBase(),name());
   }
+  ol.startContents();
   ol.popGeneratorState();
   //2.}
 

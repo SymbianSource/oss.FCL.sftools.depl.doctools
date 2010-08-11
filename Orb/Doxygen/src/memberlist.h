@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -118,6 +118,7 @@ class MemberList : public QList<MemberDef>
     MemberList(ListType lt);
    ~MemberList();
     ListType listType() const { return m_listType; }
+    QCString listTypeAsString() const;
     bool insert(uint index,const MemberDef *md);
     void inSort(const MemberDef *md);
     void append(const MemberDef *md);
@@ -143,6 +144,7 @@ class MemberList : public QList<MemberDef>
                Definition *container,const char *title,bool showEnumValues=FALSE);
     void writeDocumentationPage(OutputList &ol,
                const char *scopeName, Definition *container);
+    bool declVisible() const;
     void addMemberGroup(MemberGroup *mg);
     void setInGroup(bool inGroup) { m_inGroup=inGroup; }
     void setInFile(bool inFile) { m_inFile=inFile; }

@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -28,7 +28,7 @@ class MemberDef;
 void parseCCode(CodeOutputInterface &,const char *,const QCString &, 
             bool ,const char *,FileDef *fd=0,
             int startLine=-1,int endLine=-1,bool inlineFragment=FALSE,
-            MemberDef *memberDef=0);
+            MemberDef *memberDef=0,bool showLineNumbers=TRUE);
 void resetCCodeParserState();
 void codeFreeScanner();
 

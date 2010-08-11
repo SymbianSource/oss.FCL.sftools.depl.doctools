@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -1631,11 +1631,13 @@ void PythonLanguageScanner::parseCode(CodeOutputInterface &codeOutIntf,
     int startLine,
     int endLine,
     bool inlineFragment,
-    MemberDef *memberDef
+    MemberDef *memberDef,
+    bool showLineNumbers
     )
 {
   ::parsePythonCode(codeOutIntf,scopeName,input,isExampleBlock,exampleName,
-                    fileDef,startLine,endLine,inlineFragment,memberDef);
+                    fileDef,startLine,endLine,inlineFragment,memberDef,
+                    showLineNumbers);
 }
 
 void PythonLanguageScanner::parsePrototype(const char *text)

@@ -3,8 +3,8 @@
 <!--                    HEADER                                         -->
 <!-- ================================================================= -->
 <!--  MODULE:    C++ Struct DTD                                        -->
-<!--  VERSION:   0.5.0                                                 -->
-<!--  DATE:      February 2009                                          -->
+<!--  VERSION:   0.6.0                                                 -->
+<!--  DATE:      May 2010                                              -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
@@ -14,7 +14,7 @@
 <!--                                                                   -->
 <!--  Refer to this file by the following public identifier or an 
       appropriate system identifier 
-PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.5.0//EN"
+PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.6.0//EN"
       Delivered as file "cxxStruct.dtd"                                   -->
  
 <!-- ================================================================= -->
@@ -25,7 +25,7 @@ PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.5.0//EN"
 <!-- ORIGINAL CREATION DATE:                                           -->
 <!--             November 2009                                         -->
 <!--                                                                   -->
-<!-- Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies). -->
+<!-- Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies). -->
 <!-- All rights reserved.                                              -->
 <!--                                                                   -->
 <!--  Change History (latest at top):                                  -->
@@ -36,10 +36,10 @@ PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.5.0//EN"
 <!-- ================================================================= -->
 
 <!--
-<!DOCTYPE cxxStruct PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.5.0//EN" "dtd/cxxStruct.dtd"   >
+<!DOCTYPE cxxStruct PUBLIC "-//NOKIA//DTD DITA C++ API Struct Reference Type v0.6.0//EN" "dtd/cxxStruct.dtd"   >
 -->
 <!--
-Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies).
 All rights reserved.
 -->
 
@@ -62,7 +62,7 @@ All rights reserved.
 <!ENTITY % api-d-dec PUBLIC "-//IBM//ENTITIES DITA API Domain//EN"
   "../../apiref/dtd/apiDomain.ent">
   %api-d-dec;
-<!ENTITY % cxxapi-d-dec PUBLIC "-//NOKIA//ENTITIES DITA C++ API Domain v0.5.0//EN"
+<!ENTITY % cxxapi-d-dec PUBLIC "-//NOKIA//ENTITIES DITA C++ API Domain v0.6.0//EN"
   "cxxAPIDomain.ent">
   %cxxapi-d-dec;
 
@@ -118,42 +118,42 @@ All rights reserved.
   %apivalue-typemod;
 
 <!--Embed the cxx Class API module to get the cxx Class elements-->
-<!ENTITY % cxxclass-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Class v0.5.0//EN"
+<!ENTITY % cxxclass-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Class v0.6.0//EN"
   "cxxClass.mod">
   %cxxclass-typemod;
 
 <!--Embed the cxx Struct API module to get the cxx Struct elements-->
-<!ENTITY % cxxstruct-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Struct v0.5.0//EN"
+<!ENTITY % cxxstruct-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Struct v0.6.0//EN"
   "cxxStruct.mod">
   %cxxstruct-typemod;
 
 <!--Embed the cxx Union API module to get the cxx Union elements-->
-<!ENTITY % cxxunion-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Union v0.5.0//EN"
+<!ENTITY % cxxunion-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Union v0.6.0//EN"
   "cxxUnion.mod">
   %cxxunion-typemod;
 
 <!--Embed the cxx Function API module to get the cxx Function elements-->
-<!ENTITY % cxxFunction-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Function v0.5.0//EN"
+<!ENTITY % cxxFunction-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Function v0.6.0//EN"
   "cxxFunction.mod">
   %cxxFunction-typemod;
 
 <!--Embed the cxx Define API module to get the cxx Define elements-->
-<!ENTITY % cxxDefine-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Define v0.5.0//EN"
+<!ENTITY % cxxDefine-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Define v0.6.0//EN"
   "cxxDefine.mod">
   %cxxDefine-typemod;
 
 <!--Embed the cxx Variable API module to get the cxx Variable elements-->
-<!ENTITY % cxxVariable-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Variable v0.5.0//EN"
+<!ENTITY % cxxVariable-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Variable v0.6.0//EN"
   "cxxVariable.mod">
   %cxxVariable-typemod;
 
 <!--Embed the cxx Enumeration API module to get the cxx Enumeration elements-->
-<!ENTITY % cxxEnumeration-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Enumeration v0.5.0//EN"
+<!ENTITY % cxxEnumeration-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Enumeration v0.6.0//EN"
   "cxxEnumeration.mod">
   %cxxEnumeration-typemod;
 
 <!--Embed the cxx Typedef API module to get the cxx Typedef elements-->
-<!ENTITY % cxxTypedef-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Typedef v0.5.0//EN"
+<!ENTITY % cxxTypedef-typemod PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Typedef v0.6.0//EN"
   "cxxTypedef.mod">
   %cxxTypedef-typemod;
 
@@ -176,6 +176,6 @@ All rights reserved.
 <!ENTITY % api-d-def PUBLIC "-//IBM//ELEMENTS DITA API Domain//EN"
   "../../apiref/dtd/apiDomain.mod">
   %api-d-def;
-<!ENTITY % cxxapi-d-def PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Domain v0.5.0//EN"
+<!ENTITY % cxxapi-d-def PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Domain v0.6.0//EN"
   "cxxAPIDomain.mod">
   %cxxapi-d-def;

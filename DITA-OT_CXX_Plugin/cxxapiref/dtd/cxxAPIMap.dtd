@@ -3,8 +3,8 @@
 <!--                    HEADER                                         -->
 <!-- ================================================================= -->
 <!--  MODULE:    C++ Map DTD                                           -->
-<!--  VERSION:   0.5.0                                                 -->
-<!--  DATE:      February 2009                                          -->
+<!--  VERSION:   0.6.0                                                 -->
+<!--  DATE:      May 2010                                              -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
@@ -14,7 +14,7 @@
 <!--                                                                   -->
 <!--  Refer to this file by the following public identifier or an 
       appropriate system identifier 
-PUBLIC "-//NOKIA//DTD DITA C++ API XXX Reference Type v0.5.0//EN"
+PUBLIC "-//NOKIA//DTD DITA C++ API XXX Reference Type v0.6.0//EN"
       Delivered as file "cxxXXX.dtd"                                   -->
  
 <!-- ================================================================= -->
@@ -25,7 +25,7 @@ PUBLIC "-//NOKIA//DTD DITA C++ API XXX Reference Type v0.5.0//EN"
 <!-- ORIGINAL CREATION DATE:                                           -->
 <!--             November 2009                                         -->
 <!--                                                                   -->
-<!-- Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies). -->
+<!-- Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies). -->
 <!-- All rights reserved.                                              -->
 <!--                                                                   -->
 <!--  Change History (latest at top):                                  -->
@@ -36,7 +36,7 @@ PUBLIC "-//NOKIA//DTD DITA C++ API XXX Reference Type v0.5.0//EN"
 <!-- ================================================================= -->
 
 <!--
-<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.5.0//EN" "dtd/cxxAPIMap.dtd" >
+<!DOCTYPE cxxAPIMap PUBLIC "-//NOKIA//DTD DITA C++ API Map Reference Type v0.6.0//EN" "dtd/cxxAPIMap.dtd" >
 -->
 
 <!--vocabulary declarations-->
@@ -56,7 +56,7 @@ PUBLIC "-//NOKIA//DTD DITA C++ API XXX Reference Type v0.5.0//EN"
   %map-type;
 <!ENTITY % apimap-type PUBLIC "-//IBM//ELEMENTS DITA API Reference Map//EN" "../../apiref/dtd/apiMap.mod">
   %apimap-type;
-<!ENTITY % cxxapimap-type PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Reference Map v0.5.0//EN" "cxxAPIMap.mod">
+<!ENTITY % cxxapimap-type PUBLIC "-//NOKIA//ELEMENTS DITA C++ API Reference Map v0.6.0//EN" "cxxAPIMap.mod">
   %cxxapimap-type;
 
 

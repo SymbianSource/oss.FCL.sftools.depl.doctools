@@ -23,7 +23,6 @@ Contributors:
     <param name="GNUCAT" />
     <param name="GNUCPP" />
     <param name='GNUCP' />
-    <param name="GNUTR" />
     <param name="SBS_PYTHON" />
     <param default=''
            name="EXPORTHEADERS" />

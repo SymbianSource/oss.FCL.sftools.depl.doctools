@@ -13,18 +13,28 @@
 #include <qfileinfo.h> 
 #include "parserintf.h"
 
-//#define DITA_DOT_HACK_REMOVE_XREFS
-#undef DITA_DOT_HACK_REMOVE_XREFS
-// If 0 there is no <simpletable> support
-// Need to lazily evaluate this so that <simpletable> is only written if
-// there is content in the table
-#define DITA_SIMPLETABLE_SUPPORT 0
+// <simpletable> support
+static const char* ELEM_SIMPLETABLE = "simpletable";
+static const char* ELEM_SIMPLETABLEROW = "strow";
 
-XmlDitaDocVisitor::XmlDitaDocVisitor(XmlStream &s,CodeOutputInterface &ci) 
-  : DocVisitor(DocVisitor_XML), xmlStream(s), xmlElemStack(s), m_ci(ci), m_insidePre(FALSE), m_hide(FALSE), 
-    m_insideParamlist(FALSE), paramMap(), paramDict(), currParam()
+//XmlDitaDocVisitor(XmlStream &s,CodeOutputInterface &ci, DocBlockContents *docBlockMaps);
+XmlDitaDocVisitor::XmlDitaDocVisitor(XmlStream &s,CodeOutputInterface &ci, DocBlockContents *docBlockMaps) 
+  : DocVisitor(DocVisitor_XML),
+  xmlStream(s),
+  xmlElemStack(s),
+  m_ci(ci),
+  m_insidePre(false),
+  m_hide(false), 
+  m_insideParamlist(false),
+  m_paramIsTemplate(false),
+  m_docBlockMaps(docBlockMaps),
+  m_writingDl(false),
+  m_mustInsertStrow(false),
+  m_strowOrStheadIsPending(false),
+  m_addTextToReturnDoc(false),
+  m_paraRefCount(0)
 {
-	paramDict.setAutoDelete(true);
+	//paramDict.setAutoDelete(true);
 }
 
  
@@ -147,13 +157,13 @@ void XmlDitaDocVisitor::visit(DocURL *u)
 	if (u->isEmail()) {
 		startXref(QString("mailto:")+QString(u->url()), u->url());
 	} else {
-		// Need format attribute
+		// Need format attribute for external URLs to prevent DITA proccessing persuing
+		// external links
 		AttributeMap myMap;
 		myMap["href"] = u->url();
 		myMap["format"] = "html";
 		push("xref", myMap);
 		write(u->url());	
-		//startXref(u->url(), u->url());
 	}
 	endXref();
 }
@@ -164,8 +174,6 @@ void XmlDitaDocVisitor::visit(DocLineBreak *lb)
 	if (m_hide){
 	  return;
 	}
-	//pushpop("linebreak");
-	//if (lb->parent()->kind() == lb->Kind_Verbatim) {
 	if (m_insidePre) {
 		write("\n");
 	}
@@ -177,8 +185,7 @@ void XmlDitaDocVisitor::visit(DocHorRuler *)
 	if (m_hide) {
 	  return;
 	}
-	//pushpop("hruler");
-	xmlStream.comment("hruler not supported by DITA 1.1");
+	xmlStream.comment(" hruler not supported by DITA 1.1 ");
 }
 
 void XmlDitaDocVisitor::visit(DocStyleChange *s)
@@ -226,32 +233,34 @@ void XmlDitaDocVisitor::visit(DocStyleChange *s)
 		break;
 	case DocStyleChange::Center:
 		if (s->enable()) {
-			xmlStream.comment("center not supported by DITA 1.1");
-			//push("center");
-		} else {
-			//pop("center");
+			xmlStream.comment(" center not supported by DITA 1.1 ");
 		}
 		break;
 	case DocStyleChange::Small:
 		if (s->enable()) {
-			xmlStream.comment("small not supported by DITA 1.1");
-			//push("small");
-		} else {
-			//pop("small");
+			xmlStream.comment(" small not supported by DITA 1.1 ");
 		}
 		break;
 	case DocStyleChange::Preformatted:
 		if (s->enable()) 
 		{
 			push("pre");  
-			m_insidePre = TRUE;
+			m_insidePre = true;
 		} else {
 			pop("pre");
-			m_insidePre = FALSE;
+			m_insidePre = false;
 		}
 		break;
-	case DocStyleChange::Div:  /* HTML only */ break;
-	case DocStyleChange::Span: /* HTML only */ break;
+	case DocStyleChange::Div:
+		if (s->enable()) {
+			xmlStream.comment(" div not supported by DITA 1.1 ");
+		}
+		break;
+	case DocStyleChange::Span:
+		if (s->enable()) {
+			xmlStream.comment(" span not supported by DITA 1.1 ");
+		}
+		break;
 	}
 }
 
@@ -263,31 +272,18 @@ void XmlDitaDocVisitor::visit(DocVerbatim *s)
 	}
 	switch(s->type())
 	{
+		// Note fall through
 		case DocVerbatim::Code:
-			push("codeblock");
-			write(s->text());
-			pop("codeblock");
-			break;
 		case DocVerbatim::Verbatim:
-			pushpop("pre", s->text());
-			break;
-		case DocVerbatim::HtmlOnly: 
-			//pushpop("htmlonly", s->text());
-			break;
-		case DocVerbatim::ManOnly: 
-			//pushpop("manonly", s->text());
-			break;
-		case DocVerbatim::LatexOnly: 
-			//pushpop("latexonly", s->text());
-			break;
 		case DocVerbatim::XmlOnly: 
-			write(s->text());
+			pushpop("codeblock", s->text());
 			break;
+		// Note fall through
+		case DocVerbatim::HtmlOnly: 
+		case DocVerbatim::ManOnly: 
+		case DocVerbatim::LatexOnly: 
 		case DocVerbatim::Dot: 
-			//pushpop("dot", s->text());
-			break;
 		case DocVerbatim::Msc: 
-			//pushpop("msc", s->text());
 			break;
 	}
 }
@@ -299,8 +295,6 @@ void XmlDitaDocVisitor::visit(DocAnchor *anc)
 	  return;
 	}
 	xmlElemStack.addAttribute("id", anc->file()+"_1"+anc->anchor());
-	//push("anchor", "id", anc->file()+"_1"+anc->anchor());
-	//pop("anchor");
 }
 
 void XmlDitaDocVisitor::visit(DocInclude *inc)
@@ -309,71 +303,71 @@ void XmlDitaDocVisitor::visit(DocInclude *inc)
 	if (m_hide) {
 	  return;
 	}
-  switch(inc->type())
-  {
-    case DocInclude::IncWithLines:
-      { 
-         push("codeblock");
-         QFileInfo cfi( inc->file() );
-         FileDef fd( cfi.dirPath(), cfi.fileName() );
-         Doxygen::parserManager->getParser(inc->extension())
-                               ->parseCode(m_ci,inc->context(),
-                                           inc->text().latin1(),
-                                           inc->isExample(),
-                                           inc->exampleFile(), &fd);
-         pop("codeblock"); 
-      }
-      break;    
+	switch(inc->type()) {
+		case DocInclude::IncWithLines:
+		{ 
+			push("codeblock");
+			QFileInfo cfi(inc->file());
+			FileDef fd(cfi.dirPath(), cfi.fileName());
+			Doxygen::parserManager->getParser(inc->extension())->parseCode(
+					m_ci,inc->context(),
+					inc->text().latin1(),
+					inc->isExample(),
+					inc->exampleFile(),
+					&fd
+				);
+			pop("codeblock"); 
+		}
+		break;    
     case DocInclude::Include: 
-      push("codeblock");
-      Doxygen::parserManager->getParser(inc->extension())
-                            ->parseCode(m_ci,inc->context(),
-                                        inc->text().latin1(),
-                                        inc->isExample(),
-                                        inc->exampleFile());
-      pop("codeblock"); 
-      break;
+		push("codeblock");
+		Doxygen::parserManager->getParser(inc->extension())->parseCode(
+				m_ci,inc->context(),
+				inc->text().latin1(),
+				inc->isExample(),
+				inc->exampleFile()
+				);
+			pop("codeblock"); 
+		break;
     case DocInclude::DontInclude: 
       break;
     case DocInclude::HtmlInclude: 
-	  //pushpop("htmlonly", inc->text());
       break;
     case DocInclude::VerbInclude: 
 	  pushpop("pre", inc->text());
       break;
-  }
+	}
 }
 
 void XmlDitaDocVisitor::visit(DocIncOperator *op)
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocIncOperator*)", op)
-  if (op->isFirst()) 
-  {
-    if (!m_hide) {
-		push("codeblock");
-    }
-    pushEnabled();
-    m_hide = TRUE;
-  }
-  if (op->type()!=DocIncOperator::Skip) 
-  {
-    popEnabled();
-    if (!m_hide) {
-      Doxygen::parserManager->getParser(m_langExt)
-                            ->parseCode(m_ci,op->context(),
-                                        op->text().latin1(),op->isExample(),
-                                        op->exampleFile());
-    }
-    pushEnabled();
-    m_hide=TRUE;
-  }
-  if (op->isLast())  
-  {
-    popEnabled();
-	if (!m_hide) {
-		pop("codeblock"); 
+	if (op->isFirst()) {
+		if (!m_hide) {
+			push("codeblock");
+		}
+		pushEnabled();
+		m_hide = true;
 	}
-  }
+	if (op->type()!=DocIncOperator::Skip) {
+		popEnabled();
+		if (!m_hide) {
+			Doxygen::parserManager->getParser(m_langExt)->parseCode(
+					m_ci,op->context(),
+					op->text().latin1(),
+					op->isExample(),
+					op->exampleFile()
+				);
+		}
+		pushEnabled();
+		m_hide=true;
+	}
+	if (op->isLast()) {
+		popEnabled();
+		if (!m_hide) {
+			pop("codeblock"); 
+		}
+	}
 }
 
 void XmlDitaDocVisitor::visit(DocFormula *f)
@@ -398,39 +392,24 @@ void XmlDitaDocVisitor::visit(DocIndexEntry *ie)
 	if (m_hide) {
 	  return;
 	}
-
-	push("indexterm");
-	write(ie->entry());
-	pop("indexterm");
-#if 0
-	push("indexentry");
-	push("primaryie");
-	write(ie->entry());
-	pop("primaryie");
-	pushpop("secondaryie");
-	pop("indexentry");
-#endif
+	pushpop("indexterm", ie->entry());
 }
 
-void XmlDitaDocVisitor::visit(DocSimpleSectSep *)
+void XmlDitaDocVisitor::visit(DocSimpleSectSep *ss)
 {
-  //pushpop("simplesectsep");
+	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visit(DocSimpleSectSep*)", ss)
 }
 
 //--------------------------------------
 // visitor functions for compound nodes
 //--------------------------------------
-
 void XmlDitaDocVisitor::visitPre(DocAutoList *l)
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocAutoList*)", l)
-	if (m_hide) {
-	  return;
-	}
 	if (l->isEnumList()) {
-		push("ol");
+		visitPreDefault("ol");
 	} else {
-		push("ul");
+		visitPreDefault("ul");
 	}
 }
 
@@ -459,17 +438,27 @@ void XmlDitaDocVisitor::visitPost(DocAutoListItem *)
 void XmlDitaDocVisitor::visitPre(DocPara *p) 
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocPara*)", p)
-	if (canPushPara()) {
+	if (m_writingDl) {
+		// Do an asymetric pop/push for dt/dd
+		// Can not guarentee that we have a "dt" at the top of the stack so can not pop("dt")
+		pop();
+		push("dd");
+	} else if (canPushPara()) {
 		visitPreDefault("p");
+	} else if (!canPushPara()) {
+		m_paraRefCount += 1;
 	}
 }
 
 void XmlDitaDocVisitor::visitPost(DocPara *)
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocPara*)")
-	if (canPopPara()) {
+	if (!m_writingDl && m_paraRefCount == 0 && canPopPara()) {
 		visitPostDefault("p");
+	} else if (m_paraRefCount > 0){
+		m_paraRefCount -= 1;
 	}
+	ASSERT(m_paraRefCount >= 0);
 }
 
 void XmlDitaDocVisitor::visitPre(DocRoot *)
@@ -484,29 +473,116 @@ void XmlDitaDocVisitor::visitPost(DocRoot *)
 
 void XmlDitaDocVisitor::visitPre(DocSimpleSect *s)
 {
-	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocSimpleSect*)", s)
+#ifdef DITA_TRACE
+	// Trace stuff
+	switch(s->type()) {
+		case DocSimpleSect::See:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::See: ")
+			break;
+		case DocSimpleSect::Author:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Author: ")
+			break;
+		case DocSimpleSect::Authors:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Authors: ")
+			break;
+		case DocSimpleSect::Version:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Version: ")
+			break;
+		case DocSimpleSect::Since:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Since: ")
+			break;
+		case DocSimpleSect::Date:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Date: ")
+			break;
+		case DocSimpleSect::Invar:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Invar: ")
+			break;
+		case DocSimpleSect::Rcs:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Rcs: ")
+			break;
+		case DocSimpleSect::Pre:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Pre: ")
+			break;
+		case DocSimpleSect::Post:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Post: ")
+			break;
+		case DocSimpleSect::User:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::User: ")
+			break;
+		case DocSimpleSect::Note:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Note: ")
+			break;
+		case DocSimpleSect::Warning:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Warning: ")
+			break;
+		case DocSimpleSect::Remark:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Remark: ")
+			break;
+		case DocSimpleSect::Attention:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Attention: ")
+			break;
+		case DocSimpleSect::Unknown:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Unknown: ")
+			break;
+		case DocSimpleSect::Return:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPre(DocSimpleSect*): case DocSimpleSect::Return: ")
+			break;
+		default:
+			ASSERT(0);
+			break;
+	}
+#endif // DITA_TRACE
 	if (m_hide) {
 	  return;
 	}
 	switch(s->type())
 	{
-		// Fall through
-		case DocSimpleSect::See:		
-		case DocSimpleSect::Return:		
-		case DocSimpleSect::Author:		
-		case DocSimpleSect::Authors:	
-		case DocSimpleSect::Version:	
-		case DocSimpleSect::Since:		
-		case DocSimpleSect::Date:		
-		case DocSimpleSect::Pre:		
-		case DocSimpleSect::Post:		
-		case DocSimpleSect::Invar:		
-		case DocSimpleSect::User:		
+		// Note Fall through, render as simple paragraph
+		case DocSimpleSect::See:
+		case DocSimpleSect::Invar:
 		case DocSimpleSect::Rcs:		
 			if (canPushPara()) {
 				push("p"); 
 			}
 			break;
+		//
+		// Types that make a definition list
+		//
+		case DocSimpleSect::Author:
+			pushDl("author");
+			write("Author");
+			break;
+		case DocSimpleSect::Authors:
+			pushDl("authors");
+			write("Authors");
+			break;
+		case DocSimpleSect::Version:
+			pushDl("version");
+			write("Version");
+			break;
+		case DocSimpleSect::Since:
+			pushDl("since");
+			write("Since");
+			break;
+		case DocSimpleSect::Date:
+			pushDl("date");
+			write("Date");
+			break;
+		case DocSimpleSect::Pre:
+			pushDl("precondition");
+			write("Pre-condition");
+			break;
+		case DocSimpleSect::Post:
+			pushDl("postcondition");
+			write("Post-condition");
+			break;
+		case DocSimpleSect::User:
+			// ALIAS tags are rendered as definition lists
+			pushDl("user");
+			break;
+		//
+		// Make a note element
+		//
 		case DocSimpleSect::Note:		
 			push("note", "type", "note"); 
 			break;
@@ -521,39 +597,104 @@ void XmlDitaDocVisitor::visitPre(DocSimpleSect *s)
 			break;
 		case DocSimpleSect::Unknown:	
 			break;
+		case DocSimpleSect::Return:
+			// Set flag to gather text into m_docBlockMaps->returnDoc rather than writing it out
+			//printf("Setting m_addTextToReturnDoc true\n");
+			m_addTextToReturnDoc = true;
+			break;
 		default:
 			ASSERT(0);
-#if 0
-		case DocSimpleSect::See:		push("simplesect", "kind", "see"); break;
-		case DocSimpleSect::Return:		push("simplesect", "kind", "return"); break;
-		case DocSimpleSect::Author:		push("simplesect", "kind", "author"); break;
-		case DocSimpleSect::Authors:	push("simplesect", "kind", "authors"); break;
-		case DocSimpleSect::Version:	push("simplesect", "kind", "version"); break;
-		case DocSimpleSect::Since:		push("simplesect", "kind", "since"); break;
-		case DocSimpleSect::Date:		push("simplesect", "kind", "date"); break;
-		case DocSimpleSect::Note:		push("simplesect", "kind", "note"); break;
-		case DocSimpleSect::Warning:	push("simplesect", "kind", "warning"); break;
-		case DocSimpleSect::Pre:		push("simplesect", "kind", "pre"); break;
-		case DocSimpleSect::Post:		push("simplesect", "kind", "post"); break;
-		case DocSimpleSect::Invar:		push("simplesect", "kind", "invariant"); break;
-		case DocSimpleSect::Remark:		push("simplesect", "kind", "remark"); break;
-		case DocSimpleSect::Attention:	push("simplesect", "kind", "attention"); break;
-		case DocSimpleSect::User:		push("simplesect", "kind", "par"); break;
-		case DocSimpleSect::Rcs:		push("simplesect", "kind", "rcs"); break;
-		case DocSimpleSect::Unknown:	break;
-#endif
+			break;
 	}
 }
 
 void XmlDitaDocVisitor::visitPost(DocSimpleSect *s)
 {
-	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPost(DocSimpleSect*)", s)
+#ifdef DITA_TRACE
+	// Trace stuff
+	switch(s->type()) {
+		case DocSimpleSect::See:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::See: ")
+			break;
+		case DocSimpleSect::Author:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Author: ")
+			break;
+		case DocSimpleSect::Authors:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Authors: ")
+			break;
+		case DocSimpleSect::Version:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Version: ")
+			break;
+		case DocSimpleSect::Since:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Since: ")
+			break;
+		case DocSimpleSect::Date:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Date: ")
+			break;
+		case DocSimpleSect::Invar:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Invar: ")
+			break;
+		case DocSimpleSect::Rcs:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Rcs: ")
+			break;
+		case DocSimpleSect::Pre:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Pre: ")
+			break;
+		case DocSimpleSect::Post:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Post: ")
+			break;
+		case DocSimpleSect::User:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::User: ")
+			break;
+		case DocSimpleSect::Note:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Note: ")
+			break;
+		case DocSimpleSect::Warning:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Warning: ")
+			break;
+		case DocSimpleSect::Remark:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Remark: ")
+			break;
+		case DocSimpleSect::Attention:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Attention: ")
+			break;
+		case DocSimpleSect::Unknown:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Unknown: ")
+			break;
+		case DocSimpleSect::Return:
+			DITA_DOC_VISITOR_TRACE_STRING(" XmlDitaDocVisitor::visitPost(DocSimpleSect*): case DocSimpleSect::Return: ")
+			break;
+		default:
+			ASSERT(0);
+			break;
+	}
+#endif // DITA_TRACE
 	if (m_hide) {
 	  return;
 	}	
 	switch(s->type())
 	{
-		// Fall through
+		case DocSimpleSect::See:
+			break;
+		// Note fall through
+		case DocSimpleSect::Invar:		
+		case DocSimpleSect::Rcs:		
+			if (m_paraRefCount == 0 && canPopPara()) {
+				pop("p"); 
+			}
+			break;
+		// Note fall through for definiton lists
+		case DocSimpleSect::Author:
+		case DocSimpleSect::Authors:	
+		case DocSimpleSect::Version:	
+		case DocSimpleSect::Since:		
+		case DocSimpleSect::Date:		
+		case DocSimpleSect::Pre:
+		case DocSimpleSect::Post:
+		case DocSimpleSect::User:
+			popDl();
+			break;
+		// Note fall through for note element
 		case DocSimpleSect::Note:		
 		case DocSimpleSect::Warning:	
 		case DocSimpleSect::Remark:		
@@ -562,10 +703,13 @@ void XmlDitaDocVisitor::visitPost(DocSimpleSect *s)
 			break;
 		case DocSimpleSect::Unknown:	
 			break;
+		case DocSimpleSect::Return:
+			// Unset flag to gather text into m_docBlockMaps->returnDoc
+			//printf("Setting m_addTextToReturnDoc false\n");
+			m_addTextToReturnDoc = false;
+			break;
 		default:
-			if (canPopPara()) {
-				pop("p"); 
-			}
+			ASSERT(0);
 			break;
 	}
   //visitPostDefault("simplesect");
@@ -582,13 +726,12 @@ void XmlDitaDocVisitor::visitPre(DocTitle *)
 		}
 		visitPreDefault("b");
 	}
-
 }
 
 void XmlDitaDocVisitor::visitPost(DocTitle *)
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocTitle*)")
-	if (xmlElemStack.peek().getElemName() == "title") {
+	if (!xmlElemStack.isEmpty() && xmlElemStack.peek().getElemName() == "title") {
 		visitPostDefault("title");
 	} else {
 		visitPostDefault("b");
@@ -626,6 +769,7 @@ void XmlDitaDocVisitor::visitPre(DocSection *s)
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocSection*)", s)
 	// Currently unsupported
+	xmlStream.comment(" XmlDitaDocVisitor::visitPre(DocSection*) not currently supported by DITA 1.1 ");
 #if 0
 	if (m_hide) {
 	  return;
@@ -645,6 +789,7 @@ void XmlDitaDocVisitor::visitPre(DocSection *s)
 void XmlDitaDocVisitor::visitPost(DocSection *s) 
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPost(DocSection*)", s)
+	xmlStream.comment(" XmlDitaDocVisitor::visitPre(DocSection*) not currently supported by DITA 1.1 ");
 #if 0
 	// The original did not have the if(m_hide) test.
 	// I assume that is an error so visitPostDefault() uses it.
@@ -709,8 +854,6 @@ void XmlDitaDocVisitor::visitPre(DocHtmlDescTitle *)
 	}
 	push("dlentry");
 	push("dt");
-	//push("varlistentry");
-	//push("term");
 }
 
 void XmlDitaDocVisitor::visitPost(DocHtmlDescTitle *) 
@@ -719,17 +862,15 @@ void XmlDitaDocVisitor::visitPost(DocHtmlDescTitle *)
 	if (m_hide) {
 	  return;
 	}
+	//printf("XmlDitaDocVisitor::visitPost(DocHtmlDescTitle *)\n");
 	pop("dt");
-	//pop("dlentry");
-	// pop("term");
-	// pop("varlistentry");
+	// Note: We have to wait until XmlDitaDocVisitor::visitPost(DocHtmlDescData *) to pop("dlentry");
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlDescData *)
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocHtmlDescData*)")
 	push("dd");
-	//visitPreDefault("li");
 }
 
 void XmlDitaDocVisitor::visitPost(DocHtmlDescData *) 
@@ -737,7 +878,6 @@ void XmlDitaDocVisitor::visitPost(DocHtmlDescData *)
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlDescData*)")
 	pop("dd");
 	pop("dlentry");
-	//visitPostDefault("li");  
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlTable *t)
@@ -746,88 +886,80 @@ void XmlDitaDocVisitor::visitPre(DocHtmlTable *t)
 	if (m_hide) {
 	  return;
 	}
-#if DITA_SIMPLETABLE_SUPPORT
-	push("simpletable");
-#endif
-#if 0
-	AttributeMap attrs;
-	QString vR, vC;
-	vR.setNum(t->numRows());
-	attrs["rows"] = vR;
-	vC.setNum(t->numCols());
-	attrs["cols"] = vC;
-	push("table", attrs);
-#endif
+	push(ELEM_SIMPLETABLE);
 }
 
 void XmlDitaDocVisitor::visitPost(DocHtmlTable *) 
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlTable*)")
-#if DITA_SIMPLETABLE_SUPPORT
-	visitPostDefault("simpletable");
-#endif
+	visitPostDefault(ELEM_SIMPLETABLE);
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlRow *)
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocHtmlRow*)")
-	// FIXME look ahead to first cell
-	// if isHeading is true do
-	// visitPreDefault("sthead");
-	// else
-	visitPreDefault("strow");
+	// Set lazy flag
+	m_strowOrStheadIsPending = true;
+	// We have look ahead to first cell before deciding whether to use a "sthead" or not
+	// this is done in XmlDitaDocVisitor::visitPre(DocHtmlCell *c)
 }
 
 void XmlDitaDocVisitor::visitPost(DocHtmlRow *) 
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlRow*)")
-	visitPostDefault("strow");
+	// Note: No testing as we could be either poping a sthead or an strow but pop we must
+	// (well only if we have pushed).
+	if (!m_strowOrStheadIsPending) {
+		pop();
+	}
+	m_strowOrStheadIsPending = false;
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlCell *c)
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocHtmlCell*)", c)
+	if (m_strowOrStheadIsPending) {
+		// Write sthead or strow for the first cell only
+		if (c->isHeading()) {
+			visitPreDefault("sthead");
+		} else {
+			visitPreDefault(ELEM_SIMPLETABLEROW);
+		}
+		m_strowOrStheadIsPending = false;
+	}
 	visitPreDefault("stentry");
-#if 0
-	if (m_hide) {
-	  return;
-	}
-	if (c->isHeading()) {
-	  push("entry", "thead", "yes");
-	} else {
-	  push("entry", "thead", "no");
-	}
-#endif
 }
 
 void XmlDitaDocVisitor::visitPost(DocHtmlCell *c) 
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPost(DocHtmlCell*)", c)
-  visitPostDefault("stentry");
+	visitPostDefault("stentry");
 }
 
 void XmlDitaDocVisitor::visitPre(DocHtmlCaption *)
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocHtmlCaption*)")
 	// Caption is unsupported
+	xmlStream.comment(" XmlDitaDocVisitor::visitPre(DocHtmlCaption*) not currently supported by DITA 1.1 ");
 }
 
 void XmlDitaDocVisitor::visitPost(DocHtmlCaption *) 
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocHtmlCaption*)")
 	// Caption is unsupported
+	xmlStream.comment(" XmlDitaDocVisitor::visitPost(DocHtmlCaption*) not currently supported by DITA 1.1 ");
 }
 
 void XmlDitaDocVisitor::visitPre(DocInternal *)
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPre(DocInternal*)")
-	//visitPreDefault("internal");
+	xmlStream.comment(" XmlDitaDocVisitor::visitPre(DocInternal*) not currently supported by DITA 1.1 ");
 }
 
 void XmlDitaDocVisitor::visitPost(DocInternal *) 
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocInternal*)")
-  //visitPostDefault("internal");
+	xmlStream.comment(" XmlDitaDocVisitor::visitPost(DocInternal*) not currently supported by DITA 1.1 ");
 }
 
 void XmlDitaDocVisitor::visitPre(DocHRef *href)
@@ -863,6 +995,7 @@ void XmlDitaDocVisitor::visitPre(DocImage *img)
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocImage*)", img)
 	// Currently unsupported
+	xmlStream.comment(" XmlDitaDocVisitor::visitPre(DocImage*) not currently supported by DITA 1.1 ");
 #if 0
   AttributeMap imgAttrs;
   // First the image type
@@ -922,25 +1055,20 @@ void XmlDitaDocVisitor::visitPre(DocImage *img)
 void XmlDitaDocVisitor::visitPost(DocImage *) 
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocImage*)")
-  //visitPostDefault("image");
+	xmlStream.comment(" XmlDitaDocVisitor::visitPost(DocImage*) not currently supported by DITA 1.1 ");
 }
 
 void XmlDitaDocVisitor::visitPre(DocDotFile *df)
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocDotFile*)", df)
 	// Currently unsupported
-#if 0
-	if (m_hide) {
-	  return;
-	}
-	push("dotfile", "name", df->file());
-#endif
+	xmlStream.comment(" XmlDitaDocVisitor::visitPre(DocDotFile*) not currently supported by DITA 1.1 ");
 }
 
 void XmlDitaDocVisitor::visitPost(DocDotFile *) 
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocDotFile*)")
-	//visitPostDefault("dotfile");
+	xmlStream.comment(" XmlDitaDocVisitor::visitPost(DocDotFile*) not currently supported by DITA 1.1 ");
 }
 
 void XmlDitaDocVisitor::visitPre(DocLink *lnk)
@@ -950,14 +1078,7 @@ void XmlDitaDocVisitor::visitPre(DocLink *lnk)
 	if (m_hide) {
 	  return;
 	}
-	if (0) {//lnk->getDefinition() != 0) {
-		//printf("XmlDitaDocVisitor calling startLink() DocLink [name]=`%s'\n", lnk->getDefinition()->qualifiedName().data());
-		startLink("", lnk->getDefinition()->qualifiedName(), "");
-	} else {
-		//printf("XmlDitaDocVisitor calling startLink() DocLink [file]=`%s'\n", lnk->file().data());
-		//startLink(lnk->ref(),lnk->file(),lnk->anchor());
-		startLink(lnk->ref(), lnk->file(), lnk->anchor());
-	}	
+	startLink(lnk->ref(), lnk->file(), lnk->anchor());
 }
 
 void XmlDitaDocVisitor::visitPost(DocLink *) 
@@ -1032,33 +1153,57 @@ void XmlDitaDocVisitor::visitPost(DocSecRefList *)
 void XmlDitaDocVisitor::visitPre(DocParamSect *s)
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocParamSect*)", s)
-	m_insideParamlist = TRUE;
 	if (m_hide) {
 	  return;
 	}
 	switch(s->type()) {
-		case DocParamSect::Param: 
+		case DocParamSect::Param:
+			m_insideParamlist = true;
+			m_paramIsTemplate = false;
 			push("paraml", "class", "param"); 
 			break;
-		case DocParamSect::RetVal: 
+		case DocParamSect::RetVal:
+			// NOTE: This code never seems to get exercised
+			m_insideParamlist = false;
 			push("paraml", "class", "retval"); 
 			break;
-		case DocParamSect::Exception: 
-			push("paraml", "class", "exception"); 
+		case DocParamSect::Exception:
+			//printf("void XmlDitaDocVisitor::visitPre(DocParamSect *s) Exception\n");
+			m_insideParamlist = false;
+			push("dl", "outputclass", "exception");
+			push("dlentry");
+			pushpop("dt", "Exceptions");
+			push("dd");
+			push(ELEM_SIMPLETABLE);
 			break;
 		case DocParamSect::TemplateParam: 
-			push("paraml", "class", "templateparam"); 
+			m_insideParamlist = true;
+			m_paramIsTemplate = true;
+			push("paraml", "class", "templateparam");
 			break;
 		default:
 		  ASSERT(0);
 	}
 }
 
-void XmlDitaDocVisitor::visitPost(DocParamSect *)
+void XmlDitaDocVisitor::visitPost(DocParamSect *s)
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocParamSect*)")
-	visitPostDefault("paraml");
-	m_insideParamlist = FALSE;
+	if (m_hide) {
+	  return;
+	}
+	switch(s->type()) {
+		case DocParamSect::Exception:
+			pop(ELEM_SIMPLETABLE); 
+			pop("dd"); 
+			pop("dlentry"); 
+			pop("dl"); 
+			break;
+		default:
+			visitPostDefault("paraml");
+			break;
+	}
+	m_insideParamlist = false;
 }
 
 void XmlDitaDocVisitor::visitPre(DocParamList *pl)
@@ -1066,6 +1211,10 @@ void XmlDitaDocVisitor::visitPre(DocParamList *pl)
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocParamList*)", pl)
 	if (m_hide) {
 	  return;
+	}
+	if (!m_insideParamlist) {
+		push("strow");
+		push("stentry");
 	}
 	QListIterator<DocNode> li(pl->parameters());
 	DocNode *param;
@@ -1078,41 +1227,27 @@ void XmlDitaDocVisitor::visitPre(DocParamList *pl)
 			// FIXME, what should we use here
 			currParam = "";
 		}
-		paramDict.insert(currParam, new QString(""));
-	}
-
-#if 0
-	push("parameteritem");
-	push("parameternamelist");
-	QListIterator<DocNode> li(pl->parameters());
-	DocNode *param;
-	for (li.toFirst();(param=li.current());++li) {
-		AttributeMap attrs;
-		if (pl->direction() != DocParamSect::Unspecified) {
-			if (pl->direction() == DocParamSect::In) {
-				attrs["direction"] = "in";
-			} else if (pl->direction() == DocParamSect::Out) {
-				attrs["direction"] = "out";
-			} else if (pl->direction() == DocParamSect::InOut) {
-				attrs["direction"] = "inout";
-			} else{
-				ASSERT(0);
+		if (canLoadParameterMap()) {
+			if (m_paramIsTemplate) {
+				m_docBlockMaps->tparamMap.insert(currParam, "");
+			} else {
+				m_docBlockMaps->paramMap.insert(currParam, "");
+			}
+		} else {
+			if (param->kind() == DocNode::Kind_Word)
+			{
+			  visit((DocWord*)param); 		
+			}
+			else if (param->kind() == DocNode::Kind_LinkedWord)
+			{
+			  visit((DocLinkedWord*)param); 
 			}
 		}
-		push("parametername", attrs);
-		if (param->kind() == DocNode::Kind_Word)
-		{
-		  visit((DocWord*)param); 		
-		}
-		else if (param->kind() == DocNode::Kind_LinkedWord)
-		{
-		  visit((DocLinkedWord*)param); 
-		}
-		pop("parametername");
 	}
-	pop("parameternamelist");
-	push("parameterdescription");
-#endif
+	if (!m_insideParamlist) {
+		pop("stentry");
+		push("stentry");
+	}
 }
 
 void XmlDitaDocVisitor::visitPost(DocParamList *)
@@ -1121,8 +1256,10 @@ void XmlDitaDocVisitor::visitPost(DocParamList *)
 	if (m_hide) {
 	  return;
 	}
-	pop("parameterdescription");
-	pop("parameteritem");
+	if (!m_insideParamlist) {
+		pop("stentry");
+		pop("strow");
+	}
 }
 
 void XmlDitaDocVisitor::visitPre(DocXRefItem *x)
@@ -1145,11 +1282,6 @@ void XmlDitaDocVisitor::visitPre(DocXRefItem *x)
 		push("xref", "href", hrefStr);
 		write(x->title());
 	}
-#if 0
-	push("xrefsect", "id", x->file()+"_1"+x->anchor());
-	pushpop("xreftitle", x->title());
-	push("xrefdescription");
-#endif
 }
 
 void XmlDitaDocVisitor::visitPost(DocXRefItem *)
@@ -1163,11 +1295,6 @@ void XmlDitaDocVisitor::visitPost(DocXRefItem *)
 	if (!xmlElemStack.isEmpty() && xmlElemStack.peek().getElemName() == "xref") {
 		pop("xref");
 	}
-	
-#if 0
-	pop("xrefdescription");
-	pop("xrefsect");
-#endif
 }
 
 void XmlDitaDocVisitor::visitPre(DocInternalRef *ref)
@@ -1176,7 +1303,6 @@ void XmlDitaDocVisitor::visitPre(DocInternalRef *ref)
 	if (m_hide) {
 	  return;
 	}
-	//printf("XmlDitaDocVisitor calling startLink() DocInternalRef [file]=`%s'\n", ref->file().data());
 	startLink(0, ref->file(), ref->anchor());
 }
 
@@ -1194,18 +1320,13 @@ void XmlDitaDocVisitor::visitPre(DocCopy *c)
 {
 	DITA_DOC_VISITOR_TRACE("XmlDitaDocVisitor::visitPre(DocCopy*)", c)
 	// Currently unsupported
-#if 0
-	if (m_hide) {
-	  return;
-	}
-	push("copydoc", "link", c->link());
-#endif
+	xmlStream.comment(" XmlDitaDocVisitor::visitPre(DocCopy*) not currently supported by DITA 1.1 ");
 }
 
 void XmlDitaDocVisitor::visitPost(DocCopy *)
 {
 	DITA_DOC_VISITOR_TRACE_NOARG("XmlDitaDocVisitor::visitPost(DocCopy*)")
-//	visitPostDefault("copydoc");
+	xmlStream.comment(" XmlDitaDocVisitor::visitPost(DocCopy*) not currently supported by DITA 1.1 ");
 }
 
 void XmlDitaDocVisitor::visitPre(DocText *)
@@ -1220,17 +1341,12 @@ void XmlDitaDocVisitor::visitPost(DocText *)
 
 void XmlDitaDocVisitor::startXref(const QString &href,const QString &text)
 {
-#ifndef DITA_DOT_HACK_REMOVE_XREFS
 	push("xref", "href", href);
-#endif
-	write(text);	
 }
 
 void XmlDitaDocVisitor::endXref()
 {
-#ifndef DITA_DOT_HACK_REMOVE_XREFS
 	pop("xref");
-#endif
 }
 
 void XmlDitaDocVisitor::startLink(const QString &ref,const QString &file,const QString &anchor)
@@ -1247,30 +1363,12 @@ void XmlDitaDocVisitor::startLink(const QString &ref,const QString &file,const Q
   } else {
 	  refAttrs["href"] = file+".xml#"+file;
   }
-#ifndef DITA_DOT_HACK_REMOVE_XREFS
   push("xref", refAttrs);
-#endif
-#if 0
-  AttributeMap refAttrs;
-  if (!anchor.isEmpty()) {
-	  refAttrs["refid"] = file+"_1"+anchor;
-	  refAttrs["kindref"] = "member";
-  } else {
-	  refAttrs["refid"] = file;
-	  refAttrs["kindref"] = "compound";
-  }
-  if (!ref.isEmpty()) {
-	  refAttrs["external"] = ref;
-  }
-  push("ref", refAttrs);
-#endif
 }
 
 void XmlDitaDocVisitor::endLink()
 {
-#ifndef DITA_DOT_HACK_REMOVE_XREFS
   visitPostDefault("xref");
-#endif
 }
 
 void XmlDitaDocVisitor::pushEnabled()
@@ -1286,85 +1384,167 @@ void XmlDitaDocVisitor::popEnabled()
   delete v;
 }
 
+bool XmlDitaDocVisitor::canWriteToXmlStream() const
+{
+	if (m_insideParamlist || m_addTextToReturnDoc || m_docBlockMaps != 0) {
+		return false;
+	} else {
+		return true;
+	}
+}
+
+/// Returns true if I gather text into m_docBlockMaps->returnDoc?
+bool XmlDitaDocVisitor::shouldAddTextToReturnDoc() const
+{
+	return (m_addTextToReturnDoc && m_docBlockMaps != 0);
+}
+
+bool XmlDitaDocVisitor::canLoadParameterMap() const
+{
+	return m_insideParamlist && m_docBlockMaps != 0;
+}
+
+/** Keeps track of state so that a simpletable has a strow. */
+void XmlDitaDocVisitor::checkSimpleTable(const QString &tagName)
+{
+	if (tagName == ELEM_SIMPLETABLE) {
+		m_mustInsertStrow = true;
+	} else if (m_mustInsertStrow && tagName == "strow") {
+		m_mustInsertStrow = false;
+	}
+}
+
+void XmlDitaDocVisitor::addStrowToSimpleTableOnPop(const QString &tagName)
+{
+	if (tagName == ELEM_SIMPLETABLE && m_mustInsertStrow) {
+		pushpop(ELEM_SIMPLETABLEROW);
+		m_mustInsertStrow = false;
+	}
+}
 
 void XmlDitaDocVisitor::write(const QString &string)
 {
-	if (m_insideParamlist) {
-		// TODO: Review the use of paramDict as I think that there is a
-		// memory leak here [PaulRo 2010-01-20]
-		QString *pStr = paramDict.find(currParam);
-		if (pStr) {
-			paramDict.replace(currParam, new QString(*pStr + string));
-		} else {
-			paramDict.replace(currParam, new QString(string));
-		}
-	} else {
+	if (canWriteToXmlStream()) {
 		xmlStream << string;
+	} else if (canLoadParameterMap()) {
+		if (m_paramIsTemplate) {
+			if (m_docBlockMaps->tparamMap.contains(currParam)) {
+				m_docBlockMaps->tparamMap[currParam].append(string);
+			} else {
+				m_docBlockMaps->tparamMap[currParam] = string;
+			}
+		} else {
+			if (m_docBlockMaps->paramMap.contains(currParam)) {
+				m_docBlockMaps->paramMap[currParam].append(string);
+			} else {
+				m_docBlockMaps->paramMap[currParam] = string;
+			}
+		}
+	} else if (shouldAddTextToReturnDoc()) {
+		//printf("Adding \"%s\" to returnDoc\n", string.data());
+		m_docBlockMaps->returnDoc.append(string);
 	}
 }
 
 void XmlDitaDocVisitor::push(const QString &tagName)
 {
-	if (m_insideParamlist) {
-		// TODO
-	} else {
+	if (canWriteToXmlStream()) {
+		checkSimpleTable(tagName);
 		xmlElemStack.push(tagName);
 	}
 }
 
 void XmlDitaDocVisitor::push(const QString &tagName, const QString &key, const QString &value)
 {
-	if (m_insideParamlist) {
-		// TODO
-	} else {
+	if (canWriteToXmlStream()) {
+		checkSimpleTable(tagName);
 		xmlElemStack.push(tagName, key, value);
 	}
 }
 
 void XmlDitaDocVisitor::push(const QString &tagName, AttributeMap &map)
 {
-	if (m_insideParamlist) {
-		// TODO
-	} else {
+	if (canWriteToXmlStream()) {
+		checkSimpleTable(tagName);
 		xmlElemStack.push(tagName, map);
+	}
+}
+
+/** pop without checking element matches.
+This can be useful when making asymetric push/pops
+*/
+void XmlDitaDocVisitor::pop()
+{
+	if (canWriteToXmlStream()) {
+		// Note: No use of addStrowToSimpleTableOnPop()
+		xmlElemStack.pop();
 	}
 }
 
 void XmlDitaDocVisitor::pop(const QString &tagName)
 {
-	if (m_insideParamlist) {
-		// TODO
-	} else {
+	if (canWriteToXmlStream()) {
+		addStrowToSimpleTableOnPop(tagName);
 		xmlElemStack.pop(tagName);
 	}
 }
 
 void XmlDitaDocVisitor::pushpop(const QString &tagName)
 {
-	if (m_insideParamlist) {
-		// TODO
-	} else {
+	if (canWriteToXmlStream() && tagName != ELEM_SIMPLETABLE) {
 		xmlElemStack.pushpop(tagName);
 	}
 }
 
 void XmlDitaDocVisitor::pushpop(const QString &tagName, const QString &text)
 {
-	if (m_insideParamlist) {
-		paramDict.replace(currParam, new QString(*paramDict[currParam] + text));
-	} else {
+	if (canWriteToXmlStream() && tagName != ELEM_SIMPLETABLE) {
 		xmlElemStack.pushpop(tagName, text);
+	} else if (canLoadParameterMap()) {
+		if (m_paramIsTemplate) {
+			if (m_docBlockMaps->tparamMap.contains(currParam)) {
+				m_docBlockMaps->tparamMap[currParam].append(text);
+			} else {
+				m_docBlockMaps->tparamMap[currParam] = text;
+			}
+		} else {
+			if (m_docBlockMaps->paramMap.contains(currParam)) {
+				m_docBlockMaps->paramMap[currParam].append(text);
+			} else {
+				m_docBlockMaps->paramMap[currParam] = text;
+			}
+		}
 	}
 }
 
-const QString XmlDitaDocVisitor::query(const QString &paramName) const
+/** Pushes a definition list onto the stack
+@param outputClass The value of the outputclass attribute in the dl element
+*/
+void XmlDitaDocVisitor::pushDl(const QString &outputClass)
 {
-	if (paramDict.find(paramName)) {
-		return *paramDict[paramName];
-	} else {
-		// TODO positional option
-		return "";
-	}
+
+	// ALIAS tags are rendered as definition lists
+	push("dl", "outputclass", outputClass);
+	push("dlentry");
+	push("dt");
+	// This state allows us to do an asymetric push/pop when writing a DocPara
+	m_writingDl = true;
+}
+
+/** Pops a definition list onto the stack
+*/
+void XmlDitaDocVisitor::popDl()
+{
+	// ALIAS tags are rendered as definition lists
+	// Note that this is asymetric as pre pushed dt and we pop dd
+	// We don't use pop("dd"); as the swap might not have happened
+	// and we risk an assertion failure at that point.
+	pop();
+	pop("dlentry");
+	pop("dl");
+	// Unset the state variable that allows us to do an
+	// asymetric push/pop when writing a DocPara
+	m_writingDl = false;
 }
 
 /// Returns true if it is OK to write a para element
@@ -1372,7 +1552,7 @@ bool XmlDitaDocVisitor::canPushPara() const
 {
 	if (!xmlElemStack.isEmpty()) {
 		QString e = xmlElemStack.peek().getElemName();
-		if (e == "xref" || e == "p") {
+		if (e == "xref" || e == "p" || e == "dt") {
 			return false;
 		}
 	}

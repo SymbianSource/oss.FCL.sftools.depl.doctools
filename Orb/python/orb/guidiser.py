@@ -19,14 +19,22 @@ import sys
 import shutil
 import xml
 import logging
-from optparse import OptionParser, check_choice
-from xml.etree import ElementTree as etree
+from optparse import OptionParser
+try:
+    from xml.etree import cElementTree as etree
+except ImportError:
+    from xml.etree import ElementTree as etree
+import xml.etree.ElementTree
 from cStringIO import StringIO
 from lib import scan, xml_decl, doctype_identifier, XmlParser
 from doxyidredirect import DoxyIdRedirect, ExceptionDoxyIdRedirectLookup
 
 
 __version__ = "0.1"
+
+
+logger = logging.getLogger('orb.guidiser')
+
 
 class Guidiser(object):
     """
@@ -37,9 +45,9 @@ class Guidiser(object):
     >>> root = guid.guidise(StringIO(cxxclass))
     >>> oldroot = etree.parse(StringIO(cxxclass)).getroot()
     >>> oldroot.attrib['id']
-    'CP_class'
+    'class_test'
     >>> root.attrib['id']
-    'GUID-25825EC4-341F-3EA4-94AA-7DCE380E6D2E'
+    'GUID-7D44FAFC-2C6A-3B1D-8EEA-558968414CCE'
     """
     # Publishing targets
     PT_MODE = 0
@@ -95,8 +103,8 @@ class Guidiser(object):
         if not(id.lower() in ("test", "deprecated", "todo") or id.lower().find("namespace_") != -1):                
             try:
                 filename, fqn = self.doxyidredirect.lookupId(id)
-            except ExceptionDoxyIdRedirectLookup, err:
-                logging.error("Could not lookup Fully Qualified APIName for id '%s' in href '%s'" % (id, href))
+            except ExceptionDoxyIdRedirectLookup:
+                logger.error("Could not lookup Fully Qualified APIName for id '%s' in href '%s'" % (id, href))
         #if the id was not found just guidise the id
         #this is just to make the id unique for mode
         guid = self._get_guid(fqn) if fqn else self._get_guid(id)
@@ -109,7 +117,6 @@ class Guidiser(object):
         # to files other than ditatopics
         if href.find('#') == -1:
             return href
-			
         # Doxygen currently outputs hrefs in the format autolink_8cpp.xml#autolink_8cpp_1ae0e289308b6d2cbb5c86e753741981dc
         # The right side of the # is not enough to extract the fully qualified name of the function because it is md5ed
         # Send the right side to doxyidredirect to get the fqn of the function			
@@ -118,14 +125,13 @@ class Guidiser(object):
         if not(id.lower() in ("test", "deprecated", "todo") or id.lower().find("namespace_") != -1):                        
             try:
                 fqn = self.doxyidredirect.lookupId(id)[1]
-            except ExceptionDoxyIdRedirectLookup, err:
-                logging.error("No API name for element id %s, guidising id instead" % id)
-
+            except ExceptionDoxyIdRedirectLookup:
+                logger.error("No API name for element id %s, guidising id instead" % id)
         guid = self._get_guid(fqn) if fqn else self._get_guid(id)
         basename, ext = os.path.splitext(filename)
         try:
             base_guid = self._get_guid(self.doxyidredirect.lookupId(basename)[1])
-        except ExceptionDoxyIdRedirectLookup, e:
+        except ExceptionDoxyIdRedirectLookup:
             base_guid = self._get_guid(basename)
             
         if self.get_publishing_target() == self.PT_DITAOT:
@@ -135,19 +141,19 @@ class Guidiser(object):
     
     def _guidise_id(self, id):
         try:
-            filename, fqn = self.doxyidredirect.lookupId(id)
+            _, fqn = self.doxyidredirect.lookupId(id)
             return self._get_guid(fqn)
-        except ExceptionDoxyIdRedirectLookup, err:
-            logging.debug("Didn't find a Fully Qualified APIName for id '%s'" % id)
+        except ExceptionDoxyIdRedirectLookup:
+            logger.debug("Didn't find a Fully Qualified APIName for id '%s'" % id)
             return self._get_guid(id)
     
     def guidise(self, xmlfile):
         #WORKAROUND: ElementTree provides no function to set prefixes and makes up its own if they are not set (ns0, ns1, ns2)
-        etree._namespace_map["http://dita.oasis-open.org/architecture/2005/"] = 'ditaarch'
+        xml.etree.ElementTree._namespace_map.update({ "http://dita.oasis-open.org/architecture/2005/": 'ditaarch' })
         try:
             root = etree.parse(xmlfile).getroot()
-        except xml.parsers.expat.ExpatError, e:
-            logging.error("%s could not be parsed: %s\n" % (xmlfile, str(e)))
+        except Exception, e:
+            logger.error("%s could not be parsed: %s\n" % (xmlfile, str(e)))
             return None
         for child in root.getiterator():
             for key in [key for key in ('id', 'href', 'keyref') if key in child.attrib]:
@@ -157,7 +163,7 @@ class Guidiser(object):
                     if 'format' in child.attrib and child.attrib['format'] == 'html':
                         continue
                     else:
-                        base_dir = os.path.dirname(xmlfile) if isinstance(xmlfile, str) else ""
+                        #base_dir = os.path.dirname(xmlfile) if isinstance(xmlfile, str) else ""
                         child.attrib['href'] = self._guidise_href(child.attrib['href'], child.tag)
                 elif key == 'keyref':
                     child.attrib['keyref'] = self._get_guid(child.attrib['keyref'])                    
@@ -169,20 +175,20 @@ def updatefiles(xmldir, publishing_target="ditaot"):
     publishing_target = Guidiser.PT_MODE if (publishing_target == "mode") else Guidiser.PT_DITAOT
     guidiser = Guidiser(publishing_target=publishing_target, doxyidredirect=DoxyIdRedirect(xmldir))
     for filepath in scan(xmldir):
-        logging.debug('Guidising file \"%s\"' % filepath)
+        logger.debug('Guidising file \"%s\"' % filepath)
         root = guidiser.guidise(filepath)
         if root is not None:
             try:
                 os.chmod(filepath, stat.S_IWRITE)
             except Exception, e:
-                logging.error("Could not make file \"%s\" writable, error was \"%s\"" % (filepath, e))
+                logger.error("Could not make file \"%s\" writable, error was \"%s\"" % (filepath, e))
                 continue            
             with open(filepath, 'w') as f:
                 f.write(xml_decl()+'\n')
                 try:
                     doc_id = doctype_identifier(root.tag)
                 except Exception, e:
-                    logging.error("Could not write doctype identifier for file \"%s\", error was \"%s\""
+                    logger.error("Could not write doctype identifier for file \"%s\", error was \"%s\""
                                   %(filepath, e))
                 else:
                     f.write(doc_id+'\n')
@@ -261,7 +267,7 @@ class TestGuidiser(unittest.TestCase):
         try:
             self.guidiser.guidise(StringIO("<cxxclass><argh</cxxclass>"))
         except Exception:
-            self.fail("I shouldnt have raised an exception")
+            self.fail("I shouldnt have raised an exception.")
 
     def _test_keys_were_converted(self, key):
         root = self.guidiser.guidise(StringIO(cxxclass))
@@ -344,7 +350,7 @@ class TestGuidiser(unittest.TestCase):
         self.assertEquals(self.guidiser._guidise_href("struct_e_sock_1_1_t_addr_update.xml#struct_e_sock_1_1_t_addr_update", "xref"),
                  "GUID-E72084E6-C1CE-3388-93F7-5B7A3F506C3B.xml#GUID-E72084E6-C1CE-3388-93F7-5B7A3F506C3B"
                  )
-				 
+
     def test_xref_href_to_some_other_file_on_file_system(self):
         self.guidiser.set_publishing_target(Guidiser.PT_DITAOT)
         self.assertEquals(self.guidiser._guidise_href("../../documentation/RFCs/rfc3580.txt", "xref"),
@@ -365,6 +371,7 @@ class TestGuidiser(unittest.TestCase):
         xml_in = """<reference ditaarch:DITAArchVersion="1.1" xmlns:ditaarch="http://dita.oasis-open.org/architecture/2005/" />"""
         xml_expected = """<reference ditaarch:DITAArchVersion="1.1" xmlns:ditaarch="http://dita.oasis-open.org/architecture/2005/" />"""
         root = self.guidiser.guidise(StringIO(xml_in))
+        print "****", etree.tostring(root)
         self.assertEqual(etree.tostring(root), xml_expected)
         
 class Testupdate_files(unittest.TestCase):
@@ -507,7 +514,7 @@ filesys_cxxclass = """<?xml version='1.0' encoding='UTF-8' standalone='no'?>
 </cxxClass>"""
 
 filesys_cxxclass_guidised = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.1.0//EN" "dtd/cxxClass.dtd">
+<!DOCTYPE cxxClass PUBLIC "-//NOKIA//DTD DITA C++ API Class Reference Type v0.6.0//EN" "dtd/cxxClass.dtd">
 <cxxClass id="GUID-83FD90ED-B2F7-3ED5-ABC5-83ED6A3F1C2F">
     <apiName>CActiveScheduler::TCleanupBundle</apiName>
     <shortdesc />

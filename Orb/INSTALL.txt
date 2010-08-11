@@ -9,17 +9,18 @@ Welcome to Orb
 ==============
 Orb is a package containing a version of Doxygen that produces Dita XML and extentions to the Symbian Build System that invoke Doxygen on its build targets.
 
+Full Orb documentation can be found on this wiki page: http://developer.symbian.org/wiki/index.php/Doctools/ORB
+
 Installation
 ============
 
     * Install a PDK or SDK for development on the Symbian Platform. (i.e Symbian Foundation SDK from here: http://developer.symbian.org/main/tools_and_kits/index.php)
-    * Install Raptor. 
-      - Orb version 0.1.8 only supports versions 2.9.1 to 2.10.0 of SBS. 
+    * Install SBS (also known as Raptor).  
       - Orb version 0.1.9 and above supports all versions of SBS.
       Follow the instructions here: http://developer.symbian.org/wiki/index.php/Raptor_Build_System 
 	  Make sure the installer sets the environment variable %SBS_HOME% to the SBS directory.
-    * Extract Orb to your Symbian Build System application directory (SBS_HOME)
+    * Extract Orb to your SBS application directory (%SBS_HOME%)
 
 Running Orb
 ===========
-Please refer to README.txt for information on running Orb
+Please refer to README.txt for information on running Orb or the Symbian Foundation WIKI page: http://developer.symbian.org/wiki/index.php/Doctools/ORB

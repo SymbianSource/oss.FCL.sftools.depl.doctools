@@ -14,8 +14,7 @@
 #define XMLDITA_H
 
 /** @file
-This file contains common macros etc that affect DITA generation. For example
-macros 
+This file contains common macros etc that affect DITA generation.
 */
 
 /** If 1 then the internal Doxygen ID is used as the value of the id attribute
@@ -24,14 +23,24 @@ may contain characters that are not acceptable as an XML ID
 */
 #define USE_DOXYGEN_ID_AS_XML_ID 1
 
-//#define DITA_TRACE
+/** If 1 then the internal Doxygen ID is used to determine if a member is
+a duplicate of one that has already been written. If 0 another technique
+is used, for example the lookup name.
+This only has an affect if Config_getBool("XML_DITA_OMIT_DUPLICATE_MEMBERS")
+is True.
+*/
+#define USE_DOXYGEN_ID_AS_DUPLICATE_TEST 0
+
 #undef DITA_TRACE
+//#define DITA_TRACE
 // If defined then the trace output (if any) is written as a comment in the XML
 // Otherwise it appears on stdout.
+//#undef DITA_TRACE_TO_XML
 #define DITA_TRACE_TO_XML
 
-#define DITA_OT_BUG_ATTRIBUTE_VALUE_HACK
-
 #define DITA_SUPRESS_NAMESPACE_LINKS 1
+
+// If set to 1 then the DumpDocBlockContents will be written to stdout.
+#define DITA_DUMP_DOC_BLOCK_CONTENTS 0
 
 #endif // XMLDITA_H

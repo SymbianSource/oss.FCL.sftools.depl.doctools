@@ -31,7 +31,9 @@
   </target>
   -->
   
-  <target name="cxxapiref.preprocess.sort" unless="cxxapiref.preprocess.sort.skip"
+  
+  
+  <target name="cxxapiref.preprocess.sort" if="cxxapiref.preprocess.sort.process"
           description="Sort C++ API map">
     <!--dirname property="cxxapiref.sort.workdir" file="${dita.temp.dir}${file.separator}${user.input.file}"/-->
     <condition property="cxxapiref.preprocess.reloadstylesheet.sort" value="${dita.preprocess.reloadstylesheet}">

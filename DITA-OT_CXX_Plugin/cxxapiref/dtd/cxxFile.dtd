@@ -3,8 +3,8 @@
 <!--                    HEADER                                         -->
 <!-- ================================================================= -->
 <!--  MODULE:    C++ File DTD                                          -->
-<!--  VERSION:   0.5.0                                                 -->
-<!--  DATE:      February 2009                                          -->
+<!--  VERSION:   0.6.0                                                 -->
+<!--  DATE:      May 2010                                              -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
@@ -14,7 +14,7 @@
 <!--                                                                   -->
 <!--  Refer to this file by the following public identifier or an 
       appropriate system identifier 
-PUBLIC "-//NOKIA//DTD DITA C++ API File Reference Type v0.5.0//EN"
+PUBLIC "-//NOKIA//DTD DITA C++ API File Reference Type v0.6.0//EN"
       Delivered as file "cxxFile.dtd"                                  -->
  
 <!-- ================================================================= -->
@@ -36,7 +36,7 @@ PUBLIC "-//NOKIA//DTD DITA C++ API File Reference Type v0.5.0//EN"
 <!-- ================================================================= -->
 
 <!--
-<!DOCTYPE cxxFile PUBLIC "-//NOKIA//DTD DITA C++ API File Reference Type v0.5.0//EN" "dtd/cxxFile.dtd"   >
+<!DOCTYPE cxxFile PUBLIC "-//NOKIA//DTD DITA C++ API File Reference Type v0.6.0//EN" "dtd/cxxFile.dtd"   >
 -->
 <!--
 Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
@@ -139,19 +139,19 @@ All rights reserved.
 
 <!--vocabulary definitions-->
 <!ENTITY % pr-d-def PUBLIC "-//OASIS//ELEMENTS DITA Programming Domain//EN"
-  "../../../dtd/programmingDomain.mod">
+  "../../../dtd/technicalContent/dtd/programmingDomain.mod">
   %pr-d-def;
 <!ENTITY % hi-d-def PUBLIC "-//OASIS//ELEMENTS DITA Highlight Domain//EN" 
-  "../../../dtd/highlightDomain.mod"                                               >
+  "../../../dtd/base/dtd/highlightDomain.mod"                                               >
   %hi-d-def;
 <!ENTITY % sw-d-def PUBLIC "-//OASIS//ELEMENTS DITA Software Domain//EN"
-  "../../../dtd/softwareDomain.mod">
+  "../../../dtd/technicalContent/dtd/softwareDomain.mod">
   %sw-d-def;
 <!ENTITY % ui-d-def PUBLIC "-//OASIS//ELEMENTS DITA User Interface Domain//EN"
-  "../../../dtd/uiDomain.mod">
+  "../../../dtd/technicalContent/dtd/uiDomain.mod">
   %ui-d-def;
 <!ENTITY % ut-d-def PUBLIC "-//OASIS//ELEMENTS DITA Utilities Domain//EN" 
-  "../../../dtd/utilitiesDomain.mod">
+  "../../../dtd/base/dtd/utilitiesDomain.mod">
   %ut-d-def;
 <!ENTITY % api-d-def PUBLIC "-//IBM//ELEMENTS DITA API Domain//EN"
   "../../apiref/dtd/apiDomain.mod">

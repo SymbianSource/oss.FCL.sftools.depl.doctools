@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -351,7 +351,7 @@ static void writeDefaultStyleSheetPart3(QTextStream &t)
        "    \\setlength{\\itemsep}{-4pt}%\n"
        "    \\renewcommand{\\makelabel}{\\entrylabel}%\n"
        "  }%\n"
-       "  \\item[#1:]%\n"
+       "  \\item[#1]%\n"
        "}{%\n"
        "  \\end{list}%\n"
        "}\n\n";
@@ -504,9 +504,8 @@ static void writeDefaultStyleSheetPart3(QTextStream &t)
        "}\n\n";
   t << "% Used by @internal\n"
        "\\newenvironment{DoxyInternal}[1]{%\n"
-       "  \\begin{DoxyDesc}{#1}%\n"
+       "  \\paragraph*{#1}%\n"
        "}{%\n"
-       "  \\end{DoxyDesc}%\n"
        "}\n\n";
   t << "% Used by @par and @paragraph\n"
        "\\newenvironment{DoxyParagraph}[1]{%\n"
@@ -648,12 +647,12 @@ void LatexGenerator::writeStyleSheetFile(QFile &f)
   t << theTranslator->trGeneratedAt( dateToString(TRUE), projectName );
   t << " doxygen";
   //t << " " << theTranslator->trWrittenBy() << " ";
-  //t << "Dimitri van Heesch \\copyright~1997-2008";
+  //t << "Dimitri van Heesch \\copyright~1997-2010";
   writeDefaultStyleSheetPart2(t);
   t << theTranslator->trGeneratedAt( dateToString(TRUE), projectName );
   t << " doxygen";
   //t << " << theTranslator->trWrittenBy() << " ";
-  //t << "Dimitri van Heesch \\copyright~1997-2008";
+  //t << "Dimitri van Heesch \\copyright~1997-2010";
   writeDefaultStyleSheetPart3(t);
 }
 
@@ -915,7 +914,8 @@ void LatexGenerator::endIndexSection(IndexSections is)
         {
           if (!gd->isReference())
           {
-            if (compactLatex) t << "\\input"; else t << "\\include";
+            //if (compactLatex) t << "\\input"; else t << "\\include";
+            t << "\\input"; 
             t << "{" << gd->getOutputFileBase() << "}\n";
           }
         }
@@ -938,7 +938,8 @@ void LatexGenerator::endIndexSection(IndexSections is)
         {
           if (dd->isLinkableInProject())
           {
-            if (compactLatex) t << "\\input"; else t << "\\include";
+            //if (compactLatex) t << "\\input"; else t << "\\include";
+            t << "\\input"; 
             t << "{" << dd->getOutputFileBase() << "}\n";
           }
         }
@@ -961,7 +962,8 @@ void LatexGenerator::endIndexSection(IndexSections is)
         {
           if (nd->isLinkableInProject())
           {
-            if (compactLatex) t << "\\input"; else t << "\\include";
+            //if (compactLatex) t << "\\input"; else t << "\\include";
+            t << "\\input"; 
             t << "{" << nd->getOutputFileBase() << "}\n";
           }
           ++nli;
@@ -985,7 +987,8 @@ void LatexGenerator::endIndexSection(IndexSections is)
         {
           if (cd->isLinkableInProject() && cd->templateMaster()==0)
           {
-            if (compactLatex) t << "\\input"; else t << "\\include";
+            //if (compactLatex) t << "\\input"; else t << "\\include";
+            t << "\\input"; 
             t << "{" << cd->getOutputFileBase() << "}\n";
           } 
         }
@@ -1007,17 +1010,20 @@ void LatexGenerator::endIndexSection(IndexSections is)
                 t << "}\n\\input{" << fd->getOutputFileBase() << "}\n";
                 if (sourceBrowser && m_prettyCode && fd->generateSourceFile())
                 {
-                  t << "\\include{" << fd->getSourceFileBase() << "}\n";
+                  //t << "\\include{" << fd->getSourceFileBase() << "}\n";
+                  t << "\\input{" << fd->getSourceFileBase() << "}\n";
                 }
                 isFirst=FALSE;
               }
               else
               {
-                if (compactLatex) t << "\\input" ; else t << "\\include";
+                //if (compactLatex) t << "\\input" ; else t << "\\include";
+                t << "\\input" ; 
                 t << "{" << fd->getOutputFileBase() << "}\n";
                 if (sourceBrowser && m_prettyCode && fd->generateSourceFile())
                 {
-                  t << "\\include{" << fd->getSourceFileBase() << "}\n";
+                  //t << "\\include{" << fd->getSourceFileBase() << "}\n";
+                  t << "\\input{" << fd->getSourceFileBase() << "}\n";
                 }
               }
             }
@@ -1038,7 +1044,8 @@ void LatexGenerator::endIndexSection(IndexSections is)
         }
         for (++pdi;(pd=pdi.current());++pdi)
         {
-          if (compactLatex) t << "\\input" ; else t << "\\include";
+          //if (compactLatex) t << "\\input" ; else t << "\\include";
+          t << "\\input"; 
           t << "{" << pd->getOutputFileBase() << "}\n";
         }
       }
@@ -1078,7 +1085,9 @@ void LatexGenerator::endIndexSection(IndexSections is)
 void LatexGenerator::writePageLink(const char *name, bool first)
 {
   bool &compactLatex = Config_getBool("COMPACT_LATEX");
-  if (compactLatex || first) t << "\\input" ; else t << "\\include";
+  // next is remove for bug615957
+  //if (compactLatex || first) t << "\\input" ; else t << "\\include";
+  t << "\\input" ; 
   t << "{" << name << "}\n";
 }
 
@@ -1100,14 +1109,14 @@ void LatexGenerator::writeStyleInfo(int part)
       break;
     case 2:
       {
-        //t << " Dimitri van Heesch \\copyright~1997-2008";
+        //t << " Dimitri van Heesch \\copyright~1997-2010";
         t << "}]{}\n";
         writeDefaultStyleSheetPart2(t);
       }
       break;
     case 4:
       {
-        //t << " Dimitri van Heesch \\copyright~1997-2008";
+        //t << " Dimitri van Heesch \\copyright~1997-2010";
         writeDefaultStyleSheetPart3(t);
         endPlainFile();
       }
@@ -1127,6 +1136,7 @@ void LatexGenerator::startParagraph()
 
 void LatexGenerator::endParagraph()
 {
+  t << endl << endl;
 }
 
 void LatexGenerator::writeString(const char *text)
@@ -1380,7 +1390,7 @@ void LatexGenerator::endGroupHeader()
   t << "}" << endl;
 }
 
-void LatexGenerator::startMemberHeader()
+void LatexGenerator::startMemberHeader(const char *)
 {
   if (Config_getBool("COMPACT_LATEX")) 
   {
@@ -1812,6 +1822,7 @@ void LatexGenerator::endMemberGroup(bool hasHeader)
 
 void LatexGenerator::startDotGraph() 
 {
+  newParagraph();
 }
 
 void LatexGenerator::endDotGraph(const DotClassGraph &g) 

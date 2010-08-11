@@ -13,14 +13,17 @@
 #ifdef DITA_TRACE_TO_XML
 #define DITA_DOC_VISITOR_TRACE(fn,pNode) xmlStream.comment(QString(fn));
 #define DITA_DOC_VISITOR_TRACE_NOARG(fn) xmlStream.comment(QString(fn));
+#define DITA_DOC_VISITOR_TRACE_STRING(str) xmlStream.comment(QString(str));
 #else
 #define DITA_DOC_VISITOR_TRACE(fn,pNode) printf("DITA_DOC_VISITOR: `%s': kind=%d node=0x%X, parent=0x%X\n", \
 	fn, pNode->kind(), pNode,pNode->parent());
 #define DITA_DOC_VISITOR_TRACE_NOARG(fn) printf("DITA_DOC_VISITOR: `%s'\n", fn);
+#define DITA_DOC_VISITOR_TRACE_STRING(str) printf("`%s'\n", str);
 #endif
 #else
 #define DITA_DOC_VISITOR_TRACE(fn,op)
 #define DITA_DOC_VISITOR_TRACE_NOARG(fn)
+#define DITA_DOC_VISITOR_TRACE_STRING(str)
 #endif
 
 

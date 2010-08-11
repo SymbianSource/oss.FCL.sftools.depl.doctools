@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -154,6 +154,8 @@ static FileStorage     *g_storage = 0;
 static bool             g_successfulRun = FALSE;
 static bool             g_dumpSymbolMap = FALSE;
 static bool             g_dumpConfigAsXML = FALSE;
+
+
 
 void clearAll()
 {
@@ -2310,9 +2312,7 @@ static MemberDef *addVariableToFile(
   {
     mn = new MemberName(name);
     mn->append(md);
-	// PaulRoss: This first line looks wrong to me but links to typedef's don't work without it!
     Doxygen::functionNameSDict->append(name,mn);
-    //Doxygen::memberNameSDict->append(name,mn);
   }
   rootNav->changeSection(Entry::EMPTY_SEC);
   return md;
@@ -2483,12 +2483,8 @@ static void addVariable(EntryNav *rootNav,int isFuncPtr=-1)
                    root->bodyLine,
                    root->mGrpId
                 );
-	//Entry *pParent = root->parent();
-	//if (pParent) {
-	//	printf("root->parent->name=%s\n",root->parent()->name.data());
-	//} else {
-	//	printf("NO Parent\n");
-	//}
+    //printf("root->parent->name=%s\n",root->parent->name.data());
+
     if (root->type.isEmpty() && root->name.find("operator")==-1 &&
         (root->name.find('*')!=-1 || root->name.find('&')!=-1))
     {
@@ -2691,7 +2687,6 @@ static void buildTypedefList(EntryNav *rootNav)
      ) 
   {
     addVariable(rootNav);
-	//printf("addVariable() done\n");
   }
   if (rootNav->children())
   {
@@ -5835,13 +5830,26 @@ static void findMember(EntryNav *rootNav,
         }
         else if (cd) // member specialization
         {
+          MemberNameIterator mni(*mn);
+          MemberDef *declMd=0;
+          MemberDef *md=0;
+          for (mni.toFirst();(md=mni.current());++mni)
+          {
+            if (md->getClassDef()==cd) 
+            {
+              // TODO: we should probably also check for matching arguments
+              declMd = md;
+              break;
+            }
+          }
           MemberDef::MemberType mtype=MemberDef::Function;
           ArgumentList *tArgList = new ArgumentList;
           //  getTemplateArgumentsFromName(cd->name()+"::"+funcName,root->tArgLists);
-          MemberDef *md=new MemberDef(
+          md=new MemberDef(
               root->fileName,root->startLine,
               funcType,funcName,funcArgs,exceptions,
-              root->protection,root->virt,root->stat,Member,
+              declMd ? declMd->protection() : root->protection,
+              root->virt,root->stat,Member,
               mtype,tArgList,root->argList);
           //printf("new specialized member %s args=`%s'\n",md->name().data(),funcArgs.data());
           md->setTagInfo(rootNav->tagInfo());
@@ -6765,6 +6773,7 @@ static void addEnumValuesToEnums(EntryNav *rootNav)
                   fmd->setMaxInitLines(root->initLines);
                   fmd->setMemberGroupId(root->mGrpId);
                   fmd->setExplicitExternal(root->explicitExternal);
+                  fmd->setRefItems(root->sli);
                   if (fmd)
                   {
                     md->insertEnumField(fmd);
@@ -7885,6 +7894,16 @@ static void findDirDocumentation(EntryNav *rootNav)
 
     QCString normalizedName = root->name;
     normalizedName = substitute(normalizedName,"\\","/");
+    //printf("root->docFile=%s normalizedName=%s\n",
+    //    root->docFile.data(),normalizedName.data());
+    if (root->docFile==normalizedName) // current dir?
+    {
+      int lastSlashPos=normalizedName.findRev('/'); 
+      if (lastSlashPos!=-1) // strip file name
+      {
+        normalizedName=normalizedName.left(lastSlashPos);
+      }
+    }
     if (normalizedName.at(normalizedName.length()-1)!='/')
     {
       normalizedName+='/';
@@ -7922,7 +7941,7 @@ static void findDirDocumentation(EntryNav *rootNav)
     else
     {
       warn(root->fileName,root->startLine,"Warning: No matching "
-          "directory found for command \\dir %s\n",root->name.data());
+          "directory found for command \\dir %s\n",normalizedName.data());
     }
     rootNav->releaseEntry();
   }
@@ -8227,6 +8246,7 @@ static void generateExampleDocs()
     startTitle(*g_outputList,n);
     g_outputList->docify(pd->name());
     endTitle(*g_outputList,n,0);
+    g_outputList->startContents();
     g_outputList->parseDoc(pd->docFile(),                            // file
                          pd->docLine(),                            // startLine
                          pd,                                       // context
@@ -8236,6 +8256,7 @@ static void generateExampleDocs()
                          TRUE,                                     // is example
                          pd->name()
                         );
+    g_outputList->endContents();
     endFile(*g_outputList);
   }
   g_outputList->enable(OutputGenerator::Man);
@@ -8568,37 +8589,6 @@ static void readTagFile(Entry *root,const char *tl)
 }
 
 //----------------------------------------------------------------------------
-// returns TRUE if the name of the file represented by `fi' matches
-// one of the file patterns in the `patList' list.
-
-static bool patternMatch(QFileInfo *fi,QStrList *patList)
-{
-  bool found=FALSE;
-  if (patList)
-  { 
-    QCString pattern=patList->first();
-    while (!pattern.isEmpty() && !found)
-    {
-      int i=pattern.find('=');
-      if (i!=-1) pattern=pattern.left(i); // strip of the extension specific filter name
-
-#if defined(_WIN32) // windows
-      QRegExp re(pattern,FALSE,TRUE); // case insensitive match 
-#else                // unix
-      QRegExp re(pattern,TRUE,TRUE);  // case sensitive match
-#endif
-      found = found || re.match(fi->fileName())!=-1 || 
-                       re.match(fi->filePath())!=-1 ||
-                       re.match(fi->absFilePath())!=-1;
-      //printf("Matching `%s' against pattern `%s' found=%d\n",
-      //    fi->fileName().data(),pattern.data(),found);
-      pattern=patList->next();
-    }
-  }
-  return found;
-}
-
-//----------------------------------------------------------------------------
 static void copyStyleSheet()
 {
   QCString &htmlStyleSheet = Config_getString("HTML_STYLESHEET");
@@ -8830,8 +8820,8 @@ int readDir(QFileInfo *fi,
         }
         else if (cfi->isFile() && 
             (!Config_getBool("EXCLUDE_SYMLINKS") || !cfi->isSymLink()) &&
-            (patList==0 || patternMatch(cfi,patList)) && 
-            !patternMatch(cfi,exclPatList) &&
+            (patList==0 || patternMatch(*cfi,patList)) && 
+            !patternMatch(*cfi,exclPatList) &&
             (killDict==0 || killDict->find(cfi->absFilePath())==0)
             )
         {
@@ -8866,7 +8856,7 @@ int readDir(QFileInfo *fi,
         else if (recursive &&
             (!Config_getBool("EXCLUDE_SYMLINKS") || !cfi->isSymLink()) &&
             cfi->isDir() && cfi->fileName()!="." && 
-            !patternMatch(cfi,exclPatList) &&
+            !patternMatch(*cfi,exclPatList) &&
             cfi->fileName()!="..")
         {
           cfi->setFile(cfi->absFilePath());
@@ -9157,7 +9147,7 @@ void dumpConfigAsXML()
 
 static void usage(const char *name)
 {
-  msg("Doxygen version %s\nCopyright Dimitri van Heesch 1997-2008\n\n",versionString);
+  msg("Doxygen version %s\nCopyright Dimitri van Heesch 1997-2010\n\n",versionString);
   msg("You can use doxygen in a number of ways:\n\n");
   msg("1) Use doxygen to generate a template configuration file:\n");
   msg("    %s [-s] -g [configName]\n\n",name);
@@ -10222,14 +10212,12 @@ void parseInput()
   msg("Computing class relations...\n");
   computeTemplateClassRelations(); 
   flushUnresolvedRelations();
+
+  computeClassRelations();        
+
   if (Config_getBool("OPTIMIZE_OUTPUT_VHDL"))
-  {
     VhdlDocGen::computeVhdlComponentRelations();
-  }
-  else
-  {
-    computeClassRelations();        
-  }
+
   g_classEntries.clear();          
 
   msg("Add enum values to enums...\n");
@@ -10275,7 +10263,6 @@ void parseInput()
   findDocumentedEnumValues();
 
   msg("Computing member relations...\n");
-  // TODO: This seems to generate an infinite loop
   computeMemberRelations();
 
   msg("Building full member lists recursively...\n");
@@ -10388,7 +10375,7 @@ void generateOutput()
     Doxygen::indexList.addImageFile("tab_b.gif");
     Doxygen::indexList.addStyleSheetFile("tabs.css");
     Doxygen::indexList.addImageFile("doxygen.png");
-    if (Config_getBool("HTML_DYNAMIC_SECTIONS")) HtmlGenerator::generateSectionImages();
+    //if (Config_getBool("HTML_DYNAMIC_SECTIONS")) HtmlGenerator::generateSectionImages();
     copyStyleSheet();
   }
   if (Config_getBool("GENERATE_LATEX")) 
@@ -10466,21 +10453,18 @@ void generateOutput()
   // generate search indices (need to do this before writing other HTML
   // pages as these contain a drop down menu with options depending on
   // what categories we find in this function.
-  if (searchEngine)
+  if (Config_getBool("GENERATE_HTML") && searchEngine)
   {
     QCString searchDirName = Config_getString("HTML_OUTPUT")+"/search";
     QDir searchDir(searchDirName);
     if (!searchDir.exists() && !searchDir.mkdir(searchDirName))
     {
-      err("Could not create search results directory '%s/search'\n",searchDirName.data());
-      return;
+      err("Error: Could not create search results directory '%s' $PWD='%s'\n",
+          searchDirName.data(),QDir::currentDirPath().data());
+      exit(1);
     }
     HtmlGenerator::writeSearchData(searchDirName);
-    writeSearchStyleSheet();
-    if (serverBasedSearch)
-    {
-    }
-    else
+    if (!serverBasedSearch) // client side search index
     {
       writeJavascriptSearchIndex();
     }

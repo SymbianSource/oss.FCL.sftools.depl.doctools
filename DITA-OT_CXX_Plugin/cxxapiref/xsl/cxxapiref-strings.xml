@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  (C) Copyright Nokia Corporation and/or its subsidiary(-ies) 2009  - 2010. All rights reserved.
+ *-->
 <!-- At this point, all of the strings are the same for each language.-->
 <langlist name="cxxapiref">
     <lang xml:lang="ar"    filename="cxxapiref-strings-en-us.xml"/>

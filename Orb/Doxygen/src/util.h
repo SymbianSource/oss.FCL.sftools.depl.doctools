@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -54,6 +54,8 @@ struct SectionInfo;
 class QDir;
 class Definition;
 class BufStr;
+class QFileInfo;
+class QStrList;
 
 //--------------------------------------------------------------------
 
@@ -197,9 +199,6 @@ int guessSection(const char *name);
 
 inline bool isId(int c)
 {
-  // PaulRo: This was return c=='_' || isalnum(c) || c>=128 || c<0;
-  // but with negative numbers isalnum was called and this gave an
-  // assertion error from istype.c
   return c=='_' || c>=128 || c<0 || isalnum(c);
 }
 
@@ -237,7 +236,7 @@ bool hasVisibleRoot(BaseClassList *bcl);
 
 int minClassDistance(const ClassDef *cd,const ClassDef *bcd,int level=0);
 
-QCString convertNameToFile(const char *name,bool allowDots=FALSE);
+QCString convertNameToFile(const char *name,bool allowDots=FALSE,bool allowUnderscore=FALSE);
 
 void extractNamespaceName(const QCString &scopeName,
                           QCString &className,QCString &namespaceName,
@@ -294,7 +293,7 @@ PageDef *addRelatedPage(const char *name,const QCString &ptitle,
                            TagInfo *tagInfo=0
                           );
 
-QCString escapeCharsInString(const char *name,bool allowDots);
+QCString escapeCharsInString(const char *name,bool allowDots,bool allowUnderscore=FALSE);
 
 void addGroupListToTitle(OutputList &ol,Definition *d);
 
@@ -371,6 +370,10 @@ void stackTrace();
 bool readInputFile(const char *fileName,BufStr &inBuf);
 QCString filterTitle(const QCString &title);
 
+bool patternMatch(const QFileInfo &fi,const QStrList *patList);
+
+void writeSummaryLink(OutputList &ol,const char *label,const char *title,
+                      bool &first);
 
 #endif
 

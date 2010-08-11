@@ -2,8 +2,8 @@
 <!--                    HEADER                                         -->
 <!-- ================================================================= -->
 <!--  MODULE:    C++ Enumeration DTD                                   -->
-<!--  VERSION:   0.5.0                                                 -->
-<!--  DATE:      February 2009                                          -->
+<!--  VERSION:   0.6.0                                                 -->
+<!--  DATE:      May 2010                                              -->
 <!--                                                                   -->
 <!-- ================================================================= -->
 
@@ -13,7 +13,7 @@
 <!--                                                                   -->
 <!--  Refer to this file by the following public identifier or an 
       appropriate system identifier 
-PUBLIC "-//NOKIA//DTD DITA C++ API Enumeration Reference Type v0.5.0//EN"
+PUBLIC "-//NOKIA//DTD DITA C++ API Enumeration Reference Type v0.6.0//EN"
       Delivered as file "cxxEnumeration.dtd"                           -->
  
 <!-- ================================================================= -->
@@ -24,7 +24,7 @@ PUBLIC "-//NOKIA//DTD DITA C++ API Enumeration Reference Type v0.5.0//EN"
 <!-- ORIGINAL CREATION DATE:                                           -->
 <!--             November 2009                                         -->
 <!--                                                                   -->
-<!-- Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies). -->
+<!-- Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies). -->
 <!-- All rights reserved.                                              -->
 <!--                                                                   -->
 <!--  Change History (latest at top):                                  -->
@@ -36,7 +36,7 @@ PUBLIC "-//NOKIA//DTD DITA C++ API Enumeration Reference Type v0.5.0//EN"
 <!-- ================================================================= -->
 
 <!--
-Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+Copyright (c) 2009-2010 Nokia Corporation and/or its subsidiary(-ies).
 All rights reserved.
 -->
 

@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -171,8 +171,12 @@ class OutputList : public OutputDocInterface
     { forall(&OutputGenerator::startMemberSections); }
     void endMemberSections()
     { forall(&OutputGenerator::endMemberSections); }
-    void startMemberHeader()
-    { forall(&OutputGenerator::startMemberHeader); }
+    void startHeaderSection()
+    { forall(&OutputGenerator::startHeaderSection); }
+    void endHeaderSection()
+    { forall(&OutputGenerator::endHeaderSection); }
+    void startMemberHeader(const char *anchor)
+    { forall(&OutputGenerator::startMemberHeader,anchor); }
     void endMemberHeader()
     { forall(&OutputGenerator::endMemberHeader); }
     void startMemberSubtitle()

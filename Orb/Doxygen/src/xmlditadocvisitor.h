@@ -4,6 +4,7 @@
 
 #include "docvisitor.h"
 #include "xmlwriter.h"
+#include "xmlditaparammap.h"
 #include <qstack.h>
 #include <qcstring.h>
 #include <qmap.h>
@@ -18,7 +19,7 @@ class QString;
 class XmlDitaDocVisitor : public DocVisitor
 {
   public:
-    XmlDitaDocVisitor(XmlStream &s,CodeOutputInterface &ci);
+    XmlDitaDocVisitor(XmlStream &s,CodeOutputInterface &ci, DocBlockContents *docBlockMaps);
     
     //--------------------------------------
     // visitor functions for leaf nodes
@@ -117,11 +118,7 @@ class XmlDitaDocVisitor : public DocVisitor
 
 	virtual ~XmlDitaDocVisitor() {}
 
-	const QString query(const QString &paramName) const;
-	QDictIterator<QString> queryIterator()
-	{
-		return QDictIterator<QString>(paramDict);
-	}
+	//const QString query(const QString &paramName) const;
   private:
 
     //--------------------------------------
@@ -133,14 +130,22 @@ class XmlDitaDocVisitor : public DocVisitor
                    const QString &anchor);
     void endLink();
 
+	bool canWriteToXmlStream() const;
+	bool shouldAddTextToReturnDoc() const;
+	bool canLoadParameterMap() const;
+	void checkSimpleTable(const QString &tagName);
+	void addStrowToSimpleTableOnPop(const QString &tagName);
 	void write(const QString &string);
 	void push(const QString &tagName);
 	void push(const QString &tagName, const QString &key, const QString &value);
 	void push(const QString &tagName, AttributeMap &map);
+	void pop();
 	void pop(const QString &tagName);
 	void pushpop(const QString &tagName);
-	void pushpop(const QString &tagName, const QString &text);	
-
+	void pushpop(const QString &tagName, const QString &text);
+	// Definition list stuff
+	void pushDl(const QString &outputClass);
+	void popDl();
     void pushEnabled();
     void popEnabled();
 	// Default pop of a single element
@@ -162,10 +167,29 @@ class XmlDitaDocVisitor : public DocVisitor
     bool m_hide;
     QStack<bool> m_enabled;
     QCString m_langExt;
+	// Parameter capture
 	bool m_insideParamlist;
-	QMap<int, QString> paramMap;
-	QDict<QString> paramDict;
+	bool m_paramIsTemplate;
+	//QDict<QString> paramDict;
 	QString currParam;
+	DocBlockContents *m_docBlockMaps;
+	// State flag for when we are writing definition lists
+	bool m_writingDl;
+	// Used to detect if we need to insert an empty \<strow\>
+	// in a \<simpletable\>. This is set/cleared by push/pop.
+	bool m_mustInsertStrow;
+	// This is used to help lazy evaluation of a stentry that might be
+	// either within a sthead or a strow. It is only at the point of
+	// getting a stentry that we can decide which one to use
+	bool m_strowOrStheadIsPending;
+	// Adds text to m_docBlockMaps->returnDoc
+	bool m_addTextToReturnDoc;
+	// Keeps track of the number of XmlDitaDocVisitor::visitPre(DocPara*) events
+	// that do NOT result in a <p> element being written.
+	// This is incremented by XmlDitaDocVisitor::visitPre(DocPara*) when canPushPara()
+	// and is decremented by XmlDitaDocVisitor::visitPost(DocPara*). Only when this is
+	// zero can a XmlDitaDocVisitor::visitPost(DocPara*) cause a </p>
+	int m_paraRefCount;
 };
 
 #endif //_XMLDITADOCVISITOR_H

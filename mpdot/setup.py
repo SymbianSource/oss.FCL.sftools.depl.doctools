@@ -23,7 +23,6 @@ setup(name = 'DITA OT Support',
       license='EPL',
       console=[
                'mpdot.py',
-               'linkcheck.py',
                ],
       options={"py2exe":
                     {'packages':['xml.etree', 'gzip']}

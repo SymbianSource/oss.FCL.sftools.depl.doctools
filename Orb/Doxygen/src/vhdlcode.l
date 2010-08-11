@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -1479,7 +1479,7 @@ void resetVhdlCodeParserState()
 void parseVhdlCode(CodeOutputInterface &od,const char *className,const QCString &s, 
                   bool exBlock, const char *exName,FileDef *fd,
                   int startLine,int endLine,bool inlineFragment,
-                  MemberDef *memberDef)
+                  MemberDef *memberDef,bool)
 {
   //printf("***parseCode() exBlock=%d exName=%s fd=%p\n",exBlock,exName,fd);
   if (s.isEmpty()) return;

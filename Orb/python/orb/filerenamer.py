@@ -13,11 +13,8 @@
 import os.path
 import sys
 import unittest
-import xml
 import stat
 import logging
-from cStringIO import StringIO
-from xml.etree import ElementTree as etree
 from lib import scan, main, XmlParser, StubXmlParser
 from optparse import OptionParser
 
@@ -25,6 +22,9 @@ __version__ = '0.1'
 
 
 UNSAFE_CHARS = ("\n", "\t", ":", "?", ",", "=", ".", "\\", "/", "[", "]", "|", "<", ">", "+", ";", '"', "-")
+
+
+logger = logging.getLogger('orb.filerenamer')
 
 
 class FileRenamer(object):
@@ -74,14 +74,14 @@ def rename(indir, publishing_target):
         try:
             os.chmod(filepath, stat.S_IWRITE)
         except Exception, e:
-            logging.error('Unable to make file \"%s\" writable, error was: %s' % (filepath, e))
+            logger.error('Unable to make file \"%s\" writable, error was: %s' % (filepath, e))
             continue
         else:
-            logging.debug("Renaming %s to %s" % (filepath, newfilename))
+            logger.debug("Renaming %s to %s" % (filepath, newfilename))
             try:
                 os.rename(filepath, newfilename)
             except Exception, e:
-                logging.error('Unable to rename file \"%s\" to \"%s\", error was: %s' % (filepath, newfilename, e))
+                logger.error('Unable to rename file \"%s\" to \"%s\", error was: %s' % (filepath, newfilename, e))
 
 def main():        
     usage = "usage: %prog <Path to the XML content> <publishing_target>\n"
@@ -95,7 +95,7 @@ def main():
         parser.error("Please supply the path to the XML content")
         
     if options.loglevel:
-        logging.basicConfig(level=options.loglevel)
+        logger.basicConfig(level=options.loglevel)
     
     rename(args[0],options.publishing_target)
 

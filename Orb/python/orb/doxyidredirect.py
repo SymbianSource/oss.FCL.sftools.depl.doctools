@@ -15,7 +15,7 @@ import unittest
 import sys
 import logging
 import pprint
-from optparse import OptionParser, check_choice
+from optparse import OptionParser
 try:
     from xml.etree import cElementTree as etree
 except ImportError:

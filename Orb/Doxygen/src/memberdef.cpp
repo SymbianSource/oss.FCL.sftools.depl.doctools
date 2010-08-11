@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -630,6 +630,7 @@ MemberDef::MemberDef(const char *df,int dl,
                      const ArgumentList *tal,const ArgumentList *al
                     ) : Definition(df,dl,removeRedundantWhiteSpace(na))
 {
+  //printf("MemberDef::MemberDef(%s)\n",na);
   m_storagePos=-1;
   m_cacheHandle=-1;
   m_impl = new MemberDefImpl;
@@ -1980,7 +1981,8 @@ void MemberDef::writeDocumentation(MemberList *ml,OutputList &ol,
     ParserInterface *pIntf = Doxygen::parserManager->getParser(getDefFileExtension());
     pIntf->resetCodeParserState();
     ol.startCodeFragment();
-    pIntf->parseCode(ol,scopeName,m_impl->initializer,FALSE,0);
+    pIntf->parseCode(ol,scopeName,m_impl->initializer,FALSE,0,getFileDef(),
+                     -1,-1,TRUE,this,FALSE);
     ol.endCodeFragment();
   }
 
@@ -2687,12 +2689,12 @@ void MemberDef::addListReference(Definition *)
     }
     else if (optimizeOutputJava)
     {
-      if (!hideScopeNames) memName.prepend(pd->name()+".");
+      if (!hideScopeNames && pd!=Doxygen::globalScope) memName.prepend(pd->name()+".");
       memArgs = argsString();
     }
     else
     {
-      if (!hideScopeNames) memName.prepend(pd->name()+"::");
+      if (!hideScopeNames && pd!=Doxygen::globalScope) memName.prepend(pd->name()+"::");
       memArgs = argsString();
     }
   }
@@ -2700,7 +2702,7 @@ void MemberDef::addListReference(Definition *)
   if (xrefItems!=0)
   {
     addRefItem(xrefItems.pointer(),
-        qualifiedName(),
+        qualifiedName()+argsString(), // argsString is needed for overloaded functions (see bug 609624)
         memLabel,
         getOutputFileBase()+"#"+anchor(),memName,memArgs);
   }

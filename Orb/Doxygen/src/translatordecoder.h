@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -721,6 +721,23 @@ class TranslatorDecoder : public Translator
     { return toUtf8(m_translator->trSearching()); }
     QCString trNoMatches()
     { return toUtf8(m_translator->trNoMatches()); }
+
+//////////////////////////////////////////////////////////////////////////
+// new since 1.6.3
+//////////////////////////////////////////////////////////////////////////
+
+    QCString trDirDependency(const char *name)
+    { return toUtf8(m_translator->trDirDependency(fromUtf8(name))); }
+    QCString trFileIn(const char *name)
+    { return toUtf8(m_translator->trFileIn(fromUtf8(name))); }
+    QCString trIncludesFileIn(const char *name)
+    { return toUtf8(m_translator->trIncludesFileIn(fromUtf8(name))); }
+    QCString trDateTime(int year,int month,int day,int dayOfWeek,
+                        int hour,int minutes,int seconds,bool includeTime)
+    { return toUtf8(m_translator->trDateTime(year,month,day,dayOfWeek,
+                                             hour,minutes,seconds,includeTime)); 
+    }
+
 
 //////////////////////////////////////////////////////////////////////////
   private:

@@ -2,7 +2,7 @@
  *
  * 
  *
- * Copyright (C) 1997-2008 by Dimitri van Heesch.
+ * Copyright (C) 1997-2010 by Dimitri van Heesch.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation under the terms of the GNU General Public License is hereby 
@@ -68,6 +68,8 @@ class ParserInterface
      *  @param[in] memberDef Member definition to which the code
      *             is associated (non null in case of an inline fragment 
      *             for a member).
+     *  @param[in] showLineNumbers if set to TRUE and also fileDef is not 0,
+     *             line numbers will be added to the source fragement
      */
     virtual void parseCode(CodeOutputInterface &codeOutIntf,
                            const char *scopeName,
@@ -78,7 +80,8 @@ class ParserInterface
                            int startLine=-1,
                            int endLine=-1,
                            bool inlineFragment=FALSE,
-                           MemberDef *memberDef=0
+                           MemberDef *memberDef=0,
+                           bool showLineNumbers=TRUE
                           ) = 0;
 
     /** Resets the state of the code parser.
